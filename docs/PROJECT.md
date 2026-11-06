@@ -44,7 +44,7 @@
 | `core:data` | Preferences DataStore core `1.3.0` | 연비·주유량 등 소규모 설정 저장 |
 | `core:data` | Retrofit 및 Kotlin Serialization converter `3.0.0`, Kotlin Serialization JSON `1.12.0` | 외부 HTTP API와 JSON 데이터 처리 |
 
-Serialization 플러그인은 `app`과 `core:data`에 Kotlin과 같은 버전으로 적용한다. `core:data`는 순수 Kotlin/JVM 구조를 유지하기 위해 Android 의존성이 없는 `datastore-preferences-core`를 사용하며, 저장 경로 등 Android 환경 정보는 실제 저장소 구현 시 외부에서 제공한다. 라이브러리 사용법은 [Navigation 3](https://developer.android.com/guide/navigation/navigation-3/get-started), [Material 3 Adaptive](https://developer.android.com/jetpack/androidx/releases/compose-material3-adaptive), [DataStore](https://developer.android.com/topic/libraries/architecture/datastore), [Retrofit](https://github.com/square/retrofit), [Kotlin Serialization](https://github.com/Kotlin/kotlinx.serialization)을 참고한다.
+Serialization 플러그인은 `app`과 `core:data`에 Kotlin과 같은 버전으로 적용한다. `core:data`는 순수 Kotlin/JVM 구조를 유지하기 위해 Android 의존성이 없는 `datastore-preferences-core`를 사용하며, 저장 경로 등 Android 환경 정보는 실제 저장소 구현 시 외부에서 제공한다.
 
 `app`에는 로컬 SDK 가이드 기준으로 Pleos Vehicle `2.3.2`, NaviHelper `3.0.5`, FusedLocation `1.1.3` 의존성을 등록했다. `settings.gradle.kts`의 Pleos Maven 저장소에서 `ai.pleos.playground` 그룹을 받는다. 현재는 의존성만 추가한 상태이며, 기능별 권한 선언과 런타임 권한 요청, SDK 초기화·해제 및 API 호출은 실제 연동 구현 시 추가한다.
 
@@ -102,8 +102,3 @@ Serialization 플러그인은 `app`과 `core:data`에 Kotlin과 같은 버전으
 - **외부 의존성:** 오피넷 데이터 이용 조건과 경로 API 비용·쿼터·상업적 사용 가능 여부를 사전에 확인해야 한다.
 - **기존 사례와의 관계:** 차계부와 자동차 비용 관리라는 넓은 분야가 인접하므로 ‘주유 전 우회 의사결정’이라는 차별점을 강조한다.
 - **안전:** 주행 중 긴 목록 비교나 금액 입력을 요구하지 않도록 한다.
-
-## 참고자료
-
-- [오피넷 – 오픈 API 안내](https://www.opinet.co.kr/user/custapi/custApiInfo.do)
-- [Pleos NaviHelper – 경유지 설정](https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/NaviHelper/waypoint-settings)

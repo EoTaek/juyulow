@@ -19,4 +19,7 @@ dependencies {
     implementation(project(":core:design"))
     implementation(project(":core:data"))
     implementation(project(":core:model"))
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
 }

@@ -21,4 +21,7 @@ dependencies {
     implementation(libs.retrofit.converter.kotlinx.serialization)
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.core)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
 }
