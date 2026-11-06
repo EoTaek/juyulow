@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 java {
@@ -14,6 +15,10 @@ kotlin {
 dependencies {
     api(project(":core:model"))
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.androidx.datastore.preferences.core)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.retrofit.core)
+    implementation(libs.retrofit.converter.kotlinx.serialization)
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.core)
 }

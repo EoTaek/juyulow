@@ -32,7 +32,19 @@
 
 카운터의 데이터 흐름은 `CounterScreen → CounterAction → CounterViewModel → StateFlow<CounterUiState> → ComparisonRoute → CounterScreen`이다. Route에서 `koinViewModel()`로 ViewModel을 주입하고 `collectAsStateWithLifecycle()`로 상태를 구독한다. Screen은 상태와 action 콜백만 받는다. 카운터 상태는 feature 내부에 두며, 예제를 위해 공통 모델이나 저장소를 만들지 않는다.
 
-의존성 버전은 `gradle/libs.versions.toml`에서 관리한다. Koin BOM과 Android/Compose 연동, Lifecycle, Coroutines를 사용한다. Koin은 constructor DSL로 등록하며, annotation/KSP/컴파일러 플러그인은 추가하지 않는다. 네트워크·DB 라이브러리는 실제 연동 구현 시 선택한다.
+의존성 버전은 `gradle/libs.versions.toml`에서 관리한다. Koin BOM과 Android/Compose 연동, Lifecycle, Coroutines를 사용한다. Koin은 constructor DSL로 등록하며, Koin annotation/KSP/컴파일러 플러그인은 추가하지 않는다.
+
+화면 전환·설정 저장·외부 API 연동을 위한 다음 의존성을 등록했다. 현재는 의존성과 플러그인만 구성한 상태이며, 화면 전환·반응형 배치·설정 영구 저장·HTTP 클라이언트 및 API 호출은 아직 구현하지 않았다.
+
+| 모듈 | 의존성 | 용도 |
+| --- | --- | --- |
+| `app` | Navigation 3 runtime/UI `1.2.1`, Lifecycle ViewModel Navigation 3 `2.11.0` | 앱 내부 화면 전환 및 화면별 ViewModel 수명 관리 |
+| `app` | Material 3 Adaptive, Adaptive Layout, Adaptive Navigation 3 `1.3.0` | 창 크기에 따른 배치와 Navigation 3 연동 |
+| `app` | Kotlin Serialization core `1.12.0` | 화면 경로 직렬화 |
+| `core:data` | Preferences DataStore core `1.3.0` | 연비·주유량 등 소규모 설정 저장 |
+| `core:data` | Retrofit 및 Kotlin Serialization converter `3.0.0`, Kotlin Serialization JSON `1.12.0` | 외부 HTTP API와 JSON 데이터 처리 |
+
+Serialization 플러그인은 `app`과 `core:data`에 Kotlin과 같은 버전으로 적용한다. `core:data`는 순수 Kotlin/JVM 구조를 유지하기 위해 Android 의존성이 없는 `datastore-preferences-core`를 사용하며, 저장 경로 등 Android 환경 정보는 실제 저장소 구현 시 외부에서 제공한다. 라이브러리 사용법은 [Navigation 3](https://developer.android.com/guide/navigation/navigation-3/get-started), [Material 3 Adaptive](https://developer.android.com/jetpack/androidx/releases/compose-material3-adaptive), [DataStore](https://developer.android.com/topic/libraries/architecture/datastore), [Retrofit](https://github.com/square/retrofit), [Kotlin Serialization](https://github.com/Kotlin/kotlinx.serialization)을 참고한다.
 
 `app`에는 로컬 SDK 가이드 기준으로 Pleos Vehicle `2.3.2`, NaviHelper `3.0.5`, FusedLocation `1.1.3` 의존성을 등록했다. `settings.gradle.kts`의 Pleos Maven 저장소에서 `ai.pleos.playground` 그룹을 받는다. 현재는 의존성만 추가한 상태이며, 기능별 권한 선언과 런타임 권한 요청, SDK 초기화·해제 및 API 호출은 실제 연동 구현 시 추가한다.
 
