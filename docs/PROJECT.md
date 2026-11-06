@@ -34,6 +34,8 @@
 
 의존성 버전은 `gradle/libs.versions.toml`에서 관리한다. Koin BOM과 Android/Compose 연동, Lifecycle, Coroutines를 사용한다. Koin은 constructor DSL로 등록하며, annotation/KSP/컴파일러 플러그인은 추가하지 않는다. 네트워크·DB 라이브러리는 실제 연동 구현 시 선택한다.
 
+`app`에는 로컬 SDK 가이드 기준으로 Pleos Vehicle `2.3.2`, NaviHelper `3.0.5`, FusedLocation `1.1.3` 의존성을 등록했다. `settings.gradle.kts`의 Pleos Maven 저장소에서 `ai.pleos.playground` 그룹을 받는다. 현재는 의존성만 추가한 상태이며, 기능별 권한 선언과 런타임 권한 요청, SDK 초기화·해제 및 API 호출은 실제 연동 구현 시 추가한다.
+
 ## 기획 배경과 해결할 문제
 
 리터당 가격이 조금 싼 주유소를 찾더라도, 그곳까지 돌아가는 데 연료와 시간이 추가로 든다. 가격 정렬만으로는 이번 주유에서 실제로 절약되는 금액을 바로 판단하기 어렵다. 이 앱은 사용자가 **‘얼마나 싼가’보다 ‘지금 돌아갈 가치가 있는가’**를 판단하도록 돕는다.

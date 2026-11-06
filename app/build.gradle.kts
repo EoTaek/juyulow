@@ -37,6 +37,9 @@ android {
 }
 
 dependencies {
+    implementation(libs.pleos.vehicle)
+    implementation(libs.pleos.navihelper)
+    implementation(libs.pleos.fusedlocation)
     implementation(project(":core:design"))
     implementation(project(":feature:comparison"))
     implementation(project(":feature:settings"))
