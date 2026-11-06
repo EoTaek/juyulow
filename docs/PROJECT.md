@@ -20,13 +20,13 @@
 | 모듈 | 역할 |
 | --- | --- |
 | `app` | 유일한 application 모듈. Application에서 Koin 시작, Activity에서 테마와 feature 진입점 연결 |
-| `core:design` | 공통 Compose 테마·색상·타이포그래피 |
+| `core:design` | 공통 Compose 테마·색상·타이포그래피·그림자 토큰 |
 | `core:model` | 공통 데이터 모델을 둘 순수 Kotlin/JVM 모듈. 현재 껍데기만 구성 |
 | `core:data` | 저장소·데이터 소스·외부 연동을 둘 순수 Kotlin/JVM 모듈. 현재 껍데기와 의존성만 구성 |
 | `feature:comparison` | 주유소 비교 feature. 현재 임시 카운터와 ViewModel, UI state, sealed action, Koin 모듈 포함 |
 | `feature:settings` | 연비·예상 주유량 설정 feature. 현재 Gradle 모듈 껍데기만 구성 |
 
-`core:design` 색상은 로컬 Pleos 디자인 가이드의 라이트·다크 토큰을 사용한다. `JUYULOWTheme.colors`로 원본 역할별 색상을 제공하고, 기존 Material 컴포넌트는 매핑된 `MaterialTheme.colorScheme`을 사용한다. 색상 출처·매핑·원문 표기 보정은 [DESIGN.md](DESIGN.md)를 참고한다.
+`core:design`은 로컬 Pleos 디자인 가이드의 색상·타이포그래피·그림자 토큰을 `JUYULOWTheme.colors`, `.typography`, `.shadows`로 제공한다. 기존 Material 컴포넌트는 매핑된 `MaterialTheme.colorScheme`과 `.typography`를 사용한다. 출처·매핑·서체 및 원문 해석은 [DESIGN.md](DESIGN.md), 아이콘 제작·사용 지침은 [ICONOGRAPHY.md](ICONOGRAPHY.md)를 참고한다.
 
 의존 방향은 `app → feature/core:design`, `feature → core`, `core:data → core:model`이다. core는 feature나 app에 의존하지 않으며 feature 간 직접 의존도 두지 않는다. 내비 연동은 별도 feature 대신 향후 비교 흐름의 action과 data 연동으로 시작한다.
 

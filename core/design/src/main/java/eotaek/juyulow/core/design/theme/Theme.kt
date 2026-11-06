@@ -8,16 +8,26 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 private val LocalPleosColors = staticCompositionLocalOf { LightPleosColors }
+private val LocalPleosTypography = staticCompositionLocalOf { DefaultPleosTypography }
 
 object JUYULOWTheme {
     val colors: PleosColors
         @Composable
         @ReadOnlyComposable
         get() = LocalPleosColors.current
+
+    val typography: PleosTypography
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalPleosTypography.current
+
+    val shadows: PleosShadows
+        get() = PleosShadows
 }
 
 private val LightColorScheme = LightPleosColors.toMaterialColorScheme(darkTheme = false)
@@ -82,13 +92,18 @@ private fun PleosColors.toMaterialColorScheme(darkTheme: Boolean): ColorScheme {
 @Composable
 fun JUYULOWTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    typography: PleosTypography = DefaultPleosTypography,
     content: @Composable () -> Unit,
 ) {
     val colors = if (darkTheme) DarkPleosColors else LightPleosColors
-    CompositionLocalProvider(LocalPleosColors provides colors) {
+    val materialTypography = remember(typography) { typography.toMaterialTypography() }
+    CompositionLocalProvider(
+        LocalPleosColors provides colors,
+        LocalPleosTypography provides typography,
+    ) {
         MaterialTheme(
             colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
-            typography = Typography,
+            typography = materialTypography,
             content = content,
         )
     }
