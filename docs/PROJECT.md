@@ -15,7 +15,7 @@
 
 ## 현재 구현 및 모듈 구조
 
-현재 실행 화면은 MVVM 구조를 확인하기 위한 카운터 예제다. 0부터 증가·감소·초기화를 지원하며 음수로 내려가지 않는다. 화면 재생성 시 ViewModel이 값을 유지하지만, 프로세스 종료 후의 복원이나 영구 저장은 구현하지 않는다. 아래 주유소 비교·차량 설정·외부 API 연동은 아직 기획 단계다.
+현재 실행 화면은 공통 테마를 적용한 빈 메인 화면이다. 카운터 예제와 NaviHelper PoC 실행 코드·권한·전용 테스트는 제거했다. 주유소 비교·차량 설정·외부 API 연동은 아직 기획 단계다.
 
 | 모듈 | 역할 |
 | --- | --- |
@@ -23,14 +23,14 @@
 | `core:design` | 공통 Compose 테마·색상·타이포그래피·그림자 토큰 |
 | `core:model` | 공통 데이터 모델을 둘 순수 Kotlin/JVM 모듈. 현재 껍데기만 구성 |
 | `core:data` | 저장소·데이터 소스·외부 연동을 둘 순수 Kotlin/JVM 모듈. 현재 껍데기와 의존성만 구성 |
-| `feature:main` | 주유소 후보 비교·추천과 SDK 목적지 설정 요청을 담당할 메인 화면 feature. 현재 임시 카운터와 ViewModel, UI state, sealed action, Koin 모듈 포함 |
+| `feature:main` | 주유소 후보 비교·추천과 SDK 목적지 설정 요청을 담당할 메인 화면 feature. 현재 빈 MainRoute와 차량 앱 영역 기준 가로·세로 프리뷰 제공 |
 | `feature:settings` | 연비·예상 주유량 설정 feature. 현재 Gradle 모듈 껍데기만 구성 |
 
 `core:design`은 로컬 Pleos 디자인 가이드의 색상·타이포그래피·그림자 토큰을 `JUYULOWTheme.colors`, `.typography`, `.shadows`로 제공한다. 기존 Material 컴포넌트는 매핑된 `MaterialTheme.colorScheme`과 `.typography`를 사용한다. 출처·매핑·서체 및 원문 해석은 [DESIGN.md](DESIGN.md), 아이콘 제작·사용 지침은 [ICONOGRAPHY.md](ICONOGRAPHY.md)를 참고한다.
 
 의존 방향은 `app → feature/core:design`, `feature → core`, `core:data → core:model`이다. core는 feature나 app에 의존하지 않으며 feature 간 직접 의존도 두지 않는다. 내비 연동은 별도 feature 대신 향후 메인 화면 흐름의 action과 data 연동으로 시작한다.
 
-카운터의 데이터 흐름은 `CounterScreen → CounterAction → CounterViewModel → StateFlow<CounterUiState> → MainRoute → CounterScreen`이다. Route에서 `koinViewModel()`로 ViewModel을 주입하고 `collectAsStateWithLifecycle()`로 상태를 구독한다. Screen은 상태와 action 콜백만 받는다. 카운터 상태는 feature 내부에 두며, 예제를 위해 공통 모델이나 저장소를 만들지 않는다.
+앱은 `MainActivity → JUYULOWTheme → MainRoute` 순서로 빈 화면을 표시한다. Application의 Koin 초기화는 유지하되 기능별 등록은 아직 없다. NaviHelper PoC의 실험 결과와 구현 참고는 [PoC 실험 보고서](poc/POC_TRIP_REPORT.md), [PoC 구현 기록](poc/POC_TRIP_IMPLEMENTATION.md)에만 보존한다.
 
 의존성 버전은 `gradle/libs.versions.toml`에서 관리한다. Koin BOM과 Android/Compose 연동, Lifecycle, Coroutines를 사용한다. Koin은 constructor DSL로 등록하며, Koin annotation/KSP/컴파일러 플러그인은 추가하지 않는다.
 
@@ -46,7 +46,7 @@
 
 Serialization 플러그인은 `app`과 `core:data`에 Kotlin과 같은 버전으로 적용한다. `core:data`는 순수 Kotlin/JVM 구조를 유지하기 위해 Android 의존성이 없는 `datastore-preferences-core`를 사용하며, 저장 경로 등 Android 환경 정보는 실제 저장소 구현 시 외부에서 제공한다.
 
-`app`에는 로컬 SDK 가이드 기준으로 Pleos Vehicle `2.3.2`, NaviHelper `3.0.5`, FusedLocation `1.1.3` 의존성을 등록했다. `settings.gradle.kts`의 Pleos Maven 저장소에서 `ai.pleos.playground` 그룹을 받는다. 현재는 의존성만 추가한 상태이며, 기능별 권한 선언과 런타임 권한 요청, SDK 초기화·해제 및 API 호출은 실제 연동 구현 시 추가한다.
+`app`에는 로컬 SDK 가이드 기준으로 Pleos Vehicle `2.3.2`, NaviHelper `3.0.5`, FusedLocation `1.1.3` 의존성을 등록했다. `settings.gradle.kts`의 Pleos Maven 저장소에서 `ai.pleos.playground` 그룹을 받는다. SDK 의존성은 유지하지만 현재 실행 코드에서 권한 선언·SDK 초기화·API 호출은 하지 않는다.
 
 ## 기획 배경과 해결할 문제
 

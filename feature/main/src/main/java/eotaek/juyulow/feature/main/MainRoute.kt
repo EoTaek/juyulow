@@ -1,20 +1,24 @@
 package eotaek.juyulow.feature.main
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.ui.tooling.preview.Preview
+import eotaek.juyulow.core.design.theme.JUYULOWTheme
 
 @Composable
 fun MainRoute(
     modifier: Modifier = Modifier,
-    viewModel: CounterViewModel = koinViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    CounterScreen(
-        uiState = uiState,
-        onAction = viewModel::onAction,
-        modifier = modifier,
-    )
+    Surface(modifier = modifier.fillMaxSize()) {}
+}
+
+@Preview(name = "Pleos Connect-S-17 Landscape", widthDp = 1700, heightDp = 1184)
+@Preview(name = "Pleos Connect-S-17 Portrait", widthDp = 840, heightDp = 1184)
+@Composable
+private fun MainRoutePreview() {
+    JUYULOWTheme {
+        MainRoute()
+    }
 }
