@@ -1,4 +1,4 @@
-package eotaek.juyulow.feature.comparison
+package eotaek.juyulow.feature.main
 
 sealed interface CounterAction {
     data object Increment : CounterAction

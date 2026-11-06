@@ -1,6 +1,6 @@
-package eotaek.juyulow.feature.comparison
+package eotaek.juyulow.feature.main
 
-import eotaek.juyulow.feature.comparison.di.comparisonModule
+import eotaek.juyulow.feature.main.di.mainModule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame
 import org.junit.Test
@@ -37,7 +37,7 @@ class CounterViewModelTest {
 
     @Test
     fun koinResolvesIndependentViewModels() {
-        val application = koinApplication { modules(comparisonModule) }
+        val application = koinApplication { modules(mainModule) }
         try {
             val first = application.koin.get<CounterViewModel>()
             val second = application.koin.get<CounterViewModel>()

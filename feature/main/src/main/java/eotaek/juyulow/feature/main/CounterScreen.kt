@@ -1,4 +1,4 @@
-package eotaek.juyulow.feature.comparison
+package eotaek.juyulow.feature.main
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

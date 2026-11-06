@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "eotaek.juyulow.feature.comparison"
+    namespace = "eotaek.juyulow.feature.main"
     compileSdk = 37
 
     defaultConfig { minSdk = 30 }

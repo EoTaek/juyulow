@@ -23,14 +23,14 @@
 | `core:design` | 공통 Compose 테마·색상·타이포그래피·그림자 토큰 |
 | `core:model` | 공통 데이터 모델을 둘 순수 Kotlin/JVM 모듈. 현재 껍데기만 구성 |
 | `core:data` | 저장소·데이터 소스·외부 연동을 둘 순수 Kotlin/JVM 모듈. 현재 껍데기와 의존성만 구성 |
-| `feature:comparison` | 주유소 비교 feature. 현재 임시 카운터와 ViewModel, UI state, sealed action, Koin 모듈 포함 |
+| `feature:main` | 주유소 후보 비교·추천과 SDK 목적지 설정 요청을 담당할 메인 화면 feature. 현재 임시 카운터와 ViewModel, UI state, sealed action, Koin 모듈 포함 |
 | `feature:settings` | 연비·예상 주유량 설정 feature. 현재 Gradle 모듈 껍데기만 구성 |
 
 `core:design`은 로컬 Pleos 디자인 가이드의 색상·타이포그래피·그림자 토큰을 `JUYULOWTheme.colors`, `.typography`, `.shadows`로 제공한다. 기존 Material 컴포넌트는 매핑된 `MaterialTheme.colorScheme`과 `.typography`를 사용한다. 출처·매핑·서체 및 원문 해석은 [DESIGN.md](DESIGN.md), 아이콘 제작·사용 지침은 [ICONOGRAPHY.md](ICONOGRAPHY.md)를 참고한다.
 
-의존 방향은 `app → feature/core:design`, `feature → core`, `core:data → core:model`이다. core는 feature나 app에 의존하지 않으며 feature 간 직접 의존도 두지 않는다. 내비 연동은 별도 feature 대신 향후 비교 흐름의 action과 data 연동으로 시작한다.
+의존 방향은 `app → feature/core:design`, `feature → core`, `core:data → core:model`이다. core는 feature나 app에 의존하지 않으며 feature 간 직접 의존도 두지 않는다. 내비 연동은 별도 feature 대신 향후 메인 화면 흐름의 action과 data 연동으로 시작한다.
 
-카운터의 데이터 흐름은 `CounterScreen → CounterAction → CounterViewModel → StateFlow<CounterUiState> → ComparisonRoute → CounterScreen`이다. Route에서 `koinViewModel()`로 ViewModel을 주입하고 `collectAsStateWithLifecycle()`로 상태를 구독한다. Screen은 상태와 action 콜백만 받는다. 카운터 상태는 feature 내부에 두며, 예제를 위해 공통 모델이나 저장소를 만들지 않는다.
+카운터의 데이터 흐름은 `CounterScreen → CounterAction → CounterViewModel → StateFlow<CounterUiState> → MainRoute → CounterScreen`이다. Route에서 `koinViewModel()`로 ViewModel을 주입하고 `collectAsStateWithLifecycle()`로 상태를 구독한다. Screen은 상태와 action 콜백만 받는다. 카운터 상태는 feature 내부에 두며, 예제를 위해 공통 모델이나 저장소를 만들지 않는다.
 
 의존성 버전은 `gradle/libs.versions.toml`에서 관리한다. Koin BOM과 Android/Compose 연동, Lifecycle, Coroutines를 사용한다. Koin은 constructor DSL로 등록하며, Koin annotation/KSP/컴파일러 플러그인은 추가하지 않는다.
 

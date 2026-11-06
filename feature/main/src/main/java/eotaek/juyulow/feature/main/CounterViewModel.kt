@@ -1,4 +1,4 @@
-package eotaek.juyulow.feature.comparison
+package eotaek.juyulow.feature.main
 
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

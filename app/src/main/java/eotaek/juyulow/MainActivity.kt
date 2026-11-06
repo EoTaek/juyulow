@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
-import eotaek.juyulow.feature.comparison.ComparisonRoute
+import eotaek.juyulow.feature.main.MainRoute
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -13,7 +13,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             JUYULOWTheme {
-                ComparisonRoute()
+                MainRoute()
             }
         }
     }

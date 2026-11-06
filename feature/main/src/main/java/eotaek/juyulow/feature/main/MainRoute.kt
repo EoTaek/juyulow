@@ -1,4 +1,4 @@
-package eotaek.juyulow.feature.comparison
+package eotaek.juyulow.feature.main
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -7,7 +7,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun ComparisonRoute(
+fun MainRoute(
     modifier: Modifier = Modifier,
     viewModel: CounterViewModel = koinViewModel(),
 ) {

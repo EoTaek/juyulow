@@ -4,11 +4,11 @@
 
 ```powershell
 $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
-.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :core:model:test :core:data:test :feature:comparison:testDebugUnitTest :feature:settings:testDebugUnitTest lintDebug --console=plain
+.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :core:model:test :core:data:test :feature:main:testDebugUnitTest :feature:settings:testDebugUnitTest lintDebug --console=plain
 ```
 
 - `assembleDebug`: 앱과 연결된 모든 Android/Kotlin 모듈의 빌드·패키징을 확인한다.
-- `testDebugUnitTest`: Android 모듈의 로컬 JVM 테스트를 실행한다. 현재 `feature:comparison`은 카운터 초기값, 증가·감소·초기화 흐름, 0 하한, Koin ViewModel 등록 및 인스턴스 분리를 확인하며, `app`은 기본 산술 예제만 포함한다. `feature:settings`에는 아직 테스트가 없다.
+- `testDebugUnitTest`: Android 모듈의 로컬 JVM 테스트를 실행한다. 현재 `feature:main`은 카운터 초기값, 증가·감소·초기화 흐름, 0 하한, Koin ViewModel 등록 및 인스턴스 분리를 확인하며, `app`은 기본 산술 예제만 포함한다. `feature:settings`에는 아직 테스트가 없다.
 - `:core:model:test`, `:core:data:test`: 순수 Kotlin/JVM 모듈의 테스트를 실행한다. 현재 두 모듈에는 테스트가 없어 `NO-SOURCE`로 표시된다.
 - `lintDebug`: Android 모듈의 정적 분석을 수행한다.
 
@@ -19,7 +19,7 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
 | 모듈 | 테스트 의존성 |
 | --- | --- |
 | `app`, `core:model` | JUnit4 `4.13.2` |
-| `core:data`, `feature:comparison`, `feature:settings` | JUnit4 `4.13.2`, Coroutines Test `1.11.0`, Turbine `1.2.1` |
+| `core:data`, `feature:main`, `feature:settings` | JUnit4 `4.13.2`, Coroutines Test `1.11.0`, Turbine `1.2.1` |
 
 - **JUnit4**: `org.junit.Test`와 assertion으로 계산 결과·경계값·상태를 검증한다. 기존 테스트와 AndroidJUnit4 구성을 유지한다.
 - **Coroutines Test**: `kotlinx-coroutines-test` 버전은 `kotlinx-coroutines-core`와 같은 `coroutines` 버전 키를 사용한다. suspend 함수와 비동기 로직은 `runTest`로 실행하고, 실행 순서와 가상 시간은 `runCurrent`, `advanceTimeBy`, `advanceUntilIdle` 등으로 제어한다. 테스트 Dispatcher는 같은 `testScheduler`를 공유하도록 구성한다.
