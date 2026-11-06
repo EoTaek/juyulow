@@ -11,6 +11,14 @@
 
 ---
 
+## Compose 화면 프리뷰
+
+- 화면 단위 Compose 프리뷰는 Pleos Connect-S-17 기본 모델의 앱 영역 기준으로 가로형 `1700 × 1184dp`, 세로형 `840 × 1184dp` 두 가지를 제공한다.
+- `@Preview`의 `widthDp`, `heightDp`를 명시하고, `JUYULOWTheme`을 적용한다. 전체 디스플레이 해상도나 일반 스마트폰 프리셋을 앱 뷰포트 크기로 사용하지 않는다.
+- 세로형은 차량 디스플레이 회전이 아닌 분할 앱 창 형태를 뜻한다. 다른 모델 대응 시 [Display Layout](pleos_sdk_guide/앱%20기획·설계%20가이드/디자인%20가이드/Getting%20Started/Display%20Layout.md)의 앱 영역 크기를 참조한다.
+
+---
+
 ## Android 도구 및 Skill 사용
 
 - 일반적인 코드 확인과 검증은 파일 검색, shell, Gradle 등 가장 가벼운 방법을 우선한다.

@@ -63,7 +63,18 @@ fun CounterScreen(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(
+    name = "Pleos Connect-S-17 Landscape",
+    widthDp = 1700,
+    heightDp = 1184,
+    showBackground = true,
+)
+@Preview(
+    name = "Pleos Connect-S-17 Portrait",
+    widthDp = 840,
+    heightDp = 1184,
+    showBackground = true,
+)
 @Composable
 private fun CounterScreenPreview() {
     JUYULOWTheme {
