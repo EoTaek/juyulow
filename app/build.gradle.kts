@@ -46,7 +46,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.kotlinx.serialization.core)
     implementation(project(":core:design"))
-    implementation(project(":feature:comparison"))
+    implementation(project(":feature:main"))
     implementation(project(":feature:settings"))
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)
