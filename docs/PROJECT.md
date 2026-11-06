@@ -6,6 +6,8 @@
 
 현재 경로 주변의 주유소 가격뿐 아니라 **주유소까지 우회하는 추가 거리·연료비·시간**을 함께 고려하여, 가까운 곳에서 주유할 때와 비교한 **예상 실질 절약액**을 안내하는 차량용 주유 의사결정 앱이다.
 
+현대자동차그룹 차량용 앱 개발 공모전 프로젝트로, **Pleos Connect 차량 환경에서 사용하는 차량용 애플리케이션**을 개발한다. 일반 스마트폰 앱을 전제로 설계하지 않으며, 차량 내 화면과 조작 환경, 주행 안전 및 주행 규제를 고려한다. 차량 정보와 내비게이션 연동은 현대의 차량용 API 시스템인 Pleos SDK를 기준으로 검토한다.
+
 - 상태: 아이디어 기획 초안. 아래 기능과 연동은 개발 목표이며, 구현 완료를 의미하지 않는다.
 - 원안: 기존 추천 20번, 「Idea 6 돌아갈 만큼 싼가? — 주유소 실질 절약액 비교」
 - 원안 작성일: 2026-11-05
@@ -23,6 +25,8 @@
 | `core:data` | 저장소·데이터 소스·외부 연동을 둘 순수 Kotlin/JVM 모듈. 현재 껍데기와 의존성만 구성 |
 | `feature:comparison` | 주유소 비교 feature. 현재 임시 카운터와 ViewModel, UI state, sealed action, Koin 모듈 포함 |
 | `feature:settings` | 연비·예상 주유량 설정 feature. 현재 Gradle 모듈 껍데기만 구성 |
+
+`core:design` 색상은 로컬 Pleos 디자인 가이드의 라이트·다크 토큰을 사용한다. `JUYULOWTheme.colors`로 원본 역할별 색상을 제공하고, 기존 Material 컴포넌트는 매핑된 `MaterialTheme.colorScheme`을 사용한다. 색상 출처·매핑·원문 표기 보정은 [DESIGN.md](DESIGN.md)를 참고한다.
 
 의존 방향은 `app → feature/core:design`, `feature → core`, `core:data → core:model`이다. core는 feature나 app에 의존하지 않으며 feature 간 직접 의존도 두지 않는다. 내비 연동은 별도 feature 대신 향후 비교 흐름의 action과 data 연동으로 시작한다.
 
@@ -70,6 +74,7 @@
 
 ## SDK·외부 데이터와 MVP 개발 계획
 
+- **Pleos 개발 문서:** [로컬 Pleos SDK 가이드 목차](../pleos_sdk_guide/README.md)를 진입점으로 사용한다. 앱 설계 원칙·디자인·주행 규제, 개발 환경 구성·테스트 가이드와 각 SDK의 Programming Guide·API Reference를 작업에 맞게 참조한다. SDK 연동 시 권한, 초기화·해제, API 호환성 및 가용성을 확인한다. 아래 연동은 개발 계획이며 현재 구현 완료를 의미하지 않는다.
 - **Pleos/NaviHelper:** 현재 위치·목적지 확인, 사용자가 선택한 주유소를 경유지로 요청하는 기능을 연동한다.
 - **외부 데이터:** 오피넷의 주유소 가격 정보를 사용하며, 정보 갱신 시각과 제공 범위를 함께 표시한다.
 - **외부 경로 계산:** 지도 길찾기 API로 기준 경로와 주유소 경유 경로의 거리·시간 차이를 구한다. NaviHelper가 여러 임의 후보 경로의 모든 비교 계산을 직접 제공한다고 가정하지 않는다.
@@ -87,5 +92,4 @@
 ## 참고자료
 
 - [오피넷 – 오픈 API 안내](https://www.opinet.co.kr/user/custapi/custApiInfo.do)
-- [카카오모빌리티 – 자동차 길찾기 API](https://developers.kakaomobility.com/guide/navi-api/directions)
 - [Pleos NaviHelper – 경유지 설정](https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/NaviHelper/waypoint-settings)
