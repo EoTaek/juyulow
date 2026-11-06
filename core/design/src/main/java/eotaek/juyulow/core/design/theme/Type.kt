@@ -1,4 +1,4 @@
-package eotaek.juyulow.ui.theme
+package eotaek.juyulow.core.design.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

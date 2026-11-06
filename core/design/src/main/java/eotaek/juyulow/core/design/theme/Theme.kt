@@ -1,6 +1,5 @@
-package eotaek.juyulow.ui.theme
+package eotaek.juyulow.core.design.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

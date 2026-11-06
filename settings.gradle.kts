@@ -24,3 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "JUYULOW"
 include(":app")
+include(":core:design", ":core:data", ":core:model")
+include(":feature:comparison", ":feature:settings")
