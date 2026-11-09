@@ -60,6 +60,13 @@ Pleos 원문에는 Material 역할과의 대응표가 없어 다음과 같이 �
   Compose ARGB로 변환했다. `radio_gradient_*`는 이미지의 투명도·색상에 맞춰 ARGB로 해석했다. 나머지 6자리 HEX는 불투명 RGB다.
 - 알파 표의 Light/Dark 열은 제목 (White/Gray)과 관계없이 표에 명시된 값 그대로 적용했다.
 
+## 공통 정보 컴포넌트
+
+`core:design/component`의 `PleosLabelValue`는 라벨과 값을 세로로 표시하며 `valueStyle`로 값의 강조를 지정한다.
+`PleosOutlinedCard`는 배경·테두리·모서리를 공유하고, 내부 여백과 선택·클릭 동작은 호출부가 관리한다.
+`PleosInlineError`는 오류 색상과 `LiveRegionMode.Polite`를 적용해 동적으로 나타난 오류를 접근성 서비스에 알린다.
+주유소 행·선택 상세·비용 행은 비교 기능에 특화되어 `feature:main/results/component`에 둔다.
+
 ## Typography
 
 기준은 [Pleos Typography](../pleos_sdk_guide/앱%20기획·설계%20가이드/디자인%20가이드/Foundations/Typography.md)다.

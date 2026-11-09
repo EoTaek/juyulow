@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import eotaek.juyulow.core.design.component.PleosInlineError
 import eotaek.juyulow.core.design.component.PleosButton
 import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.component.PleosIconButton
@@ -140,11 +141,7 @@ fun SettingsScreen(
                     )
                 }
                 state.error?.let {
-                    Text(
-                        it,
-                        style = type.labelSmall,
-                        color = colors.informativeNegative
-                    )
+                    PleosInlineError(it)
                 }
                 PleosButton(
                     "적용하기",

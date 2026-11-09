@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import eotaek.juyulow.core.design.component.PleosInlineError
+import eotaek.juyulow.core.design.component.PleosOutlinedCard
 import eotaek.juyulow.core.design.component.PleosButton
 import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.component.PleosSwitch
@@ -63,11 +65,7 @@ fun HomeScreen(
                             .padding(start = if (narrow) 0.dp else 24.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        Surface(
-                            color = colors.surfaceBasic,
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, colors.basic200)
-                        ) {
+                        PleosOutlinedCard {
                             Row(
                                 Modifier
                                     .fillMaxWidth()
@@ -119,11 +117,7 @@ fun HomeScreen(
                             enabled = state.settings != null,
                         )
                         state.error?.let {
-                            Text(
-                                it,
-                                style = type.labelMedium,
-                                color = colors.informativeNegative
-                            )
+                            PleosInlineError(it, style = type.labelMedium)
                         }
                     }
                 }

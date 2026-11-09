@@ -1,6 +1,5 @@
 package eotaek.juyulow.feature.main.completion
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import eotaek.juyulow.core.design.component.PleosLabelValue
+import eotaek.juyulow.core.design.component.PleosOutlinedCard
 import eotaek.juyulow.core.design.component.PleosButton
 import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
@@ -82,11 +82,7 @@ fun CompletionScreen(
                             JourneyMode.ROUND_TRIP -> "${selection.stationName}에 들른 뒤 현재 위치로 돌아와요."
                         }, style = type.bodyMedium, color = colors.textDarkTertiary
                     )
-                    Surface(
-                        shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(1.dp, colors.basic200),
-                        color = colors.surfaceBasic
-                    ) {
+                    PleosOutlinedCard(cornerRadius = 24.dp) {
                         FlowRow(
                             Modifier
                                 .fillMaxWidth()
@@ -94,17 +90,19 @@ fun CompletionScreen(
                             horizontalArrangement = Arrangement.spacedBy(28.dp),
                             verticalArrangement = Arrangement.spacedBy(24.dp)
                         ) {
-                            RouteDestination(
+                            PleosLabelValue(
                                 if (selection.waypoint != null) "경유지" else "목적지",
-                                selection.stationName
+                                selection.stationName,
+                                valueStyle = type.titleSmallBold
                             )
                             if (selection.waypoint != null) {
                                 PleosIcon(PleosIcon.Next, Modifier.padding(top = 24.dp))
-                                RouteDestination("최종 목적지", selection.destination)
+                                PleosLabelValue("최종 목적지", selection.destination, valueStyle = type.titleSmallBold)
                             }
-                            RouteDestination(
+                            PleosLabelValue(
                                 "${kilometers(selection.distanceMeters)} km · 주유 포함",
-                                "${minutes(selection.durationSeconds)}분"
+                                "${minutes(selection.durationSeconds)}분",
+                                valueStyle = type.titleSmallBold
                             )
                         }
                     }
@@ -131,18 +129,6 @@ fun CompletionScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun RouteDestination(label: String, value: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            label,
-            style = JUYULOWTheme.typography.labelSmall,
-            color = JUYULOWTheme.colors.textDarkTertiary
-        )
-        Text(value, style = JUYULOWTheme.typography.titleSmallBold)
     }
 }
 
