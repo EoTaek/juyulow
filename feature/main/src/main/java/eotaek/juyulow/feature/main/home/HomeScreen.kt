@@ -1,17 +1,17 @@
-package eotaek.juyulow.feature.main
+package eotaek.juyulow.feature.main.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -29,6 +29,7 @@ import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.component.PleosSwitch
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.RefuelSettings
+import eotaek.juyulow.feature.main.common.minutes
 
 @Composable
 fun HomeScreen(

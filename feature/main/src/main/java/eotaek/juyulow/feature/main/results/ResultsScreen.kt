@@ -1,20 +1,20 @@
-package eotaek.juyulow.feature.main
+package eotaek.juyulow.feature.main.results
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -46,6 +46,11 @@ import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.RefuelSettings
 import eotaek.juyulow.core.model.Station
 import eotaek.juyulow.core.model.StationSort
+import eotaek.juyulow.feature.main.common.actionLabel
+import eotaek.juyulow.feature.main.common.kilometers
+import eotaek.juyulow.feature.main.common.label
+import eotaek.juyulow.feature.main.common.minutes
+import eotaek.juyulow.feature.main.common.won
 import kotlin.math.abs
 
 @Composable

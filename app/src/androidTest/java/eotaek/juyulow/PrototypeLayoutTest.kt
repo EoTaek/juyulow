@@ -30,8 +30,8 @@ import eotaek.juyulow.core.model.JourneyContext
 import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.RefuelSettings
 import eotaek.juyulow.core.model.Station
-import eotaek.juyulow.feature.main.ResultsScreen
-import eotaek.juyulow.feature.main.ResultsUiState
+import eotaek.juyulow.feature.main.results.ResultsScreen
+import eotaek.juyulow.feature.main.results.ResultsUiState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule

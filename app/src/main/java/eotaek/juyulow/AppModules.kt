@@ -9,9 +9,9 @@ import eotaek.juyulow.core.data.PreferencesSettingsRepository
 import eotaek.juyulow.core.data.SettingsRepository
 import eotaek.juyulow.core.data.SettingsStorage
 import eotaek.juyulow.core.data.StationRepository
-import eotaek.juyulow.feature.main.CompletionViewModel
-import eotaek.juyulow.feature.main.HomeViewModel
-import eotaek.juyulow.feature.main.ResultsViewModel
+import eotaek.juyulow.feature.main.completion.CompletionViewModel
+import eotaek.juyulow.feature.main.home.HomeViewModel
+import eotaek.juyulow.feature.main.results.ResultsViewModel
 import eotaek.juyulow.feature.settings.SettingsViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.singleOf

@@ -1,15 +1,15 @@
-package eotaek.juyulow.feature.main
+package eotaek.juyulow.feature.main.completion
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -28,6 +28,8 @@ import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.NavigationSelection
+import eotaek.juyulow.feature.main.common.kilometers
+import eotaek.juyulow.feature.main.common.minutes
 
 @Composable
 fun CompletionScreen(

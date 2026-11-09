@@ -1,20 +1,9 @@
-package eotaek.juyulow.feature.main
+package eotaek.juyulow.feature.main.results
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-
-@Composable
-fun HomeRoute(viewModel: HomeViewModel, onResults: (String) -> Unit, onSettings: () -> Unit) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(state.readySessionId) {
-        state.readySessionId?.let { id -> onResults(id); viewModel.consumeSearch() }
-    }
-    BackHandler(state.searching) { viewModel.cancelSearch() }
-    HomeScreen(state, viewModel::search, onSettings, viewModel::setHasDestination)
-}
 
 @Composable
 fun ResultsRoute(viewModel: ResultsViewModel, onBack: () -> Unit, onComplete: (String) -> Unit) {
@@ -34,9 +23,4 @@ fun ResultsRoute(viewModel: ResultsViewModel, onBack: () -> Unit, onComplete: (S
         viewModel::changeSort,
         viewModel::confirm
     )
-}
-
-@Composable
-fun CompletionRoute(viewModel: CompletionViewModel, onCompare: () -> Unit, onHome: () -> Unit) {
-    CompletionScreen(viewModel.selection, onCompare, onHome)
 }

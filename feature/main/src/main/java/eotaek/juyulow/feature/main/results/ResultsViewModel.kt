@@ -1,141 +1,18 @@
-package eotaek.juyulow.feature.main
+package eotaek.juyulow.feature.main.results
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import eotaek.juyulow.core.data.ComparisonSessionRepository
 import eotaek.juyulow.core.data.JourneyRepository
-import eotaek.juyulow.core.data.SettingsRepository
 import eotaek.juyulow.core.data.StationRepository
-import eotaek.juyulow.core.model.ComparisonSession
-import eotaek.juyulow.core.model.JourneyContext
 import eotaek.juyulow.core.model.JourneyMode
-import eotaek.juyulow.core.model.NavigationSelection
-import eotaek.juyulow.core.model.RefuelSettings
-import eotaek.juyulow.core.model.Station
-import eotaek.juyulow.core.model.StationComparison
 import eotaek.juyulow.core.model.StationSort
-import eotaek.juyulow.core.model.compareStation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-data class HomeUiState(
-    val journey: JourneyContext = JourneyContext(),
-    val settings: RefuelSettings? = null,
-    val searching: Boolean = false,
-    val error: String? = null,
-    val readySessionId: String? = null,
-)
-
-class HomeViewModel(
-    private val stations: StationRepository,
-    private val sessions: ComparisonSessionRepository,
-    private val journeys: JourneyRepository,
-    settings: SettingsRepository,
-) : ViewModel() {
-    private val mutableState = MutableStateFlow(HomeUiState())
-    val state = mutableState.asStateFlow()
-    private var searchJob: Job? = null
-    private var searchGeneration = 0
-
-    init {
-        viewModelScope.launch {
-            journeys.context.collect { route ->
-                mutableState.update {
-                    it.copy(
-                        journey = route
-                    )
-                }
-            }
-        }
-        viewModelScope.launch {
-            try {
-                settings.settings.collect { value -> mutableState.update { it.copy(settings = value) } }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (_: Exception) {
-                mutableState.update {
-                    it.copy(
-                        settings = RefuelSettings(),
-                        error = "저장된 조건을 읽지 못해 기본 조건을 사용해요."
-                    )
-                }
-            }
-        }
-    }
-
-    fun setHasDestination(value: Boolean) {
-        if (!state.value.searching) journeys.setHasDestination(value)
-    }
-
-    fun search() {
-        val snapshot = state.value
-        val settings = snapshot.settings ?: return
-        if (snapshot.searching || snapshot.readySessionId != null) return
-        val generation = ++searchGeneration
-        mutableState.update { it.copy(searching = true, error = null) }
-        searchJob = viewModelScope.launch {
-            try {
-                val found = stations.search(snapshot.journey)
-                if (generation != searchGeneration) return@launch
-                val session = sessions.create(snapshot.journey, settings, found)
-                mutableState.update { it.copy(searching = false, readySessionId = session.id) }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (_: Exception) {
-                if (generation == searchGeneration) mutableState.update {
-                    it.copy(
-                        searching = false,
-                        error = "주유소를 찾지 못했어요. 다시 시도해 주세요."
-                    )
-                }
-            }
-        }
-    }
-
-    fun consumeSearch() {
-        mutableState.update { it.copy(readySessionId = null) }
-    }
-
-    fun cancelSearch() {
-        searchGeneration++
-        searchJob?.cancel()
-        mutableState.update { it.copy(searching = false, readySessionId = null) }
-    }
-
-    override fun onCleared() {
-        searchGeneration++
-    }
-}
-
-data class EvaluatedStation(val station: Station, val comparison: StationComparison)
-
-data class ResultsUiState(
-    val session: ComparisonSession? = null,
-    val mode: JourneyMode = JourneyMode.DESTINATION,
-    val sort: StationSort = StationSort.SAVING,
-    val selectedId: String? = null,
-    val searching: Boolean = false,
-    val settingRoute: Boolean = false,
-    val error: String? = null,
-    val completedSelectionId: String? = null,
-) {
-    val busy: Boolean get() = searching || settingRoute
-    val evaluated: List<EvaluatedStation>
-        get() {
-            val batch = session ?: return emptyList()
-            val rows =
-                batch.stations.map { EvaluatedStation(it, compareStation(batch.context, it, mode)) }
-            return when (sort) {
-                StationSort.SAVING -> rows.sortedByDescending { it.comparison.netSavingWon }
-                StationSort.TIME -> rows.sortedBy { it.comparison.costDurationSeconds }
-            }
-        }
-    val selected: EvaluatedStation? get() = evaluated.find { it.station.id == selectedId }
-}
 
 class ResultsViewModel(
     sessionId: String,
@@ -257,8 +134,4 @@ class ResultsViewModel(
 
     private fun withFirstSelection(state: ResultsUiState): ResultsUiState =
         state.copy(selectedId = state.evaluated.firstOrNull()?.station?.id)
-}
-
-class CompletionViewModel(selectionId: String, journeys: JourneyRepository) : ViewModel() {
-    val selection: NavigationSelection? = journeys.selection(selectionId)
 }

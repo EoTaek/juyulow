@@ -1,4 +1,4 @@
-package eotaek.juyulow.feature.main
+package eotaek.juyulow.feature.main.common
 
 import eotaek.juyulow.core.model.JourneyMode
 import java.text.NumberFormat

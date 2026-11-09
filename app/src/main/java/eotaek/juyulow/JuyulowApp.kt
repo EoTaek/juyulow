@@ -15,9 +15,9 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
-import eotaek.juyulow.feature.main.CompletionRoute
-import eotaek.juyulow.feature.main.HomeRoute
-import eotaek.juyulow.feature.main.ResultsRoute
+import eotaek.juyulow.feature.main.completion.CompletionRoute
+import eotaek.juyulow.feature.main.home.HomeRoute
+import eotaek.juyulow.feature.main.results.ResultsRoute
 import eotaek.juyulow.feature.settings.SettingsRoute
 import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
