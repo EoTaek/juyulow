@@ -30,11 +30,18 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
 단위/nullable 값·오류 전달·중복 구독 차단·동일 리스너 해제·정리 실패 후 SDK 해제·지연 콜백 무시를 검증한다. 실제 서비스 연결과 런타임 권한 허용/회수는 검증하지
 않는다. 계약은 [LOCATION_VEHICLE.md](LOCATION_VEHICLE.md)를 참조한다.
 
+`VehicleStartupTest`·`PleosStartupSourceTest`·`AaosStartupSourceTest`는 부분 성공·기본값 대체·권한 허용/거부·중복 시작
+방지,
+5초 제한·지연 콜백 이후 해제·미지원 capability 및 주행 규제 확인을 Fake로 검증한다. `VehicleDefaultsRepositoryTest`와
+`VehicleInfoTest`는 기존 설정 호환·기본값 저장/재로딩·단위 변환·비정상 값을 검증한다. release 진단 no-op의 컴파일·패키징도
+`:app:assembleRelease`로 확인한다.
+
 버전은 `gradle/libs.versions.toml`에서 관리하고 각 모듈의 `testImplementation`으로 선언한다.
 
-| 모듈 | 테스트 의존성 |
-| --- | --- |
-| `app`, `core:model` | JUnit4 `4.13.2` |
+| 모듈                                            | 테스트 의존성                                              |
+|-------------------------------------------------|------------------------------------------------------------|
+| `core:model`                                    | JUnit4 `4.13.2`                                            |
+| `app`                                           | JUnit4 `4.13.2`, Coroutines Test `1.11.0`                  |
 | `core:data`, `feature:main`, `feature:settings` | JUnit4 `4.13.2`, Coroutines Test `1.11.0`, Turbine `1.2.1` |
 
 - **JUnit4**: `org.junit.Test`와 assertion으로 계산 결과·경계값·상태를 검증한다. 기존 테스트와 AndroidJUnit4 구성을 유지한다.
@@ -62,10 +69,22 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
 - `PrototypeLayoutTest`: 논리 앱 영역 1700 × 1184dp와 840 × 1184dp를 두 테마로 렌더링해 동일 너비 좌우 배치·마지막 항목 스크롤·버튼
   비겹침·텍스트 overflow를 검증한다. Pleos 호스트 창에 들어가도록 테스트에서만 Density를 0.5로 설정한다. 이는 실제 Pleos 폼 팩터 테스트를 대체하지
   않는다.
+- `VehicleStartupIntegrationTest`: 실제 startup repository의 항목별 완료와 출처를 확인한다. 에너지 권한이 미허용이면 잔여량은 대기할 수
+  있다.
+  `VehicleStartupTest` logcat에 공급된 원본 단위·값·상태를 남긴다. 권한을 강제 허용/회수하거나 앱 데이터를 삭제하지 않는다.
 - 레이아웃 테스트 PNG는 디바이스 대상 앱 내부 파일 영역의 `prototype-screenshots`에 저장한다. 디버그 앱의 `run-as`로 읽을 수 있으며 실제 앱은
   테스트용 Density를 사용하지 않는다.
 - 레이아웃 테스트 전용 `PrototypeTestActivity`는 debug 빌드에만 포함하며 런처 진입점은 없다. Pleos의 자동 창 재배치로 테스트가 주입한
   composition이 소실되지 않도록 구성 변경을 처리한다. 실제 MainActivity의 재생성·상태 유지는 별도 흐름 테스트가 검증한다.
 - mock 검색은 850ms 지연 후 3~8곳을 생성한다. 앱에 실패 시나리오 선택 메뉴는 없으며, 검색·경로·저장 실패는 로컬 단위 테스트의 Fake로 주입한다.
-- 정차 시연용이다. SDK·네트워크 호출, 실제 내비 설정, 주행 규제 연동과 주행 중 사용 적합성은 검증 범위에 포함하지 않는다. 과거 PoC
+- 정차 시연용이다. startup 차량 조회 외 SDK·네트워크 호출, 실제 내비 설정과 앱 전체의 주행 중 사용 적합성은 검증 범위에 포함하지 않는다. 과거 PoC
   결과는 [실험 보고서](poc/POC_TRIP_REPORT.md)에 보존한다.
+
+### Startup 실기 확인 기록 (2026-11-09)
+
+Pleos Connect v2.1.0 / Android 14 에뮬레이터에서 연결 테스트와 `VehicleStartupTest` logcat으로 확인했다.
+AAOS 탱크 용량과 잔여량은 각각 15,000mL, 유종 목록은 `[10]`(ELECTRIC)으로 반환됐다.
+Pleos 누적/현재 연비·잔량 %는 capability에서 `ERROR_NOT_SUPPORTED_PROPERTY`로 실패했다.
+두 연비는 DataStore의 기본 12km/L로 대체되고 잔량 %는 미설정이었으며, 실패 3항목은 debug `VehicleStartup` 로그에 기록됐다.
+이 값은 에뮬레이터 시뮬레이션이며 실차 검증이 아니다. 해당 사용자에는 에너지 권한이 이미 허용되어 새 권한 대화상자와 실제 권한 거부/회수는
+이 실행에서 확인하지 않았다. 권한 허용/거부 및 지연 응답은 Fake 테스트로 검증한다. 순수 전기차 계산 차단은 후속 화면/계산 연결 범위다.

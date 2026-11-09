@@ -1,13 +1,5 @@
 package eotaek.juyulow.feature.main
 
-import eotaek.juyulow.feature.main.common.kilometers
-import eotaek.juyulow.feature.main.common.minutes
-import eotaek.juyulow.feature.main.common.won
-import eotaek.juyulow.feature.main.results.previewSession
-import eotaek.juyulow.feature.main.completion.CompletionViewModel
-import eotaek.juyulow.feature.main.home.HomeViewModel
-import eotaek.juyulow.feature.main.results.ResultsViewModel
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelStore
 import eotaek.juyulow.core.data.InMemoryComparisonSessionRepository
@@ -23,6 +15,13 @@ import eotaek.juyulow.core.model.NavigationSelection
 import eotaek.juyulow.core.model.RefuelSettings
 import eotaek.juyulow.core.model.Station
 import eotaek.juyulow.core.model.StationSort
+import eotaek.juyulow.feature.main.common.kilometers
+import eotaek.juyulow.feature.main.common.minutes
+import eotaek.juyulow.feature.main.common.won
+import eotaek.juyulow.feature.main.completion.CompletionViewModel
+import eotaek.juyulow.feature.main.home.HomeViewModel
+import eotaek.juyulow.feature.main.results.ResultsViewModel
+import eotaek.juyulow.feature.main.results.previewSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
@@ -46,6 +45,7 @@ import org.junit.Before
 import org.junit.Test
 import java.io.IOException
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModelsTest {
@@ -116,10 +116,10 @@ class MainViewModelsTest {
         )
         runCurrent()
         home.search(); runCurrent()
-        advanceTimeBy(400)
+        advanceTimeBy(400.milliseconds)
         home.cancelSearch()
         home.search(); runCurrent()
-        advanceTimeBy(450); runCurrent()
+        advanceTimeBy(450.milliseconds); runCurrent()
         assertNull(home.state.value.readySessionId)
         assertTrue(home.state.value.searching)
         advanceUntilIdle()
@@ -244,7 +244,7 @@ class MainViewModelsTest {
         val stations = Stations().apply { ignoreCancellation = true }
         val results = keep(ResultsViewModel(old.id, stations, sessions, MockJourneyRepository()))
         results.refresh(); runCurrent()
-        advanceTimeBy(300)
+        advanceTimeBy(300.milliseconds)
         store.clear()
         val next = sessions.create(
             JourneyContext(destination = null),

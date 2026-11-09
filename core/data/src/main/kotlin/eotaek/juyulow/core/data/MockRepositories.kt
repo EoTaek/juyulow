@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
 
 fun generateStations(journey: JourneyContext, random: Random = Random.Default): List<Station> {
     val names =
@@ -44,7 +45,7 @@ fun generateStations(journey: JourneyContext, random: Random = Random.Default): 
 
 class MockStationRepository : StationRepository {
     override suspend fun search(journey: JourneyContext): List<Station> {
-        delay(850)
+        delay(850.milliseconds)
         return generateStations(journey)
     }
 }

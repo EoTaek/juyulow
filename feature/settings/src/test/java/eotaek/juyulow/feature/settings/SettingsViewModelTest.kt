@@ -21,6 +21,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.IOException
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
@@ -33,7 +34,7 @@ class SettingsViewModelTest {
         var writes = 0
         override suspend fun save(settings: RefuelSettings) {
             writes++
-            delay(100)
+            delay(100.milliseconds)
             if (fail) throw IOException("disk full")
             this.settings.value = settings
         }

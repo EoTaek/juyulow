@@ -2,7 +2,8 @@
 
 `app/location`의 `FusedLocationClient` → `PleosFusedLocationClient`, `app/vehicle`의
 `VehicleFuelClient` → `PleosVehicleFuelClient`가 실제 SDK를 감싼다. Android SDK 객체 생성은 각각
-`AndroidFusedLocationApi`, `AndroidVehicleFuelApi`에 둔다. `core:data`와 화면의 mock 저장소는 변경하지 않는다.
+`AndroidFusedLocationApi`, `AndroidVehicleFuelApi`에 둔다. 화면의 mock 저장소는 유지하며 `core:data`에 startup 차량
+정보·기본값 계약을 제공한다.
 
 두 계약은 기존 NaviClient처럼 Koin factory로 등록한다. 등록 자체로 SDK를 초기화하지 않는다. 소유자는 사용할 클라이언트를 한 번 주입받아 보관하고, 메인
 스레드에서 초기화·요청·구독 해제·`release()`를 호출한다. 위치 수집의 소유 범위는 앱의 실제 수집 생명주기와 맞추고, 화면마다 중복 생성하지 않는다.
@@ -62,6 +63,44 @@ SDK 초기화 후 `getFuel()`로 Fuel 도메인을 얻는다. 누적 연비·현
 
 Vehicle 가이드에 따라 진행 중인 get·capability 콜백이 끝난 뒤 release를 호출해야 한다. 어댑터는 원격 요청을 취소하거나 강제로 완료시키지 않는다. 응답
 누락 시의 타임아웃과 수명 정책은 사용 흐름에서 별도로 결정해야 한다.
+
+## Startup 차량 정보 수집
+
+`JuyulowApplication`이 process-scoped `VehicleRuntime`을 시작한다. `VehicleStartup`은 누적/현재 연비·잔량 %와
+AAOS `INFO_FUEL_CAPACITY`·`FUEL_LEVEL`·`INFO_FUEL_TYPE`을 각각 1회 조회한다. Activity 재생성·복귀 시 재조회와 지속 구독은
+없다.
+화면·검색 계산 연결, 예상 가득 주유량 및 일반/고급휘발유 판별은 이번 범위에 포함하지 않는다.
+
+- AAOS는 SDK의 optional `android.car` library로 컴파일한다. Automotive 기능과 라이브러리가 없는 환경에서는 SDK 객체를 만들지 않고
+  미지원 처리한다.
+- AAOS `CAR_INFO`와 `CAR_ENERGY`는 Pleos 권한과 별개다. `MainActivity`가 필요한 에너지 권한을 요청한다.
+  `CarUxRestrictions`가
+  distraction optimization을 요구하지 않는다고 확인된 RESUMED 화면에서만 요청한다. 제한 중/확인 불가 상태는 보류하고 연결 오류는 실패 처리한다.
+  권한 응답을 기다리는 동안에도 나머지 항목과 화면은 진행한다. 거부 후 이번 프로세스에서는 재요청하지 않는다.
+- config 읽기 접근과 값 상태를 확인하고, AAOS 동기 조회는 IO에서 수행한다. 미지원·권한 부족·연결 실패·일시적 사용 불가·잘못된 값·시간 초과·기타 오류를
+  구분한다.
+- 각 연결/capability/get 단계 제한은 5초다. 권한 대화상자 대기 시간은 제외한다. 시간 초과 이후 도착한 값은 적용하지 않는다.
+  AAOS는 실제 IO 작업이 끝난 후 disconnect한다. Pleos는 모든 실제 콜백이 돌아온 뒤 release한다. 콜백이 영구 누락되면 SDK 객체를 프로세스 수명까지
+  보관한다.
+- `VehicleInfoRepository.fields`의 각 `VehicleField`는 raw/applicable 값, 원본 단위 (프로퍼티에 정의), 상태·실패 사유·조회
+  완료 시각 (epoch ms)·출처를 보관한다.
+  `FETCH`가 `DEFAULT`보다 우선하며 기본값도 없으면 `UNSET`이다. null·비유한 값·0 이하 연비/용량·음수 잔여량·범위 밖 %는 실패다.
+  AAOS mL와 Pleos %는 서로 대체하지 않는다. 유종은 UNKNOWN/OTHER 및 미래 코드까지 원본 정수 목록으로 보존하며 차량 종류를 추정하지 않는다.
+- `VehicleDefaultsRepository.save(property, value)`는 기존 `SettingsStorage`의 `vehicle_default_*` 키에
+  저장한다. null은 해당 override를 삭제한다.
+  연비 기본값 미지정 시 기존 수동 연비 (미저장 시 12km/L)를 L/100km로 변환해 사용하고 나머지는 미설정이다. fetch 성공값은 저장하지 않는다.
+  `VehicleField.efficiencyKmPerL`은 연비 필드에 한해 사용하는 무반올림 변환 값이다. 수동 설정과 차량 기본값은 서로 덮어쓰지 않는다.
+- debug 전용 `VehicleStartup` logcat에 실패 항목·공급자·단계·원인·현재 fallback 출처를 기록한다. 기본값 로딩 전 실패면 로그의 출처는
+  UNSET일 수 있으며
+  로딩 후 repository에 DEFAULT가 반영된다. release source set의 진단 함수는 no-op이다.
+- 실제 Vehicle 2.3.2 AAR은 문서의 `VehicleException`을 난독화하고 있어 직접 참조하지 않는다. 배포된 sources의 정확한 `ErrorCode`
+  메시지만
+  분류하며, 나머지는 표준 예외 또는 기타 오류로 처리한다. 메시지 계약이 바뀌면 세부 분류를 보장하지 않는다.
+
+AAOS
+근거: [VehiclePropertyIds](https://developer.android.com/reference/android/car/VehiclePropertyIds),
+[CarPropertyManager](https://developer.android.com/reference/android/car/hardware/property/CarPropertyManager),
+[FuelType](https://developer.android.com/reference/android/car/FuelType).
 
 ## 검증과 근거
 
