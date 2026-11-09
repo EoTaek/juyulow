@@ -32,6 +32,7 @@ class PleosTypography(
     val bodyLarge = textStyle(30, 38, FontWeight.Normal)
     val bodyMedium = textStyle(28, 36, FontWeight.Normal)
     val bodySmall = textStyle(26, 34, FontWeight.Normal)
+
     // The guide does not specify a numeric weight for Strong; use SemiBold (600).
     val bodyLargeStrong = bodyLarge.copy(fontWeight = FontWeight.SemiBold)
     val bodyMediumStrong = bodyMedium.copy(fontWeight = FontWeight.SemiBold)

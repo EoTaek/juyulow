@@ -5,17 +5,24 @@
 ## 차량용 애플리케이션 및 Pleos SDK
 
 - 이 프로젝트는 현대자동차그룹 차량용 앱 개발 공모전 프로젝트이며, 일반 스마트폰 앱이 아닌 Pleos Connect 차량용 애플리케이션이다.
-- 차량용 기능·UI·SDK 연동을 설계하거나 구현하기 전에 [Pleos SDK 가이드 목차](pleos_sdk_guide/README.md)를 확인하고, 작업에 해당하는 로컬 문서를 참조한다.
-- 앱 기획·설계 시 주행 안전·주행 규제·앱 구조 및 동작 모델·디자인 가이드를, SDK 연동 시 해당 SDK의 Programming Guide와 API Reference를 확인한다. 개발 환경 구성과 테스트도 해당 가이드를 따른다.
-- 일반 Android API나 스마트폰 환경의 동작을 차량 환경에도 그대로 적용할 수 있다고 가정하지 않는다. SDK 권한·초기화 및 해제·API 호환성 및 가용성을 관련 문서에서 확인하고, 확인되지 않은 동작은 가정으로 명시한다.
+- 차량용 기능·UI·SDK 연동을 설계하거나 구현하기 전에 [Pleos SDK 가이드 목차](pleos_sdk_guide/README.md)를 확인하고, 작업에 해당하는 로컬
+  문서를 참조한다.
+- 앱 기획·설계 시 주행 안전·주행 규제·앱 구조 및 동작 모델·디자인 가이드를, SDK 연동 시 해당 SDK의 Programming Guide와 API Reference를
+  확인한다. 개발 환경 구성과 테스트도 해당 가이드를 따른다.
+- 일반 Android API나 스마트폰 환경의 동작을 차량 환경에도 그대로 적용할 수 있다고 가정하지 않는다. SDK 권한·초기화 및 해제·API 호환성 및 가용성을 관련
+  문서에서 확인하고, 확인되지 않은 동작은 가정으로 명시한다.
 
 ---
 
 ## Compose 화면 프리뷰
 
-- 화면 단위 Compose 프리뷰는 Pleos Connect-S-17 기본 모델의 앱 영역 기준으로 가로형 `1700 × 1184dp`, 세로형 `840 × 1184dp` 두 가지를 제공한다.
-- `@Preview`의 `widthDp`, `heightDp`를 명시하고, `JUYULOWTheme`을 적용한다. 전체 디스플레이 해상도나 일반 스마트폰 프리셋을 앱 뷰포트 크기로 사용하지 않는다.
-- 세로형은 차량 디스플레이 회전이 아닌 분할 앱 창 형태를 뜻한다. 다른 모델 대응 시 [Display Layout](pleos_sdk_guide/앱%20기획·설계%20가이드/디자인%20가이드/Getting%20Started/Display%20Layout.md)의 앱 영역 크기를 참조한다.
+- 화면 단위 Compose 프리뷰는 Pleos Connect-S-17 기본 모델의 앱 영역 기준으로 가로형 `1700 × 1184dp`, 세로형 `840 × 1184dp` 두
+  가지를 제공한다.
+- `@Preview`의 `widthDp`, `heightDp`를 명시하고, `JUYULOWTheme`을 적용한다. 전체 디스플레이 해상도나 일반 스마트폰 프리셋을 앱 뷰포트
+  크기로 사용하지 않는다.
+- 세로형은 차량 디스플레이 회전이 아닌 분할 앱 창 형태를 뜻한다. 다른 모델 대응
+  시 [Display Layout](pleos_sdk_guide/앱%20기획·설계%20가이드/디자인%20가이드/Getting%20Started/Display%20Layout.md)
+  의 앱 영역 크기를 참조한다.
 
 ---
 
@@ -26,7 +33,8 @@
 - Compose의 복잡한 state, side-effect, recomposition 또는 performance 문제는 `compose-expert`를 사용한다.
 - ADB, logcat, dumpsys, crash, ANR 분석이 필요한 경우 `android-adb-debugging`을 사용한다.
 - 실제 디바이스/에뮬레이터 화면 또는 사용자 플로우 검증이 필요한 경우 `android-mobile-mcp`를 사용한다.
-- Android Studio / JetBrains MCP는 IDE inspection, run configuration, 프로젝트 구조 등 IDE 관점의 정보가 실제로 필요할 때 사용한다.
+- Android Studio / JetBrains MCP는 IDE inspection, run configuration, 프로젝트 구조 등 IDE 관점의 정보가 실제로 필요할 때
+  사용한다.
 - 앱 데이터 삭제, uninstall, `pm clear` 등 파괴적인 작업은 사용자의 명시적인 요청 없이 수행하지 않는다.
 - 동일한 목적의 검증을 여러 도구로 불필요하게 반복하지 않는다.
 
@@ -65,7 +73,8 @@
 
 수행하지 않은 검증은 결과의 신뢰성에 영향을 주는 경우에만 이유를 보고한다.
 
-Android Studio / JetBrains MCP, ADB, mobile-mcp 등 런타임 또는 IDE 기반 도구를 실제로 사용한 경우에는 수행한 조작과 핵심 결과를 간결히 명시한다.
+Android Studio / JetBrains MCP, ADB, mobile-mcp 등 런타임 또는 IDE 기반 도구를 실제로 사용한 경우에는 수행한 조작과 핵심 결과를 간결히
+명시한다.
 
 위험하거나 불확실한 부분은 조용히 추측하지 말고 명시적으로 보고한다.
 
@@ -76,6 +85,7 @@ Android Studio / JetBrains MCP, ADB, mobile-mcp 등 런타임 또는 IDE 기반 
 After implementing a change, inspect relevant project documentation.
 
 Update documentation in the same change when the implementation changes:
+
 - externally observable behavior
 - architecture or module responsibilities
 - APIs or data contracts

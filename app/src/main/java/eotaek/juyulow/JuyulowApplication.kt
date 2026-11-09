@@ -9,6 +9,7 @@ class JuyulowApplication : Application() {
         super.onCreate()
         startKoin {
             androidContext(this@JuyulowApplication)
+            modules(appModule)
         }
     }
 }
