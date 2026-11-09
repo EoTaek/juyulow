@@ -6,6 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -35,6 +36,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.design.theme.pleosShadow
@@ -242,4 +244,90 @@ fun PleosStepper(
             enabled = enabled && value < range.last
         )
     }
+}
+
+@Composable
+private fun ControlPreview(content: @Composable () -> Unit) {
+    JUYULOWTheme(darkTheme = androidx.compose.foundation.isSystemInDarkTheme()) {
+        Surface(color = JUYULOWTheme.colors.backgroundPrimary) {
+            Column(
+                Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) { content() }
+        }
+    }
+}
+
+@Preview(name = "Button · Light", widthDp = 600)
+@Preview(
+    name = "Button · Dark",
+    widthDp = 600,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES
+)
+@Composable
+private fun ButtonPreview() = ControlPreview {
+    PleosButton("주변 주유소 찾기", {}, icon = PleosIcon.Search, trailingIcon = PleosIcon.Next)
+    PleosButton("다시 찾기", {}, icon = PleosIcon.Refresh, outlined = true)
+    PleosButton("사용 불가", {}, enabled = false)
+    PleosButton("찾는 중", {}, loading = true)
+}
+
+@Preview(name = "IconButton · Light")
+@Preview(name = "IconButton · Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun IconButtonPreview() = ControlPreview {
+    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        PleosIconButton(PleosIcon.Back, "이전 화면", {})
+        PleosIconButton(PleosIcon.Settings, "설정", {})
+        PleosIconButton(PleosIcon.Close, "닫기", {}, enabled = false)
+    }
+}
+
+@Preview(name = "Tabs · Light", widthDp = 720)
+@Preview(
+    name = "Tabs · Dark",
+    widthDp = 720,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES
+)
+@Composable
+private fun TabsPreview() = ControlPreview {
+    PleosTabs(
+        listOf(PleosTab(0, "목적지 경유", PleosIcon.Waypoint), PleosTab(1, "주유소까지", PleosIcon.Flag)),
+        selected = 0, onSelect = {},
+    )
+    PleosTabs(
+        listOf(PleosTab(0, "절약액순"), PleosTab(1, "시간순")),
+        selected = 1, onSelect = {}, compact = true,
+    )
+    PleosTabs(
+        listOf(PleosTab(0, "절약액순"), PleosTab(1, "시간순")),
+        selected = 0, onSelect = {}, enabled = false,
+    )
+}
+
+@Preview(name = "Switch · Light", widthDp = 520)
+@Preview(
+    name = "Switch · Dark",
+    widthDp = 520,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES
+)
+@Composable
+private fun SwitchPreview() = ControlPreview {
+    PleosSwitch(true, "시간 비용 반영", {})
+    PleosSwitch(false, "시간 비용 제외", {})
+    PleosSwitch(true, "사용 불가", {}, enabled = false)
+}
+
+@Preview(name = "Stepper · Light", widthDp = 440)
+@Preview(
+    name = "Stepper · Dark",
+    widthDp = 440,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES
+)
+@Composable
+private fun StepperPreview() = ControlPreview {
+    PleosStepper("예상 주유량", 40, "L", 10..100, 10, {})
+    PleosStepper("최솟값", 10, "L", 10..100, 10, {})
+    PleosStepper("최댓값", 100, "L", 10..100, 10, {})
+    PleosStepper("사용 불가", 40, "L", 10..100, 10, {}, enabled = false)
 }
