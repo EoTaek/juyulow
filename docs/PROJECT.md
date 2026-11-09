@@ -61,7 +61,13 @@ DialogSceneStrategy로 홈 위에 표시한다. 각 entry의 ViewModel은 entry�
 
 Serialization 플러그인은 `app`과 `core:data`에 Kotlin과 같은 버전으로 적용한다. `core:data`는 순수 Kotlin/JVM 구조를 유지하기 위해 Android 의존성이 없는 `datastore-preferences-core`를 사용하며, 저장 경로 등 Android 환경 정보는 실제 저장소 구현 시 외부에서 제공한다.
 
-`app`에는 로컬 SDK 가이드 기준으로 Pleos Vehicle `2.3.2`, NaviHelper `3.0.5`, FusedLocation `1.1.3` 의존성을 등록했다. `settings.gradle.kts`의 Pleos Maven 저장소에서 `ai.pleos.playground` 그룹을 받는다. SDK 의존성은 유지하지만 현재 실행 코드에서 권한 선언·SDK 초기화·API 호출은 하지 않는다.
+`app`에는 로컬 SDK 가이드 기준으로 Pleos Vehicle `2.3.2`, NaviHelper `3.0.5`, FusedLocation `1.1.3` 의존성을 등록했다.
+`settings.gradle.kts`의 Pleos Maven 저장소에서 `ai.pleos.playground` 그룹을 받는다. `app/navigation`에 NaviHelper
+조회·Trip 응답·경로/경유지·내비 화면 요청 어댑터와 필요한 세 내비 권한을 추가했다. `app/location`에는 FusedLocation 지원 확인·위치 조회/구독·접근
+차단 안내, `app/vehicle`에는 Vehicle Fuel의 누적/현재 연비·잔량 capability 조회·값 조회/구독 어댑터를 제공한다. 세 클라이언트는 Koin
+factory로 제공하며 소유자가 명시적으로 초기화·해제한다. FUSED_LOCATION·CAR_ENERGY 권한을 선언하되 위치 런타임 권한 요청 UI는 아직 없다. 현재 화면은
+mock 저장소를 사용하므로 SDK를 호출하지 않는다. 계약과 사용
+제약은 [NAVIHELPER.md](NAVIHELPER.md), [LOCATION_VEHICLE.md](LOCATION_VEHICLE.md)를 참조한다.
 
 ## 기획 배경과 해결할 문제
 

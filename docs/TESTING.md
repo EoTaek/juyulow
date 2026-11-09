@@ -22,6 +22,14 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
 
 `AppNavigationTest`는 설정 저장 중 뒤로가기·팝업 닫기 요청이 entry를 유지하고, 저장 상태가 해제되면 닫히는지 검증한다. 저장 상태는 닫기 요청 시점에 읽어 재구성 이전의 요청도 차단한다.
 
+`PleosNaviClientTest`는 Fake SDK 경계로 연결 전 요청 차단, SDK 인자·조회/Trip/경로/오류 콜백 전달, 초기화 실패·동기 예외, 지연 연결 결과와
+중복 해제, 동일 리스너 제거 후 SDK 해제를 검증한다. 실제 내비 서비스·권한 허용·경로 설정은 검증하지 않는다. 어댑터
+계약은 [NAVIHELPER.md](NAVIHELPER.md)를 참조한다.
+
+`PleosFusedLocationClientTest`, `PleosVehicleFuelClientTest`는 Fake SDK로 미지원·초기화 실패·capability·원본
+단위/nullable 값·오류 전달·중복 구독 차단·동일 리스너 해제·정리 실패 후 SDK 해제·지연 콜백 무시를 검증한다. 실제 서비스 연결과 런타임 권한 허용/회수는 검증하지
+않는다. 계약은 [LOCATION_VEHICLE.md](LOCATION_VEHICLE.md)를 참조한다.
+
 버전은 `gradle/libs.versions.toml`에서 관리하고 각 모듈의 `testImplementation`으로 선언한다.
 
 | 모듈 | 테스트 의존성 |
