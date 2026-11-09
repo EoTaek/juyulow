@@ -38,7 +38,14 @@ data object Settings : NavKey
 /** Deliberately no SavedStateHandle: only settings survive process recreation. */
 class AppNavigationViewModel : ViewModel() {
     val backStack = NavBackStack<NavKey>(Home)
+    private var settingsDismissGuard: (() -> Boolean)? = null
+
+    fun setSettingsDismissGuard(guard: (() -> Boolean)?) {
+        settingsDismissGuard = guard
+    }
+
     fun back() {
+        if (backStack.last() == Settings && settingsDismissGuard?.invoke() == false) return
         if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
     }
 
@@ -98,7 +105,11 @@ fun JuyulowApp(navigation: AppNavigationViewModel = koinViewModel()) {
                         )
                     )
                 ) {
-                    SettingsRoute(koinViewModel(), navigation::back)
+                    SettingsRoute(
+                        koinViewModel(),
+                        navigation::back,
+                        navigation::setSettingsDismissGuard,
+                    )
                 }
             },
         )

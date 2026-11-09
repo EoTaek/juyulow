@@ -20,6 +20,8 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
 
 ## 로컬 단위 테스트 구성
 
+`AppNavigationTest`는 설정 저장 중 뒤로가기·팝업 닫기 요청이 entry를 유지하고, 저장 상태가 해제되면 닫히는지 검증한다. 저장 상태는 닫기 요청 시점에 읽어 재구성 이전의 요청도 차단한다.
+
 버전은 `gradle/libs.versions.toml`에서 관리하고 각 모듈의 `testImplementation`으로 선언한다.
 
 | 모듈 | 테스트 의존성 |

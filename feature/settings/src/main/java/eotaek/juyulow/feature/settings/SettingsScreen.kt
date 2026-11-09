@@ -19,6 +19,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -37,7 +38,16 @@ import eotaek.juyulow.core.design.theme.pleosShadow
 import eotaek.juyulow.core.model.RefuelSettings
 
 @Composable
-fun SettingsRoute(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
+fun SettingsRoute(
+    viewModel: SettingsViewModel,
+    onDismiss: () -> Unit,
+    onDismissGuardChanged: ((() -> Boolean)?) -> Unit,
+) {
+    DisposableEffect(viewModel, onDismissGuardChanged) {
+        // Read the current state at dismissal time, including before the next recomposition.
+        onDismissGuardChanged { !viewModel.state.value.saving }
+        onDispose { onDismissGuardChanged(null) }
+    }
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.saved) { if (state.saved) onDismiss() }
     SettingsScreen(
