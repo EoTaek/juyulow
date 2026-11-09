@@ -21,30 +21,18 @@ class PleosColors internal constructor(darkTheme: Boolean) {
     val basic900 = if (darkTheme) Color(0xFFFFFFFF) else Color(0xFF131417)
 
     // Alpha Color
-    val basicAlphaLight50 =
-        if (darkTheme) Color(0xFFFFFFFF).copy(alpha = 0.05f) else Color(0xFF131417).copy(alpha = 0.05f)
-    val basicAlphaLight100 =
-        if (darkTheme) Color(0xFFFFFFFF).copy(alpha = 0.1f) else Color(0xFF131417).copy(alpha = 0.1f)
-    val basicAlphaLight200 =
-        if (darkTheme) Color(0xFFFFFFFF).copy(alpha = 0.2f) else Color(0xFF131417).copy(alpha = 0.2f)
-    val basicAlphaLight300 =
-        if (darkTheme) Color(0xFFFFFFFF).copy(alpha = 0.3f) else Color(0xFF131417).copy(alpha = 0.3f)
-    val basicAlphaLight400 =
-        if (darkTheme) Color(0xFFFFFFFF).copy(alpha = 0.4f) else Color(0xFF131417).copy(alpha = 0.4f)
-    val basicAlphaLight500 =
-        if (darkTheme) Color(0xFFFFFFFF).copy(alpha = 0.5f) else Color(0xFF131417).copy(alpha = 0.5f)
-    val basicAlphaDark50 =
-        if (darkTheme) Color(0xFF131417).copy(alpha = 0.05f) else Color(0xFFFFFFFF).copy(alpha = 0.05f)
-    val basicAlphaDark100 =
-        if (darkTheme) Color(0xFF131417).copy(alpha = 0.1f) else Color(0xFFFFFFFF).copy(alpha = 0.1f)
-    val basicAlphaDark200 =
-        if (darkTheme) Color(0xFF131417).copy(alpha = 0.2f) else Color(0xFFFFFFFF).copy(alpha = 0.2f)
-    val basicAlphaDark300 =
-        if (darkTheme) Color(0xFF131417).copy(alpha = 0.3f) else Color(0xFFFFFFFF).copy(alpha = 0.3f)
-    val basicAlphaDark400 =
-        if (darkTheme) Color(0xFF131417).copy(alpha = 0.4f) else Color(0xFFFFFFFF).copy(alpha = 0.4f)
-    val basicAlphaDark500 =
-        if (darkTheme) Color(0xFF131417).copy(alpha = 0.5f) else Color(0xFFFFFFFF).copy(alpha = 0.5f)
+    val basicAlphaLight50 = if (darkTheme) Color(0xFFFFFFFF).copy(alpha = 0.05f) else Color(0xFF131417).copy(alpha = 0.05f)
+    val basicAlphaLight100 = if (darkTheme) Color(0xFFFFFFFF).copy(alpha = 0.1f) else Color(0xFF131417).copy(alpha = 0.1f)
+    val basicAlphaLight200 = if (darkTheme) Color(0xFFFFFFFF).copy(alpha = 0.2f) else Color(0xFF131417).copy(alpha = 0.2f)
+    val basicAlphaLight300 = if (darkTheme) Color(0xFFFFFFFF).copy(alpha = 0.3f) else Color(0xFF131417).copy(alpha = 0.3f)
+    val basicAlphaLight400 = if (darkTheme) Color(0xFFFFFFFF).copy(alpha = 0.4f) else Color(0xFF131417).copy(alpha = 0.4f)
+    val basicAlphaLight500 = if (darkTheme) Color(0xFFFFFFFF).copy(alpha = 0.5f) else Color(0xFF131417).copy(alpha = 0.5f)
+    val basicAlphaDark50 = if (darkTheme) Color(0xFF131417).copy(alpha = 0.05f) else Color(0xFFFFFFFF).copy(alpha = 0.05f)
+    val basicAlphaDark100 = if (darkTheme) Color(0xFF131417).copy(alpha = 0.1f) else Color(0xFFFFFFFF).copy(alpha = 0.1f)
+    val basicAlphaDark200 = if (darkTheme) Color(0xFF131417).copy(alpha = 0.2f) else Color(0xFFFFFFFF).copy(alpha = 0.2f)
+    val basicAlphaDark300 = if (darkTheme) Color(0xFF131417).copy(alpha = 0.3f) else Color(0xFFFFFFFF).copy(alpha = 0.3f)
+    val basicAlphaDark400 = if (darkTheme) Color(0xFF131417).copy(alpha = 0.4f) else Color(0xFFFFFFFF).copy(alpha = 0.4f)
+    val basicAlphaDark500 = if (darkTheme) Color(0xFF131417).copy(alpha = 0.5f) else Color(0xFFFFFFFF).copy(alpha = 0.5f)
 
     // Static Color
     val basicStaticLight100 = Color(0xFFFFFFFF)
@@ -111,8 +99,7 @@ class PleosColors internal constructor(darkTheme: Boolean) {
     val chargingNormal = Color(0xFF00DB25)
     val chargingDeep = if (darkTheme) Color(0xFF0082FC) else Color(0xFF00B975)
     val gradientEnd = basic00
-    val gradientStart =
-        if (darkTheme) Color(0xFF131417).copy(alpha = 0f) else Color(0xFFFFFFFF).copy(alpha = 0f)
+    val gradientStart = if (darkTheme) Color(0xFF131417).copy(alpha = 0f) else Color(0xFFFFFFFF).copy(alpha = 0f)
 
     // Fields
     val fieldBackground = basic00

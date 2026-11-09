@@ -4,11 +4,9 @@
 
 **돌아갈 만큼 싼가? — 저렴한 주유소로 우회하는 것이 실제로 이득인지 계산한다.**
 
-현재 경로 주변의 주유소 가격뿐 아니라 **주유소까지 우회하는 추가 거리·연료비·시간**을 함께 고려하여, 가까운 곳에서 주유할 때와 비교한 **예상 실질 절약액**을 안내하는
-차량용 주유 의사결정 앱이다.
+현재 경로 주변의 주유소 가격뿐 아니라 **주유소까지 우회하는 추가 거리·연료비·시간**을 함께 고려하여, 가까운 곳에서 주유할 때와 비교한 **예상 실질 절약액**을 안내하는 차량용 주유 의사결정 앱이다.
 
-현대자동차그룹 차량용 앱 개발 공모전 프로젝트로, **Pleos Connect 차량 환경에서 사용하는 차량용 애플리케이션**을 개발한다. 일반 스마트폰 앱을 전제로 설계하지
-않으며, 차량 내 화면과 조작 환경, 주행 안전 및 주행 규제를 고려한다. 차량 정보와 내비게이션 연동은 현대의 차량용 API 시스템인 Pleos SDK를 기준으로 검토한다.
+현대자동차그룹 차량용 앱 개발 공모전 프로젝트로, **Pleos Connect 차량 환경에서 사용하는 차량용 애플리케이션**을 개발한다. 일반 스마트폰 앱을 전제로 설계하지 않으며, 차량 내 화면과 조작 환경, 주행 안전 및 주행 규제를 고려한다. 차량 정보와 내비게이션 연동은 현대의 차량용 API 시스템인 Pleos SDK를 기준으로 검토한다.
 
 - 상태: 로컬 mock 기반 Compose 프로토타입. 실제 차량·유가·경로·내비 연동은 개발 목표이며 구현 완료를 의미하지 않는다.
 - 원안: 기존 추천 20번, 「Idea 6 돌아갈 만큼 싼가? — 주유소 실질 절약액 비교」
@@ -29,9 +27,7 @@
 | `feature:main`     | 홈·결과·완료 화면과 각각의 ViewModel, 두 창 크기·두 테마 프리뷰                     |
 | `feature:settings` | 주유 조건 팝업과 SettingsViewModel, 적용 전 초안 편집                               |
 
-`core:design`은 로컬 Pleos 디자인 가이드의 색상·타이포그래피·그림자 토큰을 `JUYULOWTheme.colors`, `.typography`, `.shadows`로
-제공한다. 기존 Material 컴포넌트는 매핑된 `MaterialTheme.colorScheme`과 `.typography`를 사용한다. 출처·매핑·서체 및 원문
-해석은 [DESIGN.md](DESIGN.md), 아이콘 제작·사용 지침은 [ICONOGRAPHY.md](ICONOGRAPHY.md)를 참고한다.
+`core:design`은 로컬 Pleos 디자인 가이드의 색상·타이포그래피·그림자 토큰을 `JUYULOWTheme.colors`, `.typography`, `.shadows`로 제공한다. 기존 Material 컴포넌트는 매핑된 `MaterialTheme.colorScheme`과 `.typography`를 사용한다. 출처·매핑·서체 및 원문 해석은 [DESIGN.md](DESIGN.md), 아이콘 제작·사용 지침은 [ICONOGRAPHY.md](ICONOGRAPHY.md)를 참고한다.
 
 의존 방향은 `app → feature/core`, `feature → core`, `core:data → core:model`이다. core는 feature나 app에 의존하지
 않으며 feature 간 직접 의존도 두지 않는다. 저장소 계약은 `core:data`에 두고, 추후 실제 데이터·SDK 구현으로 교체한다. 별도 domain 모듈은 추가하지
@@ -50,30 +46,25 @@ DialogSceneStrategy로 홈 위에 표시한다. 각 entry의 ViewModel은 entry�
 고정한다. 시스템 테마·SansSerif를 유지한다. NaviHelper PoC
 기록은 [실험 보고서](poc/POC_TRIP_REPORT.md), [구현 기록](poc/POC_TRIP_IMPLEMENTATION.md)에 보존한다.
 
-의존성 버전은 `gradle/libs.versions.toml`에서 관리한다. Koin BOM과 Android/Compose 연동, Lifecycle, Coroutines를
-사용한다. Koin은 constructor DSL로 등록하며, Koin annotation/KSP/컴파일러 플러그인은 추가하지 않는다.
+의존성 버전은 `gradle/libs.versions.toml`에서 관리한다. Koin BOM과 Android/Compose 연동, Lifecycle, Coroutines를 사용한다. Koin은 constructor DSL로 등록하며, Koin annotation/KSP/컴파일러 플러그인은 추가하지 않는다.
 
 화면 전환·설정 저장에는 아래 의존성을 사용한다. HTTP 클라이언트·실제 API 연동은 구현하지 않았다.
 
-| 모듈        | 의존성                                                                                 | 용도                                            |
-|-------------|----------------------------------------------------------------------------------------|-------------------------------------------------|
-| `app`       | Navigation 3 runtime/UI `1.2.1`, Lifecycle ViewModel Navigation 3 `2.11.0`             | 앱 내부 화면 전환 및 화면별 ViewModel 수명 관리 |
-| `app`       | Material 3 Adaptive, Adaptive Layout, Adaptive Navigation 3 `1.3.0`                    | 창 크기에 따른 배치와 Navigation 3 연동         |
-| `app`       | Kotlin Serialization core `1.12.0`                                                     | 화면 경로 직렬화                                |
-| `core:data` | Preferences DataStore core `1.3.0`                                                     | 연비·주유량 등 소규모 설정 저장                 |
-| `core:data` | Retrofit 및 Kotlin Serialization converter `3.0.0`, Kotlin Serialization JSON `1.12.0` | 외부 HTTP API와 JSON 데이터 처리                |
+| 모듈 | 의존성 | 용도 |
+| --- | --- | --- |
+| `app` | Navigation 3 runtime/UI `1.2.1`, Lifecycle ViewModel Navigation 3 `2.11.0` | 앱 내부 화면 전환 및 화면별 ViewModel 수명 관리 |
+| `app` | Material 3 Adaptive, Adaptive Layout, Adaptive Navigation 3 `1.3.0` | 창 크기에 따른 배치와 Navigation 3 연동 |
+| `app` | Kotlin Serialization core `1.12.0` | 화면 경로 직렬화 |
+| `core:data` | Preferences DataStore core `1.3.0` | 연비·주유량 등 소규모 설정 저장 |
+| `core:data` | Retrofit 및 Kotlin Serialization converter `3.0.0`, Kotlin Serialization JSON `1.12.0` | 외부 HTTP API와 JSON 데이터 처리 |
 
-Serialization 플러그인은 `app`과 `core:data`에 Kotlin과 같은 버전으로 적용한다. `core:data`는 순수 Kotlin/JVM 구조를 유지하기 위해
-Android 의존성이 없는 `datastore-preferences-core`를 사용하며, 저장 경로 등 Android 환경 정보는 실제 저장소 구현 시 외부에서 제공한다.
+Serialization 플러그인은 `app`과 `core:data`에 Kotlin과 같은 버전으로 적용한다. `core:data`는 순수 Kotlin/JVM 구조를 유지하기 위해 Android 의존성이 없는 `datastore-preferences-core`를 사용하며, 저장 경로 등 Android 환경 정보는 실제 저장소 구현 시 외부에서 제공한다.
 
-`app`에는 로컬 SDK 가이드 기준으로 Pleos Vehicle `2.3.2`, NaviHelper `3.0.5`, FusedLocation `1.1.3` 의존성을 등록했다.
-`settings.gradle.kts`의 Pleos Maven 저장소에서 `ai.pleos.playground` 그룹을 받는다. SDK 의존성은 유지하지만 현재 실행 코드에서 권한
-선언·SDK 초기화·API 호출은 하지 않는다.
+`app`에는 로컬 SDK 가이드 기준으로 Pleos Vehicle `2.3.2`, NaviHelper `3.0.5`, FusedLocation `1.1.3` 의존성을 등록했다. `settings.gradle.kts`의 Pleos Maven 저장소에서 `ai.pleos.playground` 그룹을 받는다. SDK 의존성은 유지하지만 현재 실행 코드에서 권한 선언·SDK 초기화·API 호출은 하지 않는다.
 
 ## 기획 배경과 해결할 문제
 
-리터당 가격이 조금 싼 주유소를 찾더라도, 그곳까지 돌아가는 데 연료와 시간이 추가로 든다. 가격 정렬만으로는 이번 주유에서 실제로 절약되는 금액을 바로 판단하기 어렵다. 이 앱은
-사용자가 **‘얼마나 싼가’보다 ‘지금 돌아갈 가치가 있는가’**를 판단하도록 돕는다.
+리터당 가격이 조금 싼 주유소를 찾더라도, 그곳까지 돌아가는 데 연료와 시간이 추가로 든다. 가격 정렬만으로는 이번 주유에서 실제로 절약되는 금액을 바로 판단하기 어렵다. 이 앱은 사용자가 **‘얼마나 싼가’보다 ‘지금 돌아갈 가치가 있는가’**를 판단하도록 돕는다.
 
 ## 주요 기능 및 차량 특화 요소
 
@@ -96,7 +87,7 @@ Android 의존성이 없는 `datastore-preferences-core`를 사용하며, 저장
 | 항목             | 계산식                                                                   |
 |------------------|--------------------------------------------------------------------------|
 | 가격 차이 절감액 | (기준 주유소의 리터당 가격 − 후보 주유소의 리터당 가격) × 예상 주유량(L) |
-| 우회 연료비      | 기준 경로 대비 추가 거리(km) ÷ 예상 연비(km/L) × 연료 단가(원/L)         |
+| 우회 연료비 | 기준 경로 대비 추가 거리(km) ÷ 예상 연비(km/L) × 연료 단가(원/L) |
 | 예상 순절약액    | 가격 차이 절감액 − 이동 연료비 − 통행료 − 선택적 시간 비용               |
 
 프로토타입의 기준 가격은 같은 검색 묶음의 최고가이며 이동 연료 단가에도 같은 값을 사용한다. 목적지 경유는 경유 경로에서 기존 경로를 뺀 거리·시간, 주유소까지·왕복은 전체
@@ -116,13 +107,10 @@ Android 의존성이 없는 `datastore-preferences-core`를 사용하며, 저장
 
 ## SDK·외부 데이터와 MVP 개발 계획
 
-- **Pleos 개발 문서:** [로컬 Pleos SDK 가이드 목차](../pleos_sdk_guide/README.md)를 진입점으로 사용한다. 앱 설계 원칙·디자인·주행
-  규제, 개발 환경 구성·테스트 가이드와 각 SDK의 Programming Guide·API Reference를 작업에 맞게 참조한다. SDK 연동 시 권한, 초기화·해제,
-  API 호환성 및 가용성을 확인한다. 아래 연동은 개발 계획이며 현재 구현 완료를 의미하지 않는다.
+- **Pleos 개발 문서:** [로컬 Pleos SDK 가이드 목차](../pleos_sdk_guide/README.md)를 진입점으로 사용한다. 앱 설계 원칙·디자인·주행 규제, 개발 환경 구성·테스트 가이드와 각 SDK의 Programming Guide·API Reference를 작업에 맞게 참조한다. SDK 연동 시 권한, 초기화·해제, API 호환성 및 가용성을 확인한다. 아래 연동은 개발 계획이며 현재 구현 완료를 의미하지 않는다.
 - **Pleos/NaviHelper:** 현재 위치·목적지 확인, 사용자가 선택한 주유소를 경유지로 요청하는 기능을 연동한다.
 - **외부 데이터:** 오피넷의 주유소 가격 정보를 사용하며, 정보 갱신 시각과 제공 범위를 함께 표시한다.
-- **외부 경로 계산:** 지도 길찾기 API로 기준 경로와 주유소 경유 경로의 거리·시간 차이를 구한다. NaviHelper가 여러 임의 후보 경로의 모든 비교 계산을 직접
-  제공한다고 가정하지 않는다.
+- **외부 경로 계산:** 지도 길찾기 API로 기준 경로와 주유소 경유 경로의 거리·시간 차이를 구한다. NaviHelper가 여러 임의 후보 경로의 모든 비교 계산을 직접 제공한다고 가정하지 않는다.
 - **연비:** 차량에서 확인 가능한 범위가 제한되면 사용자 설정값을 사용한다.
 - **초기 시연:** 동일 목적지에 대해 주유소 후보 2~3개를 비교하고, 추가거리·시간·순절약액이 다른 화면을 보여준 뒤 한 곳을 내비에 연동한다.
 
