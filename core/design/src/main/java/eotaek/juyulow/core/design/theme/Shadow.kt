@@ -1,7 +1,10 @@
 package eotaek.juyulow.core.design.theme
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -12,6 +15,11 @@ data class PleosShadow(
     val primary: Shadow,
     val secondary: Shadow? = null,
 )
+
+fun Modifier.pleosShadow(shape: Shape, shadow: PleosShadow): Modifier {
+    val first = dropShadow(shape, shadow.primary)
+    return shadow.secondary?.let { first.dropShadow(shape, it) } ?: first
+}
 
 /** Pleos Foundations/Shadow values, shared by light and dark themes. */
 object PleosShadows {

@@ -2,7 +2,15 @@
 
 ## 출처와 적용 범위
 
-코드로 제공하는 색상·타이포그래피·그림자 토큰은 `core:design`의 `theme` 패키지에 둔다. 아이콘 제작·선택 원칙은 [ICONOGRAPHY.md](ICONOGRAPHY.md)에 정리한다. 아이콘 에셋과 공통 UI 컴포넌트는 아직 제공하지 않는다.
+코드로 제공하는 색상·타이포그래피·그림자 토큰은 `core:design`의 `theme` 패키지에 둔다. `component`에는 프로토타입에서 사용하는 버튼·아이콘
+버튼·탭·스위치·스텝퍼와 outlined 벡터 아이콘을 제공한다. 아이콘 제작·선택 원칙은 [ICONOGRAPHY.md](ICONOGRAPHY.md)에 정리한다.
+
+웹 프로토타입의 정보 위계·중립적인 배경·파란 절약액 강조를 유지한다. 검색 버튼은 최소 96dp, 일반 버튼은 80dp, 아이콘 버튼은 72dp, 탭은 64dp 높이를 사용한다.
+이는 앱의 적용 규격이며 Pleos 공식 토큰을 추가한 것은 아니다. Material 기본 색상 대신 기존 Pleos 토큰을 사용하고 조작·선택·비활성·로딩 상태와 접근성 레이블을
+제공한다. Asta Sans는 번들링하지 않으며 기존 시스템 SansSerif와 시스템 라이트·다크를 유지한다.
+
+결과 화면은 1700 × 1184dp와 840 × 1184dp 모두 동일 너비의 좌우 2열이다. 좁은 창에서는 카드 항목과 상세 텍스트를 여러 줄로 배치하며 글자와 화면 전체를
+일괄 축소하지 않는다. 두 열은 독립 스크롤하고 경로 설정 버튼은 목록과 분리된 하단 영역에 둔다. 독립된 주유소 상세 페이지나 지도는 제공하지 않는다.
 
 색상 기준은 [`pleos_sdk_guide/앱 기획·설계 가이드/디자인 가이드/Foundations/Colors.md`](../pleos_sdk_guide/앱%20기획·설계%20가이드/디자인%20가이드/Foundations/Colors.md)다. `Color.kt`에 기본·알파·고정 색상과 모든 시스템 색상 149개를 제공한다.
 
@@ -43,6 +51,13 @@ Pleos 원문에는 Material 역할과의 대응표가 없어 다음과 같이 �
 - Media의 `radio_primary`(`C911E7FF`)와 `music_primary`(`4781FFFF`)는 제공된 이미지의 보라색·파란색 견본에 맞춰 RGBA → Compose ARGB로 변환했다. `radio_gradient_*`는 이미지의 투명도·색상에 맞춰 ARGB로 해석했다. 나머지 6자리 HEX는 불투명 RGB다.
 - 알파 표의 Light/Dark 열은 제목(White/Gray)과 관계없이 표에 명시된 값 그대로 적용했다.
 
+## 공통 정보 컴포넌트
+
+`core:design/component`의 `PleosLabelValue`는 라벨과 값을 세로로 표시하며 `valueStyle`로 값의 강조를 지정한다.
+`PleosOutlinedCard`는 배경·테두리·모서리를 공유하고, 내부 여백과 선택·클릭 동작은 호출부가 관리한다.
+`PleosInlineError`는 오류 색상과 `LiveRegionMode.Polite`를 적용해 동적으로 나타난 오류를 접근성 서비스에 알린다.
+주유소 행·선택 상세·비용 행은 비교 기능에 특화되어 `feature:main/results/component`에 둔다.
+
 ## Typography
 
 기준은 [Pleos Typography](../pleos_sdk_guide/앱%20기획·설계%20가이드/디자인%20가이드/Foundations/Typography.md)다. `Type.kt`의 `PleosTypography`를 `JUYULOWTheme.typography`로 제공한다. 글자 크기와 행간은 `sp`로 표현한다.
@@ -67,7 +82,7 @@ Pleos 원문에는 Material 역할과의 대응표가 없어 다음과 같이 �
 | `labelLarge`, `labelMedium` | `labelMedium` |
 | `labelSmall` | `labelSmall` |
 
-기존 카운터 제목·숫자·버튼도 이 매핑으로 차량용 글자 크기를 사용한다. `sp`는 사용자의 글꼴 배율에 따라 변하므로 실제 픽셀 크기나 고정 레이아웃 크기로 취급하지 않는다.
+`sp`는 사용자의 글꼴 배율에 따라 변하므로 실제 픽셀 크기나 고정 레이아웃 크기로 취급하지 않는다.
 
 ## Shadow
 

@@ -8,11 +8,19 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
 ```
 
 - `assembleDebug`: 앱과 연결된 모든 Android/Kotlin 모듈의 빌드·패키징을 확인한다.
-- `testDebugUnitTest`: Android 모듈의 로컬 JVM 테스트를 실행한다. 현재 `app`은 기본 산술 예제만 포함한다. 카운터·PoC 전용 테스트는 제거했으며 `feature:main`, `feature:settings`에는 테스트가 없어 `NO-SOURCE`로 표시된다.
-- `:core:model:test`, `:core:data:test`: 순수 Kotlin/JVM 모듈의 테스트를 실행한다. 현재 두 모듈에는 테스트가 없어 `NO-SOURCE`로 표시된다.
+- `testDebugUnitTest`: app의 백스택 동작, feature:main의 검색·선택·정렬·스냅샷·경로 설정, feature:settings의 초안·적용·저장 실패
+  후 재시도를 검증한다.
+- `:core:model:test`, `:core:data:test`: 세 이동 방식의 거리·시간·비용·경계값, mock 데이터 생성·목적지 반영, 실제 Preferences
+  DataStore 파일의 저장·재로딩을 검증한다.
 - `lintDebug`: Android 모듈의 정적 분석을 수행한다.
 
+현재 Lifecycle 의존성의 custom lint와 Kotlin 분석 API 호환성 문제로 `ObsoleteLintCustomCheck` 경고가 발생하며
+`UnsafeLifecycleWhenUsage`, `RepeatOnLifecycleWrongUsage` 두 검사는 제외된다. 빌드와 나머지 lint는 실행되지만 이 두 항목의 정적
+검증 완료를 의미하지 않는다. Flow 수집은 `collectAsStateWithLifecycle`을 사용하며 화면 전환·재생성은 연결 테스트로 별도 확인한다.
+
 ## 로컬 단위 테스트 구성
+
+`AppNavigationTest`는 설정 저장 중 뒤로가기·팝업 닫기 요청이 entry를 유지하고, 저장 상태가 해제되면 닫히는지 검증한다. 저장 상태는 닫기 요청 시점에 읽어 재구성 이전의 요청도 차단한다.
 
 버전은 `gradle/libs.versions.toml`에서 관리하고 각 모듈의 `testImplementation`으로 선언한다.
 
@@ -29,4 +37,27 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
 
 ## 화면 검증
 
-앱 실행 시 테마가 적용된 빈 메인 화면을 표시하고 카운터·PoC UI나 SDK 호출이 없는지 확인한다. 가로 1700 × 1184dp, 세로 840 × 1184dp 프리뷰를 제공한다. 과거 PoC의 실험·검증 결과는 [실험 보고서](poc/POC_TRIP_REPORT.md)에 보존하며 현재 앱에서 재실행하는 테스트는 아니다.
+각 화면에 가로 1700 × 1184dp와 분할 창 840 × 1184dp, 라이트·다크 프리뷰를 제공한다. 결과 화면은 두 크기 모두 좌우 2열이며, 목록과 선택 상세는 독립
+스크롤한다. 목록의 마지막 항목과 하단 경로 설정 버튼이 겹치지 않는지 확인한다.
+
+로컬 Pleos 에뮬레이터를 실행한 뒤 연결 테스트를 수행한다. `gradle.properties`에서
+`android.injected.androidTest.leaveApksInstalledAfterRun=true`를 지정하여 테스트 후 AGP의 APK 자동 제거를 막고 로컬 설정을
+유지한다. 호환되지 않는 서명·설치가 있으면 데이터를 지우지 않고 실패 원인을 확인한다.
+
+```powershell
+$env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
+.\gradlew.bat :app:connectedDebugAndroidTest --console=plain
+```
+
+- `PrototypeFlowTest`: 실제 Koin·Navigation 3·DataStore를 사용하는 홈 → 검색 → 세 이동 방식의 경로 설정·완료·뒤로가기, 목적지 없는
+  검색, Activity 재생성 후 선택 유지, 설정 취소·적용·다시 열기를 검증한다. 테스트 전의 주유 조건은 종료 시 복원한다.
+- `PrototypeLayoutTest`: 논리 앱 영역 1700 × 1184dp와 840 × 1184dp를 두 테마로 렌더링해 동일 너비 좌우 배치·마지막 항목 스크롤·버튼
+  비겹침·텍스트 overflow를 검증한다. Pleos 호스트 창에 들어가도록 테스트에서만 Density를 0.5로 설정한다. 이는 실제 Pleos 폼 팩터 테스트를 대체하지
+  않는다.
+- 레이아웃 테스트 PNG는 디바이스 대상 앱 내부 파일 영역의 `prototype-screenshots`에 저장한다. 디버그 앱의 `run-as`로 읽을 수 있으며 실제 앱은
+  테스트용 Density를 사용하지 않는다.
+- 레이아웃 테스트 전용 `PrototypeTestActivity`는 debug 빌드에만 포함하며 런처 진입점은 없다. Pleos의 자동 창 재배치로 테스트가 주입한
+  composition이 소실되지 않도록 구성 변경을 처리한다. 실제 MainActivity의 재생성·상태 유지는 별도 흐름 테스트가 검증한다.
+- mock 검색은 850ms 지연 후 3~8곳을 생성한다. 앱에 실패 시나리오 선택 메뉴는 없으며, 검색·경로·저장 실패는 로컬 단위 테스트의 Fake로 주입한다.
+- 정차 시연용이다. SDK·네트워크 호출, 실제 내비 설정, 주행 규제 연동과 주행 중 사용 적합성은 검증 범위에 포함하지 않는다. 과거 PoC
+  결과는 [실험 보고서](poc/POC_TRIP_REPORT.md)에 보존한다.

@@ -1,6 +1,9 @@
 # 아이콘 지침
 
-기준은 [Pleos Iconography](../pleos_sdk_guide/앱%20기획·설계%20가이드/디자인%20가이드/Foundations/Iconography.md)다. 아이콘의 제작·선택·적용 원칙을 문서로 관리하며, 현재 `core:design`에 아이콘 라이브러리나 크기별 토큰은 추가하지 않는다.
+기준은 [Pleos Iconography](../pleos_sdk_guide/앱%20기획·설계%20가이드/디자인%20가이드/Foundations/Iconography.md)다.
+`core:design/component/PleosIcons.kt`에서 이번 프로토타입에 필요한 outlined 벡터를 공유한다. 외부 라이브러리 에셋을 복제하지 않은 프로젝트
+자체 제작 기하 도형이며, 별도 제3자 라이선스는 없다. Pleos 공식 아이콘 에셋은 아니다. 기본 크기는 48dp이며 사용 위치에 따라 비율을 유지해 조정한다. 뒤로·다음
+화살표는 RTL에서 반전한다.
 
 ## Pleos 제작 원칙
 
