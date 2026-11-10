@@ -6,7 +6,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class JourneyTest {
-    private val context = ComparisonContext(JourneyContext(), RefuelSettings(), 1750)
+    private val context =
+        ComparisonContext(JourneyContext(), resolveRefuelConditions(RefuelSettings()), 1750)
     private val station =
         Station("a", "주유소", "S-OIL", 1600, 37.6, 127.0, 1800, 300, 2300, 420, 30200, 2760, 500)
 
@@ -35,7 +36,8 @@ class JourneyTest {
 
     @Test
     fun optionalTimeCostIncludesStopAndCanProduceLoss() {
-        val timed = context.copy(settings = RefuelSettings(includeTimeCost = true))
+        val timed =
+            context.copy(conditions = resolveRefuelConditions(RefuelSettings(includeTimeCost = true)))
         val result = compareStation(timed, station, JourneyMode.WAYPOINT)
         assertEquals(1800.0, result.timeCostWon, .0001)
         assertEquals(3437.5, result.netSavingWon, .0001)
@@ -51,7 +53,7 @@ class JourneyTest {
     @Test
     fun roundingDoesNotEnterCalculationAndFasterViaRemainsSigned() {
         val result = compareStation(
-            context.copy(settings = RefuelSettings(efficiencyKmPerL = 13)),
+            context.copy(conditions = resolveRefuelConditions(RefuelSettings(efficiencyKmPerL = 13))),
             station,
             JourneyMode.WAYPOINT
         )

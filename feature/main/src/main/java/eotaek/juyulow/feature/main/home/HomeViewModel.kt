@@ -6,6 +6,7 @@ import eotaek.juyulow.core.data.ComparisonSessionRepository
 import eotaek.juyulow.core.data.JourneyRepository
 import eotaek.juyulow.core.data.SettingsRepository
 import eotaek.juyulow.core.data.StationRepository
+import eotaek.juyulow.core.data.VehicleInfoRepository
 import eotaek.juyulow.core.model.RefuelSettings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -19,6 +20,7 @@ class HomeViewModel(
     private val sessions: ComparisonSessionRepository,
     private val journeys: JourneyRepository,
     settings: SettingsRepository,
+    vehicle: VehicleInfoRepository,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(HomeUiState())
     val state = mutableState.asStateFlow()
@@ -26,6 +28,9 @@ class HomeViewModel(
     private var searchGeneration = 0
 
     init {
+        viewModelScope.launch {
+            vehicle.fields.collect { fields -> mutableState.update { it.copy(vehicleFields = fields) } }
+        }
         viewModelScope.launch {
             journeys.context.collect { route ->
                 mutableState.update {
@@ -57,7 +62,7 @@ class HomeViewModel(
 
     fun search() {
         val snapshot = state.value
-        val settings = snapshot.settings ?: return
+        val conditions = snapshot.conditions ?: return
         if (snapshot.searching || snapshot.readySessionId != null) return
         val generation = ++searchGeneration
         mutableState.update { it.copy(searching = true, error = null) }
@@ -65,7 +70,7 @@ class HomeViewModel(
             try {
                 val found = stations.search(snapshot.journey)
                 if (generation != searchGeneration) return@launch
-                val session = sessions.create(snapshot.journey, settings, found)
+                val session = sessions.create(snapshot.journey, conditions, found)
                 mutableState.update { it.copy(searching = false, readySessionId = session.id) }
             } catch (error: CancellationException) {
                 throw error

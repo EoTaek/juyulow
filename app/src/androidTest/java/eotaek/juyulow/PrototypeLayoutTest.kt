@@ -29,7 +29,12 @@ import eotaek.juyulow.core.model.ComparisonSession
 import eotaek.juyulow.core.model.JourneyContext
 import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.RefuelSettings
+import eotaek.juyulow.core.model.RefuelValueSource
 import eotaek.juyulow.core.model.Station
+import eotaek.juyulow.core.model.VehicleEnergy
+import eotaek.juyulow.core.model.VehicleFetchStatus
+import eotaek.juyulow.core.model.VehicleValueOrigin
+import eotaek.juyulow.core.model.resolveRefuelConditions
 import eotaek.juyulow.feature.main.results.ResultsScreen
 import eotaek.juyulow.feature.main.results.ResultsUiState
 import org.junit.Assert.assertEquals
@@ -77,7 +82,21 @@ class PrototypeLayoutTest(private val widthDp: Int, private val dark: Boolean) {
         }
         val session = ComparisonSession(
             "layout",
-            ComparisonContext(JourneyContext(), RefuelSettings(includeTimeCost = true), 1670),
+            ComparisonContext(
+                JourneyContext(),
+                resolveRefuelConditions(RefuelSettings(includeTimeCost = true)).copy(
+                    liters = 37.655,
+                    efficiencyKmPerL = 100.0 / 8.5,
+                    litersSource = RefuelValueSource.TANK_LEVEL,
+                    efficiencySource = RefuelValueSource.CUMULATIVE_ECONOMY,
+                    energy = VehicleEnergy(
+                        listOf(10),
+                        VehicleFetchStatus.SUCCESS,
+                        VehicleValueOrigin.FETCH
+                    ),
+                ),
+                1670
+            ),
             stations
         )
         compose.setContent {
@@ -139,6 +158,7 @@ class PrototypeLayoutTest(private val widthDp: Int, private val dark: Boolean) {
             check(root)
         }
         assertTrue("Text overflow: ${overflow.joinToString("; ")}", overflow.isEmpty())
-        compose.onNodeWithText("40 L 주유 · 주변 최고가 1,670원/L 대비").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("37.7 L 주유 · 주변 최고가 1,670원/L 대비").performScrollTo()
+            .assertIsDisplayed()
     }
 }

@@ -3,6 +3,7 @@ package eotaek.juyulow.core.data
 import eotaek.juyulow.core.model.JourneyContext
 import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.RefuelSettings
+import eotaek.juyulow.core.model.resolveRefuelConditions
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -33,7 +34,7 @@ class MockRepositoriesTest {
             val repository = MockJourneyRepository()
             val session = InMemoryComparisonSessionRepository().create(
                 repository.context.value,
-                RefuelSettings(),
+                resolveRefuelConditions(RefuelSettings()),
                 generateStations(repository.context.value, Random(1))
             )
             val station = session.stations.first()
@@ -73,12 +74,13 @@ class MockRepositoriesTest {
         val stations = generateStations(JourneyContext(), Random(2)).toMutableList()
         val expectedPrice = stations.maxOf { it.priceWonPerL }
         val repository = InMemoryComparisonSessionRepository()
-        val first = repository.create(JourneyContext(), RefuelSettings(), stations)
+        val first =
+            repository.create(JourneyContext(), resolveRefuelConditions(RefuelSettings()), stations)
         stations.clear()
         assertEquals(expectedPrice, first.context.referencePriceWonPerL)
         assertFalse(first.stations.isEmpty())
         assertEquals(first, repository.get(first.id))
-        repository.create(JourneyContext(), RefuelSettings(), emptyList())
+        repository.create(JourneyContext(), resolveRefuelConditions(RefuelSettings()), emptyList())
         assertNull(repository.get(first.id))
     }
 }

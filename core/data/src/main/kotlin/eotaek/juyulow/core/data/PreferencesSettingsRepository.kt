@@ -10,7 +10,9 @@ import eotaek.juyulow.core.model.RefuelSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import java.io.File
@@ -30,6 +32,7 @@ class SettingsStorage(
 
 class PreferencesSettingsRepository(storage: SettingsStorage) : SettingsRepository {
     private val store = storage.store
+    private val litersOverride = MutableStateFlow<Double?>(null)
     override val settings = store.data.catch { error ->
         if (error is IOException) emit(emptyPreferences()) else throw error
     }.map { values ->
@@ -39,7 +42,8 @@ class PreferencesSettingsRepository(storage: SettingsStorage) : SettingsReposito
             refuelMinutes = (values[Minutes] ?: 5).takeIf { it in 1..20 } ?: 5,
             includeTimeCost = values[TimeCost] ?: false,
         )
-    }.distinctUntilChanged()
+    }.combine(litersOverride) { settings, override -> settings.copy(litersOverride = override) }
+        .distinctUntilChanged()
 
     override suspend fun save(settings: RefuelSettings) {
         store.edit { values ->
@@ -48,6 +52,7 @@ class PreferencesSettingsRepository(storage: SettingsStorage) : SettingsReposito
             values[Minutes] = settings.refuelMinutes
             values[TimeCost] = settings.includeTimeCost
         }
+        litersOverride.value = settings.litersOverride
     }
 
     private companion object {

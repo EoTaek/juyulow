@@ -69,7 +69,7 @@ Vehicle 가이드에 따라 진행 중인 get·capability 콜백이 끝난 뒤 r
 `JuyulowApplication`이 process-scoped `VehicleRuntime`을 시작한다. `VehicleStartup`은 누적/현재 연비·잔량 %와
 AAOS `INFO_FUEL_CAPACITY`·`FUEL_LEVEL`·`INFO_FUEL_TYPE`을 각각 1회 조회한다. Activity 재생성·복귀 시 재조회와 지속 구독은
 없다.
-화면·검색 계산 연결, 예상 가득 주유량 및 일반/고급휘발유 판별은 이번 범위에 포함하지 않는다.
+조회값은 아래 계산 조건과 화면에 연결한다. 일반/고급휘발유 판별은 지원하지 않는다.
 
 - AAOS는 SDK의 optional `android.car` library로 컴파일한다. Automotive 기능과 라이브러리가 없는 환경에서는 SDK 객체를 만들지 않고
   미지원 처리한다.
@@ -85,7 +85,7 @@ AAOS `INFO_FUEL_CAPACITY`·`FUEL_LEVEL`·`INFO_FUEL_TYPE`을 각각 1회 조회�
 - `VehicleInfoRepository.fields`의 각 `VehicleField`는 raw/applicable 값, 원본 단위 (프로퍼티에 정의), 상태·실패 사유·조회
   완료 시각 (epoch ms)·출처를 보관한다.
   `FETCH`가 `DEFAULT`보다 우선하며 기본값도 없으면 `UNSET`이다. null·비유한 값·0 이하 연비/용량·음수 잔여량·범위 밖 %는 실패다.
-  AAOS mL와 Pleos %는 서로 대체하지 않는다. 유종은 UNKNOWN/OTHER 및 미래 코드까지 원본 정수 목록으로 보존하며 차량 종류를 추정하지 않는다.
+  원본 AAOS mL와 Pleos %는 저장소에서 서로 덮어쓰지 않는다. 유종은 UNKNOWN/OTHER 및 미래 코드까지 원본 정수 목록으로 보존한다.
 - `VehicleDefaultsRepository.save(property, value)`는 기존 `SettingsStorage`의 `vehicle_default_*` 키에
   저장한다. null은 해당 override를 삭제한다.
   연비 기본값 미지정 시 기존 수동 연비 (미저장 시 12km/L)를 L/100km로 변환해 사용하고 나머지는 미설정이다. fetch 성공값은 저장하지 않는다.
@@ -101,6 +101,25 @@ AAOS
 근거: [VehiclePropertyIds](https://developer.android.com/reference/android/car/VehiclePropertyIds),
 [CarPropertyManager](https://developer.android.com/reference/android/car/hardware/property/CarPropertyManager),
 [FuelType](https://developer.android.com/reference/android/car/FuelType).
+
+## 계산 조건·화면 연결
+
+- `resolveRefuelConditions`는 순수 Kotlin 공통 로직이다. 실제 `SUCCESS/FETCH` 값만 수동 계산값을 대체하며,
+  `vehicle_default_*`는 조회 정보에서 기본값으로 표시한다. 계산 fallback은 저장된 수동값 (기본 40L·12km/L)이다.
+- 가득 주유량은 `(용량 − 잔량) / 1000.0` L다. 두 값 모두 실제 조회 성공이고 `0 ≤ 잔량 ≤ 용량`이어야 한다.
+  잔량을 사용할 수 없으면 조회 성공한 용량과 %로 `용량 / 1000.0 × (1 − % / 100)`을 계산한다.
+  실패·권한 대기 중에는 수동값을 사용한다. 0L도 유효하며 검색·이동 비용 계산을 허용한다.
+- 연비는 조회 성공한 누적 → 현재 → 수동 순서이며, `100.0 / 원본 L/100km`로 km/L를 구한다.
+  원본값은 보존하고 계산용 km/L만 변환한다.
+- `RefuelConditions`는 실수형 주유량·연비, 주유 시간·시간 비용, 각 값의 출처, 에너지원과 휘발유 비교 정책을 담는다.
+  검색 시작 시 고정해 `ComparisonContext`에 보관하고, 결과 재검색·정렬·경로 선택·완료 화면에도 유지한다.
+- 홈·설정만 최신 차량값을 수집한다. 설정에서 자동 연비는 읽기 전용이며 주유량은 자동값을 초기값으로 ±10L 수정한다 (0~100L, 조회값이 범위를 넘으면 감소 가능).
+  적용한 주유량 override는 프로세스 메모리에만 보관하고 늦은 조회보다 우선한다. 새 프로세스에서는 override를 초기화한다. 취소 시 초안을 폐기하며 SDK 값을
+  디스크에 저장하지 않는다.
+  차량 에너지원, 용량·잔량·%·누적/현재 연비는 설정에서 조회 중/확인 불가/기본값 출처와 함께 확인할 수 있다.
+- AAOS 0~12는 공식 에너지원 명칭으로 표시한다. 10은 전기이며 복수·미지 코드를 보존한다. 검색·가격·비교 계산은 휘발유 기준이다.
+  전기차 미지원 안내를 표시하면서 검색을 허용하며 충전 관련 계산은 후속 과제다.
+- 잔량 mL 실패는 % 대체 성공 여부와 관계없이 기존 debug `VehicleStartup` logcat에 남는다. release는 no-op이다.
 
 ## 검증과 근거
 

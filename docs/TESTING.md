@@ -36,6 +36,12 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
 `VehicleInfoTest`는 기존 설정 호환·기본값 저장/재로딩·단위 변환·비정상 값을 검증한다. release 진단 no-op의 컴파일·패키징도
 `:app:assembleRelease`로 확인한다.
 
+`RefuelConditionsTest`는 소수값과 수동 범위 밖 자동값, L/100km 변환, 0L의 이동 비용,
+잔량 초과·조회 실패 시 % 대체와 수동 fallback, 누적/현재 연비 우선순위를 검증한다.
+`MainViewModelsTest`는 검색 도중 도착한 차량값과 수동 설정 변경이 결과 재검색·완료의 스냅샷을 바꾸지 않고 새 홈 검색에 반영되는지,
+0L 검색 허용과 복수·미지 에너지원 표시를 검증한다. `SettingsViewModelTest`는 팝업 편집 중 자동 성공 시 수동 초안 보존과 SDK 값 저장 방지를 확인한다.
+`VehicleStartupTest`는 잔량 mL 실패 후 % 대체가 성공해도 원래 실패 진단이 유지되는지 검증한다.
+
 버전은 `gradle/libs.versions.toml`에서 관리하고 각 모듈의 `testImplementation`으로 선언한다.
 
 | 모듈                                            | 테스트 의존성                                              |
@@ -65,10 +71,13 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
 ```
 
 - `PrototypeFlowTest`: 실제 Koin·Navigation 3·DataStore를 사용하는 홈 → 검색 → 세 이동 방식의 경로 설정·완료·뒤로가기, 목적지 없는
-  검색, Activity 재생성 후 선택 유지, 설정 취소·적용·다시 열기를 검증한다. 테스트 전의 주유 조건은 종료 시 복원한다.
+  검색, Activity 재생성 후 선택 유지, 주유 시간의 설정 취소·적용·다시 열기를 검증한다. 테스트 전의 주유 조건은 종료 시 복원한다.
 - `PrototypeLayoutTest`: 논리 앱 영역 1700 × 1184dp와 840 × 1184dp를 두 테마로 렌더링해 동일 너비 좌우 배치·마지막 항목 스크롤·버튼
   비겹침·텍스트 overflow를 검증한다. Pleos 호스트 창에 들어가도록 테스트에서만 Density를 0.5로 설정한다. 이는 실제 Pleos 폼 팩터 테스트를 대체하지
   않는다.
+- `VehicleConditionsLayoutTest`: 같은 두 크기·두 테마에서 홈·설정·완료의 차량 정보와 소수 조건을 확인한다.
+  자동 연비의 스텝퍼 제거와 주유량 편집 버튼 활성화, 상세 조회 정보·적용 버튼의 스크롤 접근, 텍스트 overflow를 검증한다.
+  `PrototypeLayoutTest`도 전기 에너지원·소수 주유량과 연비를 사용해 결과 화면을 검증한다.
 - `VehicleStartupIntegrationTest`: 실제 startup repository의 항목별 완료와 출처를 확인한다. 에너지 권한이 미허용이면 잔여량은 대기할 수
   있다.
   `VehicleStartupTest` logcat에 공급된 원본 단위·값·상태를 남긴다. 권한을 강제 허용/회수하거나 앱 데이터를 삭제하지 않는다.
@@ -87,4 +96,15 @@ AAOS 탱크 용량과 잔여량은 각각 15,000mL, 유종 목록은 `[10]`(ELEC
 Pleos 누적/현재 연비·잔량 %는 capability에서 `ERROR_NOT_SUPPORTED_PROPERTY`로 실패했다.
 두 연비는 DataStore의 기본 12km/L로 대체되고 잔량 %는 미설정이었으며, 실패 3항목은 debug `VehicleStartup` 로그에 기록됐다.
 이 값은 에뮬레이터 시뮬레이션이며 실차 검증이 아니다. 해당 사용자에는 에너지 권한이 이미 허용되어 새 권한 대화상자와 실제 권한 거부/회수는
-이 실행에서 확인하지 않았다. 권한 허용/거부 및 지연 응답은 Fake 테스트로 검증한다. 순수 전기차 계산 차단은 후속 화면/계산 연결 범위다.
+이 실행에서 확인하지 않았다. 권한 허용/거부 및 지연 응답은 Fake 테스트로 검증한다.
+
+### 차량값 화면·계산 연결 확인 (2026-11-09)
+
+동일 Pleos 에뮬레이터에서 연결 테스트 20개가 통과했다. 홈과 설정에서 에너지원 `전기`, 비교 정책 `휘발유 기준`,
+예상 가득 주유량 `0 L (자동 · 잔량 L)`, 연비 `12 km/L (수동)`을 확인했다.
+당시 설정에서는 자동 주유량이 읽기 전용이었으며 연비·주유 시간은 수동 편집이 가능했고, 용량·잔량은 각각 15L로 표시됐다.
+Pleos 미지원 3항목은 debug logcat에 유지됐다. % 대체와 소수 계산은 Fake로 검증하며,
+전기차도 휘발유 비교를 허용한다. 충전·전비 계산은 후속 과제다.
+
+주유량 수정 정책: 자동값에서 수정한 소수 주유량이 늦은 fetch보다 우선하고 적용 전에는 저장소에 영향을 주지 않는지 SettingsViewModelTest로 확인한다.
+PreferencesSettingsRepositoryTest는 주유량 override가 같은 실행에서는 유지되고 새 저장소에서는 초기화되는지 검증한다.

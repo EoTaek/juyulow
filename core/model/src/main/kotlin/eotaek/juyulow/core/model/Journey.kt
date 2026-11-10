@@ -8,11 +8,14 @@ data class RefuelSettings(
     val efficiencyKmPerL: Int = 12,
     val refuelMinutes: Int = 5,
     val includeTimeCost: Boolean = false,
+    // User override for this process; a new startup begins with vehicle data again.
+    val litersOverride: Double? = null,
 ) {
     init {
         require(liters in 10..100 && liters % 10 == 0)
         require(efficiencyKmPerL in 1..30)
         require(refuelMinutes in 1..20)
+        require(litersOverride == null || (litersOverride.isFinite() && litersOverride >= 0))
     }
 
     val refuelSeconds: Int get() = refuelMinutes * 60
@@ -53,7 +56,7 @@ data class Station(
 
 data class ComparisonContext(
     val journey: JourneyContext,
-    val settings: RefuelSettings,
+    val conditions: RefuelConditions,
     val referencePriceWonPerL: Int,
 )
 
@@ -87,6 +90,7 @@ data class NavigationSelection(
     val distanceMeters: Int,
     val durationSeconds: Int,
     val refuelSeconds: Int,
+    val conditions: RefuelConditions,
 )
 
 /** Web journey.ts contract: metres, seconds, KRW; round only at display boundaries. */
@@ -110,16 +114,16 @@ fun compareStation(
     val extraDistance =
         distance - if (mode == JourneyMode.WAYPOINT) context.journey.baselineMeters else 0
     val extraTime =
-        drive - (if (mode == JourneyMode.WAYPOINT) context.journey.baselineSeconds else 0) + context.settings.refuelSeconds
+        drive - (if (mode == JourneyMode.WAYPOINT) context.journey.baselineSeconds else 0) + context.conditions.refuelSeconds
     return StationComparison(
         distanceMeters = distance,
         drivingSeconds = drive,
-        totalSeconds = drive + context.settings.refuelSeconds,
+        totalSeconds = drive + context.conditions.refuelSeconds,
         costDistanceMeters = extraDistance,
         costDurationSeconds = extraTime,
-        fuelSavingWon = (context.referencePriceWonPerL - station.priceWonPerL).toDouble() * context.settings.liters,
-        drivingCostWon = extraDistance / 1000.0 / context.settings.efficiencyKmPerL * context.referencePriceWonPerL,
+        fuelSavingWon = (context.referencePriceWonPerL - station.priceWonPerL).toDouble() * context.conditions.liters,
+        drivingCostWon = extraDistance / 1000.0 / context.conditions.efficiencyKmPerL * context.referencePriceWonPerL,
         tollWon = station.tollWon.toDouble(),
-        timeCostWon = extraTime / 3600.0 * context.settings.timeWonPerHour,
+        timeCostWon = extraTime / 3600.0 * context.conditions.timeWonPerHour,
     )
 }

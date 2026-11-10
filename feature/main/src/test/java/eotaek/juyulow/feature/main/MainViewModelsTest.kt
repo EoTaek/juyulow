@@ -3,11 +3,14 @@ package eotaek.juyulow.feature.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelStore
 import eotaek.juyulow.core.data.InMemoryComparisonSessionRepository
+import eotaek.juyulow.core.data.InMemoryVehicleInfoRepository
 import eotaek.juyulow.core.data.JourneyRepository
 import eotaek.juyulow.core.data.MockJourneyRepository
 import eotaek.juyulow.core.data.SettingsRepository
 import eotaek.juyulow.core.data.StationRepository
 import eotaek.juyulow.core.data.generateStations
+import eotaek.juyulow.core.design.component.displayLabel
+import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.model.ComparisonSession
 import eotaek.juyulow.core.model.JourneyContext
 import eotaek.juyulow.core.model.JourneyMode
@@ -15,6 +18,12 @@ import eotaek.juyulow.core.model.NavigationSelection
 import eotaek.juyulow.core.model.RefuelSettings
 import eotaek.juyulow.core.model.Station
 import eotaek.juyulow.core.model.StationSort
+import eotaek.juyulow.core.model.VehicleEnergy
+import eotaek.juyulow.core.model.VehicleFetchStatus
+import eotaek.juyulow.core.model.VehicleProperty
+import eotaek.juyulow.core.model.VehicleValue
+import eotaek.juyulow.core.model.VehicleValueOrigin
+import eotaek.juyulow.core.model.resolveRefuelConditions
 import eotaek.juyulow.feature.main.common.kilometers
 import eotaek.juyulow.feature.main.common.minutes
 import eotaek.juyulow.feature.main.common.won
@@ -78,7 +87,9 @@ class MainViewModelsTest {
         var ignoreCancellation = false
         override suspend fun search(journey: JourneyContext): List<Station> {
             calls++
-            if (ignoreCancellation) withContext(NonCancellable) { delay(850) } else delay(850)
+            if (ignoreCancellation) withContext(NonCancellable) { delay(850.milliseconds) } else delay(
+                850.milliseconds
+            )
             if (fail) throw IOException("offline")
             return generateStations(journey, Random(calls))
         }
@@ -89,7 +100,15 @@ class MainViewModelsTest {
         val settings = Settings()
         val stations = Stations()
         val sessions = InMemoryComparisonSessionRepository()
-        val home = keep(HomeViewModel(stations, sessions, MockJourneyRepository(), settings))
+        val home = keep(
+            HomeViewModel(
+                stations,
+                sessions,
+                MockJourneyRepository(),
+                settings,
+                InMemoryVehicleInfoRepository()
+            )
+        )
         runCurrent()
         home.search(); home.search()
         runCurrent()
@@ -98,9 +117,71 @@ class MainViewModelsTest {
         settings.save(RefuelSettings(liters = 80))
         advanceUntilIdle()
         val batch = requireNotNull(sessions.get(requireNotNull(home.state.value.readySessionId)))
-        assertEquals(40, batch.context.settings.liters)
+        assertEquals(40.0, batch.context.conditions.liters, 0.0)
         home.consumeSearch()
         assertNull(home.state.value.readySessionId)
+    }
+
+    @Test
+    fun lateVehicleReadsOnlyAffectNewHomeSearchesAndCompletionKeepsSnapshot() =
+        runTest(dispatcher) {
+            val settings = Settings()
+            val vehicle = InMemoryVehicleInfoRepository()
+            val sessions = InMemoryComparisonSessionRepository()
+            val journeys = MockJourneyRepository()
+            val stations = Stations()
+            val home = keep(HomeViewModel(stations, sessions, journeys, settings, vehicle))
+            runCurrent()
+            home.search()
+            runCurrent()
+            vehicle.complete(VehicleProperty.FUEL_CAPACITY, VehicleValue.Number(50_000.0), 1, null)
+            vehicle.complete(VehicleProperty.FUEL_LEVEL, VehicleValue.Number(12_345.0), 1, null)
+            vehicle.complete(VehicleProperty.CUMULATIVE_ECONOMY, VehicleValue.Number(8.5), 1, null)
+            vehicle.complete(
+                VehicleProperty.FUEL_TYPES, VehicleValue.FuelTypes(listOf(10)), 1, null
+            )
+            advanceUntilIdle()
+            val first =
+                requireNotNull(sessions.get(requireNotNull(home.state.value.readySessionId)))
+            assertEquals(40.0, first.context.conditions.liters, 0.0)
+            assertTrue(first.context.conditions.energy.codes.isEmpty())
+            assertEquals(37.655, requireNotNull(home.state.value.conditions).liters, 0.0)
+            val results = keep(ResultsViewModel(first.id, stations, sessions, journeys))
+            settings.save(RefuelSettings(liters = 80))
+            results.refresh()
+            advanceUntilIdle()
+            assertEquals(first.context.conditions, results.state.value.session?.context?.conditions)
+            results.confirm()
+            advanceUntilIdle()
+            val completion = keep(
+                CompletionViewModel(
+                    requireNotNull(results.state.value.completedSelectionId), journeys
+                )
+            )
+            assertEquals(first.context.conditions, completion.selection?.conditions)
+            home.consumeSearch()
+            home.search()
+            advanceUntilIdle()
+            val second =
+                requireNotNull(sessions.get(requireNotNull(home.state.value.readySessionId)))
+            assertEquals(37.655, second.context.conditions.liters, 0.0)
+            assertEquals(100.0 / 8.5, second.context.conditions.efficiencyKmPerL, 0.0)
+            assertEquals(listOf(10), second.context.conditions.energy.codes)
+        }
+
+    @Test
+    fun zeroAutomaticLitersStillAllowsSearching() = runTest(dispatcher) {
+        val vehicle = InMemoryVehicleInfoRepository()
+        vehicle.complete(VehicleProperty.FUEL_CAPACITY, VehicleValue.Number(15_000.0), 1, null)
+        vehicle.complete(VehicleProperty.FUEL_LEVEL, VehicleValue.Number(15_000.0), 1, null)
+        val sessions = InMemoryComparisonSessionRepository()
+        val home =
+            keep(HomeViewModel(Stations(), sessions, MockJourneyRepository(), Settings(), vehicle))
+        runCurrent()
+        home.search()
+        advanceUntilIdle()
+        val session = requireNotNull(sessions.get(requireNotNull(home.state.value.readySessionId)))
+        assertEquals(0.0, session.context.conditions.liters, 0.0)
     }
 
     @Test
@@ -111,7 +192,8 @@ class MainViewModelsTest {
                 stations,
                 InMemoryComparisonSessionRepository(),
                 MockJourneyRepository(),
-                Settings()
+                Settings(),
+                InMemoryVehicleInfoRepository(),
             )
         )
         runCurrent()
@@ -135,7 +217,8 @@ class MainViewModelsTest {
                 stations,
                 InMemoryComparisonSessionRepository(),
                 MockJourneyRepository(),
-                Settings()
+                Settings(),
+                InMemoryVehicleInfoRepository(),
             )
         )
         runCurrent(); home.search(); advanceUntilIdle()
@@ -150,7 +233,9 @@ class MainViewModelsTest {
     @Test
     fun sortingAndModeChangesRetainSelectionAndData() = runTest(dispatcher) {
         val sessions = InMemoryComparisonSessionRepository()
-        val batch = sessions.create(JourneyContext(), RefuelSettings(), previewSession().stations)
+        val batch = sessions.create(
+            JourneyContext(), resolveRefuelConditions(RefuelSettings()), previewSession().stations
+        )
         val results =
             keep(ResultsViewModel(batch.id, Stations(), sessions, MockJourneyRepository()))
         val initialId = results.state.value.selectedId
@@ -168,8 +253,11 @@ class MainViewModelsTest {
         val sessions = InMemoryComparisonSessionRepository()
         val journeys = MockJourneyRepository()
         val stations = Stations()
-        val batch =
-            sessions.create(journeys.context.value, RefuelSettings(), previewSession().stations)
+        val batch = sessions.create(
+            journeys.context.value,
+            resolveRefuelConditions(RefuelSettings()),
+            previewSession().stations
+        )
         val results = keep(ResultsViewModel(batch.id, stations, sessions, journeys))
         results.changeMode(JourneyMode.DESTINATION)
         results.confirm(); results.confirm(); advanceUntilIdle()
@@ -189,8 +277,11 @@ class MainViewModelsTest {
     fun failedRefreshKeepsOldSelectionAndBatchAndEmptyResultsDisableConfirmation() =
         runTest(dispatcher) {
             val sessions = InMemoryComparisonSessionRepository()
-            val batch =
-                sessions.create(JourneyContext(), RefuelSettings(), previewSession().stations)
+            val batch = sessions.create(
+                JourneyContext(),
+                resolveRefuelConditions(RefuelSettings()),
+                previewSession().stations
+            )
             val stations = Stations().apply { fail = true }
             val results =
                 keep(ResultsViewModel(batch.id, stations, sessions, MockJourneyRepository()))
@@ -199,8 +290,11 @@ class MainViewModelsTest {
             assertEquals(batch, results.state.value.session)
             assertEquals("station-1", results.state.value.selectedId)
             assertNotNull(results.state.value.error)
-            val empty =
-                sessions.create(JourneyContext(destination = null), RefuelSettings(), emptyList())
+            val empty = sessions.create(
+                JourneyContext(destination = null),
+                resolveRefuelConditions(RefuelSettings()),
+                emptyList()
+            )
             val emptyResults =
                 keep(ResultsViewModel(empty.id, stations, sessions, MockJourneyRepository()))
             emptyResults.changeMode(JourneyMode.WAYPOINT)
@@ -216,15 +310,15 @@ class MainViewModelsTest {
         var fail = true
         val journeys = object : JourneyRepository by delegate {
             override suspend fun select(
-                session: ComparisonSession,
-                station: Station,
-                mode: JourneyMode
+                session: ComparisonSession, station: Station, mode: JourneyMode
             ): NavigationSelection {
                 if (fail) throw IOException("failed")
                 return delegate.select(session, station, mode)
             }
         }
-        val batch = sessions.create(JourneyContext(), RefuelSettings(), previewSession().stations)
+        val batch = sessions.create(
+            JourneyContext(), resolveRefuelConditions(RefuelSettings()), previewSession().stations
+        )
         val results = keep(ResultsViewModel(batch.id, Stations(), sessions, journeys))
         results.changeMode(JourneyMode.DESTINATION)
         results.confirm(); advanceUntilIdle()
@@ -240,7 +334,9 @@ class MainViewModelsTest {
     @Test
     fun poppedResultsCannotReplaceANewHomeBatchWithALateRefresh() = runTest(dispatcher) {
         val sessions = InMemoryComparisonSessionRepository()
-        val old = sessions.create(JourneyContext(), RefuelSettings(), previewSession().stations)
+        val old = sessions.create(
+            JourneyContext(), resolveRefuelConditions(RefuelSettings()), previewSession().stations
+        )
         val stations = Stations().apply { ignoreCancellation = true }
         val results = keep(ResultsViewModel(old.id, stations, sessions, MockJourneyRepository()))
         results.refresh(); runCurrent()
@@ -248,7 +344,7 @@ class MainViewModelsTest {
         store.clear()
         val next = sessions.create(
             JourneyContext(destination = null),
-            RefuelSettings(liters = 80),
+            resolveRefuelConditions(RefuelSettings(liters = 80)),
             previewSession().stations
         )
         advanceUntilIdle()
@@ -262,5 +358,23 @@ class MainViewModelsTest {
         assertEquals("2", minutes(61))
         assertEquals("0", minutes(0))
         assertEquals("28.4", kilometers(28400))
+        assertEquals("37.7", vehicleNumber(37.655))
+        assertEquals("0", vehicleNumber(0.0))
+        assertEquals("40", vehicleNumber(40.0))
+    }
+
+    @Test
+    fun energyDisplayPreservesMultipleAndUnknownCodesAndDefaultOrigin() {
+        fun energy(vararg codes: Int) =
+            VehicleEnergy(codes.toList(), VehicleFetchStatus.SUCCESS, VehicleValueOrigin.FETCH)
+        assertEquals("전기", energy(10).displayLabel())
+        assertEquals("휘발유(무연)", energy(1).displayLabel())
+        assertEquals("경유", energy(3, 4).displayLabel())
+        assertEquals("휘발유(무연) · 전기 · 알 수 없음(999)", energy(1, 10, 999).displayLabel())
+        assertEquals("조회 중", VehicleEnergy().displayLabel())
+        assertEquals("확인 불가", VehicleEnergy(status = VehicleFetchStatus.FAILED).displayLabel())
+        assertEquals(
+            "전기 (기본값)", energy(10).copy(origin = VehicleValueOrigin.DEFAULT).displayLabel()
+        )
     }
 }

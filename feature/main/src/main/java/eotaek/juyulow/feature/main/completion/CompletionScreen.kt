@@ -4,11 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -21,13 +21,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import eotaek.juyulow.core.design.component.PleosLabelValue
-import eotaek.juyulow.core.design.component.PleosOutlinedCard
 import eotaek.juyulow.core.design.component.PleosButton
 import eotaek.juyulow.core.design.component.PleosIcon
+import eotaek.juyulow.core.design.component.PleosLabelValue
+import eotaek.juyulow.core.design.component.PleosOutlinedCard
+import eotaek.juyulow.core.design.component.RefuelConditionsSummary
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.NavigationSelection
+import eotaek.juyulow.core.model.RefuelSettings
+import eotaek.juyulow.core.model.resolveRefuelConditions
 import eotaek.juyulow.feature.main.common.kilometers
 import eotaek.juyulow.feature.main.common.minutes
 
@@ -106,6 +109,7 @@ fun CompletionScreen(
                             )
                         }
                     }
+                    RefuelConditionsSummary(selection.conditions)
                     if (narrow) Column(
                         Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -141,7 +145,8 @@ private val previewSelection = NavigationSelection(
     "한길 셀프주유소",
     30200,
     3060,
-    300
+    300,
+    resolveRefuelConditions(RefuelSettings()),
 )
 
 @Preview(name = "Completion · Landscape", widthDp = 1700, heightDp = 1184)

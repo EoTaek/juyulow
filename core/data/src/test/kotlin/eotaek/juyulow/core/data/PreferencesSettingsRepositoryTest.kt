@@ -26,11 +26,11 @@ class PreferencesSettingsRepositoryTest {
             )
         )
         assertEquals(RefuelSettings(), first.settings.first())
-        val next = RefuelSettings(70, 18, 9, true)
+        val next = RefuelSettings(70, 18, 9, true, litersOverride = 20.5)
         first.save(next)
         assertEquals(next, first.settings.first())
         firstJob.cancelAndJoin()
         val second = PreferencesSettingsRepository(SettingsStorage(file, backgroundScope))
-        assertEquals(next, second.settings.first())
+        assertEquals(next.copy(litersOverride = null), second.settings.first())
     }
 }

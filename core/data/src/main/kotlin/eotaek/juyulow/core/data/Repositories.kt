@@ -4,6 +4,7 @@ import eotaek.juyulow.core.model.ComparisonSession
 import eotaek.juyulow.core.model.JourneyContext
 import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.NavigationSelection
+import eotaek.juyulow.core.model.RefuelConditions
 import eotaek.juyulow.core.model.RefuelSettings
 import eotaek.juyulow.core.model.Station
 import kotlinx.coroutines.flow.Flow
@@ -21,7 +22,7 @@ interface StationRepository {
 interface ComparisonSessionRepository {
     fun create(
         journey: JourneyContext,
-        settings: RefuelSettings,
+        conditions: RefuelConditions,
         stations: List<Station>
     ): ComparisonSession
 

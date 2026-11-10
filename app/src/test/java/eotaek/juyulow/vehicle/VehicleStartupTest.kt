@@ -2,11 +2,14 @@ package eotaek.juyulow.vehicle
 
 import eotaek.juyulow.core.data.InMemoryVehicleInfoRepository
 import eotaek.juyulow.core.data.VehicleDefaultsRepository
+import eotaek.juyulow.core.model.RefuelSettings
+import eotaek.juyulow.core.model.RefuelValueSource
 import eotaek.juyulow.core.model.VehicleFailureReason
 import eotaek.juyulow.core.model.VehicleFetchStatus
 import eotaek.juyulow.core.model.VehicleProperty
 import eotaek.juyulow.core.model.VehicleValue
 import eotaek.juyulow.core.model.VehicleValueOrigin
+import eotaek.juyulow.core.model.resolveRefuelConditions
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -124,6 +127,42 @@ class VehicleStartupTest {
         )
         startup.onEnergyPermissionResult(true); runCurrent()
         assertFalse(VehicleProperty.FUEL_LEVEL in source.reads)
+    }
+
+    @Test
+    fun failedLevelIsLoggedEvenWhenPercentProvidesAutomaticVolume() = runTest {
+        val repo = InMemoryVehicleInfoRepository()
+        val logs = mutableListOf<String>()
+        val pleos =
+            Source { if (it == VehicleProperty.FUEL_PERCENT) VehicleValue.Number(25.0) else null }
+        val aaos = Source {
+            when (it) {
+                VehicleProperty.FUEL_CAPACITY -> VehicleValue.Number(50_000.0)
+                VehicleProperty.FUEL_LEVEL -> throw VehicleReadException(
+                    VehicleFailureReason.UNAVAILABLE,
+                    "get"
+                )
+
+                VehicleProperty.FUEL_TYPES -> VehicleValue.FuelTypes(listOf(10))
+                else -> null
+            }
+        }
+        VehicleStartup(
+            backgroundScope,
+            repo,
+            Defaults(),
+            pleos,
+            aaos,
+            true,
+            true,
+            { msg, _ -> logs += msg }).start()
+        runCurrent()
+        val conditions = resolveRefuelConditions(RefuelSettings(), repo.fields.value)
+        assertEquals(37.5, conditions.liters, 0.0)
+        assertEquals(RefuelValueSource.FUEL_PERCENT, conditions.litersSource)
+        assertEquals(
+            1,
+            logs.count { it.contains("property=FUEL_LEVEL ") && it.contains("reason=UNAVAILABLE") })
     }
 
     @Test
