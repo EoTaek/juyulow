@@ -5,6 +5,7 @@ plugins {
 }
 
 android {
+    useLibrary("android.car", false)
     namespace = "eotaek.juyulow"
     compileSdk {
         version = release(37)
@@ -38,6 +39,9 @@ android {
 }
 
 dependencies {
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    testImplementation(libs.kotlinx.coroutines.test)
     implementation(libs.pleos.vehicle)
     implementation(libs.pleos.navihelper)
     implementation(libs.pleos.fusedlocation)

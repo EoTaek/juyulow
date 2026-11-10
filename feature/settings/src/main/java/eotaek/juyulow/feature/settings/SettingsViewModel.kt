@@ -3,7 +3,11 @@ package eotaek.juyulow.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import eotaek.juyulow.core.data.SettingsRepository
+import eotaek.juyulow.core.data.VehicleInfoRepository
 import eotaek.juyulow.core.model.RefuelSettings
+import eotaek.juyulow.core.model.VehicleField
+import eotaek.juyulow.core.model.VehicleProperty
+import eotaek.juyulow.core.model.resolveRefuelConditions
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,13 +20,22 @@ data class SettingsUiState(
     val saving: Boolean = false,
     val saved: Boolean = false,
     val error: String? = null,
-)
+    val vehicleFields: Map<VehicleProperty, VehicleField> = emptyMap(),
+) {
+    val conditions get() = draft?.let { resolveRefuelConditions(it, vehicleFields) }
+}
 
-class SettingsViewModel(private val repository: SettingsRepository) : ViewModel() {
+class SettingsViewModel(
+    private val repository: SettingsRepository,
+    vehicle: VehicleInfoRepository
+) : ViewModel() {
     private val mutableState = MutableStateFlow(SettingsUiState())
     val state = mutableState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            vehicle.fields.collect { fields -> mutableState.update { it.copy(vehicleFields = fields) } }
+        }
         load()
     }
 
@@ -30,7 +43,7 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
         viewModelScope.launch {
             try {
                 val settings = repository.settings.first()
-                mutableState.value = SettingsUiState(draft = settings)
+                mutableState.update { it.copy(draft = settings, error = null, saved = false) }
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Exception) {
@@ -43,7 +56,14 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
         val current = state.value
         if (!current.saving && !current.saved && current.draft != null) mutableState.update {
             it.copy(
-                draft = update(current.draft),
+                draft = update(current.draft).let { next ->
+                    // The SDK may finish while the popup is open. Keep the manual draft intact.
+                    val conditions = requireNotNull(current.conditions)
+                    next.copy(
+                        liters = if (conditions.automaticLiters) current.draft.liters else next.liters,
+                        efficiencyKmPerL = if (conditions.automaticEfficiency) current.draft.efficiencyKmPerL else next.efficiencyKmPerL,
+                    )
+                },
                 error = null
             )
         }

@@ -16,12 +16,12 @@
 ## 현재 구현 및 모듈 구조
 
 웹 참고 버전의 홈 → 주변 주유소 검색 → 목록·선택 상세 비교 → 경로 설정 완료 흐름을 Compose로 구현했다. 검색마다 3~8곳의 가상 주유소를 생성하며 모든
-위치·가격·경로와 경로 설정은 mock이다. 정차 시연용으로 실제 차량·백엔드·Pleos SDK를 호출하지 않는다.
+위치·가격·경로와 경로 설정은 mock이다. 정차 시연용이며, startup에서 조회한 차량 연료 정보는 홈·설정·비교 계산에 연결한다. 백엔드는 호출하지 않는다.
 
 | 모듈               | 역할                                                                                |
 |--------------------|-------------------------------------------------------------------------------------|
 | `app`              | Application의 Koin 조립, Navigation 3 백스택·팝업·화면 연결, Android 저장 경로 제공 |
-| `core:design`      | 공통 테마·토큰·outlined 벡터 아이콘·버튼·탭·스위치·스텝퍼                           |
+| `core:design`      | 공통 테마·토큰·outlined 벡터 아이콘·버튼·탭·스위치·스텝퍼·차량 조건 요약            |
 | `core:model`       | 순수 Kotlin/JVM 모델과 이동 방식별 비용·시간 계산                                   |
 | `core:data`        | 저장소 계약, mock 검색·경로 설정, 메모리 비교 세션, Preferences DataStore           |
 | `feature:main`     | 홈·결과·완료 화면과 각각의 ViewModel, 두 창 크기·두 테마 프리뷰                     |
@@ -29,7 +29,8 @@
 
 `core:design`은 로컬 Pleos 디자인 가이드의 색상·타이포그래피·그림자 토큰을 `JUYULOWTheme.colors`, `.typography`, `.shadows`로 제공한다. 기존 Material 컴포넌트는 매핑된 `MaterialTheme.colorScheme`과 `.typography`를 사용한다. 출처·매핑·서체 및 원문 해석은 [DESIGN.md](DESIGN.md), 아이콘 제작·사용 지침은 [ICONOGRAPHY.md](ICONOGRAPHY.md)를 참고한다.
 
-의존 방향은 `app → feature/core`, `feature → core`, `core:data → core:model`이다. core는 feature나 app에 의존하지
+의존 방향은 `app → feature/core`, `feature → core`, `core:data/core:design → core:model`이다. core는
+feature나 app에 의존하지
 않으며 feature 간 직접 의존도 두지 않는다. 저장소 계약은 `core:data`에 두고, 추후 실제 데이터·SDK 구현으로 교체한다. 별도 domain 모듈은 추가하지
 않았다.
 
@@ -66,7 +67,10 @@ Serialization 플러그인은 `app`과 `core:data`에 Kotlin과 같은 버전으
 조회·Trip 응답·경로/경유지·내비 화면 요청 어댑터와 필요한 세 내비 권한을 추가했다. `app/location`에는 FusedLocation 지원 확인·위치 조회/구독·접근
 차단 안내, `app/vehicle`에는 Vehicle Fuel의 누적/현재 연비·잔량 capability 조회·값 조회/구독 어댑터를 제공한다. 세 클라이언트는 Koin
 factory로 제공하며 소유자가 명시적으로 초기화·해제한다. FUSED_LOCATION·CAR_ENERGY 권한을 선언하되 위치 런타임 권한 요청 UI는 아직 없다. 현재 화면은
-mock 저장소를 사용하므로 SDK를 호출하지 않는다. 계약과 사용
+mock 저장소를 사용한다. Application은 startup에 Vehicle Fuel 3항목과 AAOS 탱크 용량·잔여 연료량·유종을 1회 조회한다.
+`VehicleInfoRepository.fields`는 실제 값 우선, 실패 시 항목별 DataStore 기본값, 기본값이 없으면 미설정으로 제공한다.
+AAOS 런타임 에너지 권한은 첫 사용 가능한 화면에서 요청하며, 주행 규제 상태에서는 보류한다. 조회 성공값으로 계산 조건을 결정하되 기존 수동 설정을 덮어쓰지 않는다.
+계약과 사용
 제약은 [NAVIHELPER.md](NAVIHELPER.md), [LOCATION_VEHICLE.md](LOCATION_VEHICLE.md)를 참조한다.
 
 ## 기획 배경과 해결할 문제
@@ -103,6 +107,17 @@ mock 저장소를 사용하므로 SDK를 호출하지 않는다. 계약과 사�
 
 기본 조건은 40L·12km/L·주유 5분·시간 비용 제외다. 설정 범위는 10~100L (10L 단위), 1~30km/L (1 단위), 주유 1~20분 (1분 단위)다. 목적지가
 있으면 경유·주유소까지·왕복, 없으면 주유소까지·왕복을 제공한다.
+
+수동 기본값 `RefuelSettings`와 계산용 실수형 `RefuelConditions`를 구분한다. 조회 성공 시 예상 가득 주유량은
+`(탱크 용량 mL − 잔량 mL) / 1000.0`이며, 잔량 mL가 없거나 용량을 초과하면 용량과 잔량 %로 대체한다.
+계산에 필요한 성공값이 없으면 저장된 수동 주유량을 사용한다. 연비는 조회 성공한 누적 → 현재 → 수동 순서로 선택하며 L/100km를 km/L로 변환한다.
+자동값에는 수동 입력 범위를 적용하지 않고, 0L도 검색을 허용한다. 계산은 반올림하지 않고 화면에서 소수 첫째 자리까지 표시한다.
+홈·설정은 최신 상태를 표시한다. 연비 자동값은 읽기 전용이며 주유량은 홈의 주유 조건 팝업에서 ±10L로 수정할 수 있다. 수정값은 적용 후 이번 프로세스에서 우선 사용하고 새
+startup에서는 차량 조회값으로 다시 시작한다. 취소한 초안은 적용하지 않는다. 검색 시작 시 조건·출처·에너지원을 고정하고 결과 재검색과 완료 화면도 같은 스냅샷을 유지한다.
+조회 중에는 수동값으로 검색할 수 있고 이후 도착한 차량값은 새 홈 검색부터 반영한다.
+
+차량 에너지원은 AAOS 원본 코드 목록으로 표시하지만 비교 유종·유가는 휘발유 기준으로 고정한다. 전기 코드 10도 전기로 표시하면서 휘발유 비교를 허용하고,
+전기차 계산 미지원 안내를 제공한다. 전비·충전량·충전소 비교는 기존 백로그의 후속 과제다. 복수 에너지원으로 하이브리드 차종이나 휘발유 등급을 추정하지 않는다.
 
 설명용 예시:
 

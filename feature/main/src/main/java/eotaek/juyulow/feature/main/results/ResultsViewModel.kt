@@ -66,7 +66,11 @@ class ResultsViewModel(
                 val found = stations.search(oldSession.context.journey)
                 if (request != generation) return@launch
                 val next =
-                    sessions.create(oldSession.context.journey, oldSession.context.settings, found)
+                    sessions.create(
+                        oldSession.context.journey,
+                        oldSession.context.conditions,
+                        found
+                    )
                 mutableState.update {
                     withFirstSelection(
                         it.copy(

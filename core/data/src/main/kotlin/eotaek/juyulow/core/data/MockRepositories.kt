@@ -5,7 +5,7 @@ import eotaek.juyulow.core.model.ComparisonSession
 import eotaek.juyulow.core.model.JourneyContext
 import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.NavigationSelection
-import eotaek.juyulow.core.model.RefuelSettings
+import eotaek.juyulow.core.model.RefuelConditions
 import eotaek.juyulow.core.model.Station
 import eotaek.juyulow.core.model.compareStation
 import kotlinx.coroutines.delay
@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
 
 fun generateStations(journey: JourneyContext, random: Random = Random.Default): List<Station> {
     val names =
@@ -44,7 +45,7 @@ fun generateStations(journey: JourneyContext, random: Random = Random.Default): 
 
 class MockStationRepository : StationRepository {
     override suspend fun search(journey: JourneyContext): List<Station> {
-        delay(850)
+        delay(850.milliseconds)
         return generateStations(journey)
     }
 }
@@ -54,12 +55,12 @@ class InMemoryComparisonSessionRepository : ComparisonSessionRepository {
     private var session: ComparisonSession? = null
     override fun create(
         journey: JourneyContext,
-        settings: RefuelSettings,
+        conditions: RefuelConditions,
         stations: List<Station>
     ): ComparisonSession {
         val next = ComparisonSession(
             UUID.randomUUID().toString(),
-            ComparisonContext(journey, settings, stations.maxOfOrNull { it.priceWonPerL } ?: 0),
+            ComparisonContext(journey, conditions, stations.maxOfOrNull { it.priceWonPerL } ?: 0),
             stations.toList(),
         )
         session = next
@@ -99,7 +100,8 @@ class MockJourneyRepository : JourneyRepository {
             waypoint = if (mode == JourneyMode.DESTINATION) null else station.name,
             distanceMeters = comparison.distanceMeters,
             durationSeconds = comparison.totalSeconds,
-            refuelSeconds = session.context.settings.refuelSeconds,
+            refuelSeconds = session.context.conditions.refuelSeconds,
+            conditions = session.context.conditions,
         )
         lastSelection = next
         mutableContext.value = JourneyContext(

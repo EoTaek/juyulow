@@ -86,23 +86,41 @@ class PrototypeFlowTest {
     }
 
     @Test
+    fun automaticVolumeCanBeEditedCancelledAndApplied() {
+        compose.onNodeWithTag("open-settings").performClick()
+        compose.onNodeWithContentDescription("예상 주유량 늘리기").performClick()
+        compose.onNodeWithContentDescription("설정 닫기").performClick()
+        assertEquals(original, runBlocking { settings.settings.first() })
+        compose.onNodeWithTag("open-settings").performClick()
+        compose.onNodeWithContentDescription("예상 주유량 늘리기").performClick()
+        compose.onNodeWithText("적용하기").performScrollTo().performClick()
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("적용하기").fetchSemanticsNodes().isEmpty()
+        }
+        org.junit.Assert.assertNotNull(runBlocking { settings.settings.first() }.litersOverride)
+        compose.onNodeWithTag("open-settings").performClick()
+        compose.onNodeWithText("수동").assertIsDisplayed()
+        pressBack()
+    }
+
+    @Test
     fun settingsCancelApplyAndReopen() {
-        val changedLiters = if (original.liters == 100) 90 else original.liters + 10
-        val stepLabel = if (original.liters == 100) "예상 주유량 줄이기" else "예상 주유량 늘리기"
+        val changedMinutes = if (original.refuelMinutes == 20) 19 else original.refuelMinutes + 1
+        val stepLabel = if (original.refuelMinutes == 20) "주유 시간 줄이기" else "주유 시간 늘리기"
         compose.onNodeWithTag("open-settings").performClick()
         compose.onNodeWithContentDescription(stepLabel).performClick()
         compose.onNodeWithContentDescription("설정 닫기").performClick()
         assertEquals(original, runBlocking { settings.settings.first() })
         compose.onNodeWithTag("open-settings").performClick()
-        compose.onNodeWithContentDescription("예상 주유량 ${original.liters} L").assertExists()
+        compose.onNodeWithContentDescription("주유 시간 ${original.refuelMinutes} 분").assertExists()
         compose.onNodeWithContentDescription(stepLabel).performClick()
         compose.onNodeWithText("적용하기").performScrollTo().performClick()
         compose.waitUntil(10_000) {
             compose.onAllNodesWithText("적용하기").fetchSemanticsNodes().isEmpty()
         }
-        assertEquals(changedLiters, runBlocking { settings.settings.first() }.liters)
+        assertEquals(changedMinutes, runBlocking { settings.settings.first() }.refuelMinutes)
         compose.onNodeWithTag("open-settings").performClick()
-        compose.onNodeWithContentDescription("예상 주유량 $changedLiters L").assertExists()
+        compose.onNodeWithContentDescription("주유 시간 $changedMinutes 분").assertExists()
         pressBack()
         compose.onNodeWithTag("search-stations").assertIsDisplayed()
     }

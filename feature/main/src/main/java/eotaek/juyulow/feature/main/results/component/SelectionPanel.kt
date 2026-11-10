@@ -2,10 +2,10 @@ package eotaek.juyulow.feature.main.results.component
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import eotaek.juyulow.core.design.component.PleosIcon
+import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.ComparisonContext
 import eotaek.juyulow.core.model.JourneyMode
@@ -98,7 +99,7 @@ internal fun SelectionPanel(
             }
         }
         Text(
-            "전체 ${minutes(result.totalSeconds)}분 · ${kilometers(result.distanceMeters)} km · 주유 ${context.settings.refuelMinutes}분 포함",
+            "전체 ${minutes(result.totalSeconds)}분 · ${kilometers(result.distanceMeters)} km · 주유 ${context.conditions.refuelMinutes}분 포함",
             style = type.labelSmall,
             color = colors.textDarkTertiary
         )
@@ -118,10 +119,10 @@ internal fun SelectionPanel(
         CostRow("통행료", "−${won(result.tollWon)}원")
         CostRow(
             "시간 비용",
-            if (context.settings.includeTimeCost) "−${won(result.timeCostWon)}원" else "제외"
+            if (context.conditions.includeTimeCost) "−${won(result.timeCostWon)}원" else "제외"
         )
         Text(
-            "${context.settings.liters} L 주유 · 주변 최고가 ${won(context.referencePriceWonPerL.toDouble())}원/L 대비",
+            "${vehicleNumber(context.conditions.liters)} L 주유 · 주변 최고가 ${won(context.referencePriceWonPerL.toDouble())}원/L 대비",
             style = type.labelSmall,
             color = colors.textDarkTertiary
         )

@@ -4,15 +4,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Surface
@@ -31,6 +30,8 @@ import eotaek.juyulow.core.design.component.PleosIconButton
 import eotaek.juyulow.core.design.component.PleosInlineError
 import eotaek.juyulow.core.design.component.PleosTab
 import eotaek.juyulow.core.design.component.PleosTabs
+import eotaek.juyulow.core.design.component.RefuelConditionsSummary
+import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.ComparisonContext
 import eotaek.juyulow.core.model.ComparisonSession
@@ -39,6 +40,7 @@ import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.RefuelSettings
 import eotaek.juyulow.core.model.Station
 import eotaek.juyulow.core.model.StationSort
+import eotaek.juyulow.core.model.resolveRefuelConditions
 import eotaek.juyulow.feature.main.common.actionLabel
 import eotaek.juyulow.feature.main.common.kilometers
 import eotaek.juyulow.feature.main.common.label
@@ -81,10 +83,11 @@ fun ResultsScreen(
                                     kilometers(
                                         route.baselineMeters
                                     )
-                                } km / ${batch.context.settings.liters} L 주유 기준"
-                                else "현재 위치 · 광운대학교 인근 / ${batch.context.settings.liters} L 주유 기준",
+                                } km / ${vehicleNumber(batch.context.conditions.liters)} L 주유 기준"
+                                else "현재 위치 · 광운대학교 인근 / ${vehicleNumber(batch.context.conditions.liters)} L 주유 기준",
                                 style = type.labelMedium, color = colors.textDarkSecondary,
                             )
+                            RefuelConditionsSummary(batch.context.conditions)
                         }
                     }
                 }
@@ -214,7 +217,9 @@ internal fun modeIcon(mode: JourneyMode): PleosIcon = when (mode) {
 
 
 internal fun previewSession(): ComparisonSession = ComparisonSession(
-    "preview", ComparisonContext(JourneyContext(), RefuelSettings(), 1740), listOf(
+    "preview",
+    ComparisonContext(JourneyContext(), resolveRefuelConditions(RefuelSettings()), 1740),
+    listOf(
         Station(
             "station-0",
             "한길 셀프주유소",

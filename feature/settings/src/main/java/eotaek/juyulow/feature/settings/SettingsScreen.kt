@@ -27,15 +27,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import eotaek.juyulow.core.design.component.PleosInlineError
 import eotaek.juyulow.core.design.component.PleosButton
 import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.component.PleosIconButton
+import eotaek.juyulow.core.design.component.PleosInlineError
 import eotaek.juyulow.core.design.component.PleosStepper
 import eotaek.juyulow.core.design.component.PleosSwitch
+import eotaek.juyulow.core.design.component.VehicleEnergySummary
+import eotaek.juyulow.core.design.component.displayLabel
+import eotaek.juyulow.core.design.component.vehicleFieldDisplay
+import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.design.theme.pleosShadow
 import eotaek.juyulow.core.model.RefuelSettings
+import eotaek.juyulow.core.model.VehicleProperty
 
 @Composable
 fun SettingsRoute(
@@ -98,19 +103,42 @@ fun SettingsScreen(
                         onRetry
                     )
                 } else {
+                    val conditions = requireNotNull(state.conditions)
                     SettingRow("예상 주유량", narrow) {
-                        PleosStepper(
-                            "예상 주유량",
-                            draft.liters,
-                            "L",
-                            10..100,
-                            10,
-                            { onChange(draft.copy(liters = it)) },
-                            enabled = !state.saving
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                PleosIconButton(PleosIcon.Minus, "예상 주유량 줄이기", {
+                                    onChange(
+                                        draft.copy(
+                                            litersOverride = (conditions.liters - 10.0).coerceAtLeast(
+                                                0.0
+                                            )
+                                        )
+                                    )
+                                }, enabled = !state.saving && conditions.liters > 0)
+                                Text(
+                                    "${vehicleNumber(conditions.liters)} L",
+                                    Modifier.weight(1f),
+                                    style = type.bodyMediumStrong
+                                )
+                                PleosIconButton(PleosIcon.Plus, "예상 주유량 늘리기", {
+                                    onChange(
+                                        draft.copy(
+                                            litersOverride = (conditions.liters + 10.0).coerceAtMost(
+                                                100.0
+                                            )
+                                        )
+                                    )
+                                }, enabled = !state.saving && conditions.liters < 100.0)
+                            }
+                            Text(conditions.litersSource.displayLabel(), style = type.labelSmall)
+                        }
                     }
                     SettingRow("차량 연비", narrow) {
-                        PleosStepper(
+                        if (conditions.automaticEfficiency) Text(
+                            "${vehicleNumber(conditions.efficiencyKmPerL)} km/L (${conditions.efficiencySource.displayLabel()})",
+                            style = type.bodyMediumStrong,
+                        ) else PleosStepper(
                             "차량 연비",
                             draft.efficiencyKmPerL,
                             "km/L",
@@ -149,6 +177,27 @@ fun SettingsScreen(
                         style = type.labelMedium,
                         color = colors.textDarkTertiary
                     )
+                    VehicleEnergySummary(conditions.energy)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("차량 조회 정보", style = type.bodyMediumStrong)
+                        listOf(
+                            VehicleProperty.FUEL_CAPACITY to "탱크 용량",
+                            VehicleProperty.FUEL_LEVEL to "잔량",
+                            VehicleProperty.FUEL_PERCENT to "잔량 비율",
+                            VehicleProperty.CUMULATIVE_ECONOMY to "누적 연비",
+                            VehicleProperty.CURRENT_ECONOMY to "현재 연비",
+                        ).forEach { (property, label) ->
+                            Text(
+                                "$label: ${
+                                    vehicleFieldDisplay(
+                                        property,
+                                        state.vehicleFields[property]
+                                    )
+                                }",
+                                style = type.labelSmall, color = colors.textDarkSecondary,
+                            )
+                        }
+                    }
                 }
                 state.error?.let {
                     PleosInlineError(it)
