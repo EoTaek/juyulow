@@ -20,6 +20,30 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
 
 ## 로컬 단위 테스트 구성
 
+`PleosNavigationRepositoryTest`는 실제 저장소의 조회·미수신 잠금·목적지 없음 구분·확정 전 문맥 변경·목적지 대체·
+경유 순서·2개 제한·중복/미검증 후보 차단·Trip 타임아웃 잠금·동시 요청 거부·해제를 Fake로 검증한다.
+`PleosNaviClientTest`는 requestRouteWithWaypoints/cancelRoute의 연결 게이트와 인자 보존도 검증한다.
+
+`NavigationRepositoryIntegrationTest`는 기본 실행에서 건너뛴다. Pleos 기기 연결 후 아래처럼 상태 조회를 활성화한다.
+
+```powershell
+$env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
+.\gradlew.bat :app:connectedDebugAndroidTest '-Pandroid.testInstrumentationRunnerArguments.class=eotaek.juyulow.NavigationRepositoryIntegrationTest' '-Pandroid.testInstrumentationRunnerArguments.navigationProbe=true' --console=plain
+```
+
+경로 변경 검증은 별도 인자 `navigationMutationProbe=true`와 `latitude`, `longitude`, `poiName`, `poiId`, `poiSubId`,
+`responseLatitude`, `responseLongitude`, `routeResponseLatitude`, `routeResponseLongitude`, `routeMode=destination` 또는 `waypoint`가 모두 필요하다. 각각
+`-Pandroid.testInstrumentationRunnerArguments.<이름>=<값>`으로 전달한다. 검증된 내비 POI와 실측한 도로 스냅 좌표를 사용하며
+일반 주유소 좌표나 null sub-ID의 자동 변환을 가정하지 않는다. 두 routeMode를 각각 실행한다.
+주행 규제 비활성 상태·기존 경유지 1개 이하·원경로 복원 가능 여부를 확인한 후 Trip과 경로 변경을 실행하고 finally에서
+기존 경로를 복원·재조회한다. 복원이 실패하면 테스트도 실패하며 NavigationProbe 로그로 잔여 상태를 확인한다.
+앱 데이터 삭제나 uninstall은 수행하지 않는다.
+
+waypoint 모드에서 초기 목적지가 없으면 실측된 소설한남 fixture로 목적지를 먼저 설정하고, 종료 시 원래 목적지 없는 상태로 복원한다.
+2026-11-10 에뮬레이터에서 상태 조회 및 소설한남 목적지 설정/복원은 통과했다. 더현대서울 경유 추가는 조회 좌표 `(0,0)`으로
+성공 확인이 차단되어 테스트가 실패했으며 원상복구는 확인했다. 버전·실측 좌표와 제한은 [NAVIHELPER.md](NAVIHELPER.md)에 기록했다.
+회귀 테스트는 이벤트 이후 지연 반영, 불일치 시간 초과, Trip/경로 좌표 분리, null sub-ID 목적지 보존 및 경유지 좌표 누락도 검증한다.
+
 `AppNavigationTest`는 설정 저장 중 뒤로가기·팝업 닫기 요청이 entry를 유지하고, 저장 상태가 해제되면 닫히는지 검증한다. 저장 상태는 닫기 요청 시점에 읽어 재구성 이전의 요청도 차단한다.
 
 `PleosNaviClientTest`는 Fake SDK 경계로 연결 전 요청 차단, SDK 인자·조회/Trip/경로/오류 콜백 전달, 초기화 실패·동기 예외, 지연 연결 결과와

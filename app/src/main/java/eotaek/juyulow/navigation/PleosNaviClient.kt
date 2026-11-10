@@ -110,6 +110,8 @@ class PleosNaviClient internal constructor(private val api: NaviHelperApi) : Nav
     override fun getWaypointInfo() = request { getWaypointInfo() }
     override fun getRouteStateInfo() = request { getRouteStateInfo() }
     override fun requestTrip(request: TripRequest) = request { requestTrip(request) }
+    override fun requestRouteWithWaypoints(request: ai.pleos.playground.navi.data.RouteWithWaypointsRequest) = request { requestRouteWithWaypoints(request) }
+    override fun cancelRoute() = request { cancelRoute() }
     override fun requestRoute(route: RouteInfo) = request { requestRoute(route) }
     override fun addWaypoint(waypoint: RequestWaypointInfo) = request { addWaypoint(waypoint) }
     override fun requestNavigationScreen(screen: NavigationScreenRequest) =

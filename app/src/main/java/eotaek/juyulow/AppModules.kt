@@ -30,6 +30,8 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 val appModule = module {
+    single { eotaek.juyulow.navigation.NaviTripLedger() }
+    factory<eotaek.juyulow.core.data.NavigationRepository> { eotaek.juyulow.navigation.PleosNavigationRepository(get(), get()) }
     factory<NaviClient> { PleosNaviClient(androidContext()) }
     factory<FusedLocationClient> { PleosFusedLocationClient(androidContext()) }
     factory<VehicleFuelClient> { PleosVehicleFuelClient(androidContext()) }

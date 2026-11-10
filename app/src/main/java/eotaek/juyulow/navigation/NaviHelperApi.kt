@@ -18,6 +18,8 @@ internal interface NaviHelperApi {
     fun getWaypointInfo()
     fun getRouteStateInfo()
     fun requestTrip(request: TripRequest)
+    fun requestRouteWithWaypoints(request: ai.pleos.playground.navi.data.RouteWithWaypointsRequest)
+    fun cancelRoute()
     fun requestRoute(route: RouteInfo)
     fun addWaypoint(waypoint: RequestWaypointInfo)
     fun requestNavigationScreen(screen: NavigationScreenRequest)
@@ -37,6 +39,8 @@ internal class AndroidNaviHelperApi(context: Context) : NaviHelperApi {
     override fun getWaypointInfo() = helper.getWaypointInfo()
     override fun getRouteStateInfo() = helper.getRouteStateInfo()
     override fun requestTrip(request: TripRequest) = helper.requestTrip(request)
+    override fun requestRouteWithWaypoints(request: ai.pleos.playground.navi.data.RouteWithWaypointsRequest) = helper.requestRouteWithWaypoints(request)
+    override fun cancelRoute() = helper.cancelRoute()
     override fun requestRoute(route: RouteInfo) = helper.requestRoute(route)
     override fun addWaypoint(waypoint: RequestWaypointInfo) = helper.addWaypoint(waypoint)
     override fun requestNavigationScreen(screen: NavigationScreenRequest) =
