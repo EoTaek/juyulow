@@ -97,7 +97,9 @@ fun CompletionScreen(
                         ) {
                             PleosLabelValue(
                                 if (selection.waypoint != null) "경유지" else "목적지",
-                                selection.stationName,
+                                if (selection.routeWaypoints.isNotEmpty()) selection.routeWaypoints.joinToString(
+                                    " → "
+                                ) else selection.stationName,
                                 valueStyle = type.titleSmallBold
                             )
                             if (selection.waypoint != null) {
@@ -105,7 +107,11 @@ fun CompletionScreen(
                                 PleosLabelValue("최종 목적지", selection.destination, valueStyle = type.titleSmallBold)
                             }
                             PleosLabelValue(
-                                "${kilometers(selection.distanceMeters)} km · 주유 포함",
+                                "${if (selection.outboundOnly) "주유소까지 " else ""}${
+                                    kilometers(
+                                        selection.distanceMeters
+                                    )
+                                } km · 주유 포함",
                                 "${minutes(selection.durationSeconds)}분",
                                 valueStyle = type.titleSmallBold
                             )

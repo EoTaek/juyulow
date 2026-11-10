@@ -11,15 +11,32 @@
 
 - 주행 규제 상태(운전 중, 정차 중)에 대한 처리
 - 전기차에 대한 처리
-- 2026-11-10: NaviHelper 경유지 조회 좌표 누락과 경로 성공 확인 정책을 검토한다 (#9). Pleos Connect v2.1.0 / Navigation 3.3.2-rc5-hotfix.3 / NaviHelper 3.0.5에서 소설한남 목적지를 유지한 더현대서울 경유 추가 후 POI ID는 일치했으나 `getWaypointInfo()` 좌표가 `(0,0)`으로 반환되어 `NavigationRepositoryIntegrationTest.verifiedFixtureTripAndRouteRoundTrip`이 `ROUTE_NOT_CONFIRMED`로 실패했다. 초기 경로 복원은 확인했다. SDK의 좌표 제공 계약을 확인하고, 검증 근거 없이 좌표 검사를 완화하지 않은 상태에서 성공 확인 방식을 결정한 뒤 경유지 0/1/2개·순서 보존을 실제 내비에서 재검증한다. 실측 결과와 재현 인자는 [NAVIHELPER.md](NAVIHELPER.md#에뮬레이터-확인-2026-11-10), [TESTING.md](TESTING.md#로컬-단위-테스트-구성)를 참조한다.
+- 2026-11-10: NaviHelper 경유지 조회 좌표 누락과 경로 성공 확인 정책을 검토한다 (#9). Pleos Connect v2.1.0 / Navigation
+  3.3.2-rc5-hotfix.3 / NaviHelper 3.0.5에서 소설한남 목적지를 유지한 더현대서울 경유 추가 후 POI ID는 일치했으나
+  `getWaypointInfo()` 좌표가 `(0,0)`으로 반환되어
+  `NavigationRepositoryIntegrationTest.verifiedFixtureTripAndRouteRoundTrip`이 `ROUTE_NOT_CONFIRMED`로
+  실패했다. 초기 경로 복원은 확인했다. 후속 정책으로 조회 좌표가 정확히 (0,0)인 경유지만 좌표 검사 예외를 허용했다. SDK 좌표 제공 계약과 정상 좌표 제공 여부는 계속
+  확인한다. 실측 결과와 재현
+  인자는 [NAVIHELPER.md](NAVIHELPER.md#에뮬레이터-확인-2026-11-10), [TESTING.md](TESTING.md#로컬-단위-테스트-구성)를
+  참조한다.
 
 - 2026-11-10: 동일 POI의 안전한 Trip 재조회 방식을 검토한다. 현재 고정 후보 8곳은 SDK에 요청 ID가 없어 출발 위치 50m 이내·동일 경로 옵션에서 최초
   편도 결과를 재사용한다. 목적지 설정·제거는 검색을 차단하지 않으며, 위치/옵션 변경 시 새 Trip을 안전하게 조회하는 방식은 남은 과제다. 오피넷 연결 확대 전에 서버 요청
   취소/귀속을 입증할 수 있는 SDK 계약을 확인하고 재검색 UX를 개선한다. 앱 재시작을 서버 취소의 증거로 사용하지 않는다.
 
-- 2026-11-10: 기존 목적지를 유지하는 경유 상황의 검색·비교·경로 설정 UX를 구현한다. 현재 정책은 주유소 선택 시 기존 목적지와 모든 경유지를 확인 후 덮어쓰는
-  목적지 대체다. 후속 작업에서 주유소 삽입 위치·기존 경유지 0/1/2개 및 최대 개수·중복 POI·목적지 유지·우회 거리/시간 계산을 정의하고, SDK 경유 좌표 누락 문제
-  해결 후 실제 내비에서 검증한다.
+- 2026-11-10: 기존 경유지를 포함한 전체 경로 거리·ETA 및 실제 우회 비용 비교를 구현한다. 현재 비교는 현재 위치 → 주유소의 편도만 사용한다. 외부 경로 API
+  선정, 같은 조건의 기준/주유소 경유 경로 비교, 필요시 구간 합산을 검토한다. NaviHelper TripRequest는 임의 출발지 지정 필드가 없어 주유소 → 목적지를
+  직접 조회할 수 없다.
+
+
+- 2026-11-10: 경유 추가 정책 실제 내비 검증 재실행. VerifiedStationsIntegrationTest (verifiedStationsProbe=true,
+  waypointPolicyProbe=true)는 최초 상태가 경로 없음이어야 하나, 에뮬레이터에 루다와인상점 오포본점 목적지 (경유지 없음, ROUTE_GUIDING)가 설정돼
+  시작 전제 검사에서 실패했다. 기존 목적지 sub-ID도 null이어서 복원을 가정하고 초기화하지 않았다. 실제 SDK 삽입 0→1→2개 및 순서 보존은 미검증이며, 원경로
+  복원 가능한 테스트 환경에서 재실행한다. UI Fake 경유 추가 및 저장소 단위 검증과 구분한다.
+
+- 2026-11-10: PrototypeLayoutTest 재검증. 최초 실행에서 mock 밝은 테마 1700dp 마지막 행 표시와 840dp 두 패널 위치 검사 실패, 실제
+  연동 4개 조합은 통과했다. 창 배치/스크롤 대기 보완 후 실행은 instrumentation Process crashed로 중단됐으며 Gradle 종료 코드와 XML 실패가
+  불일치했다. 최종 8개 레이아웃 검증과 instrumentation 종료 원인 확인이 필요하다.
 
 ## 추가 지침
 

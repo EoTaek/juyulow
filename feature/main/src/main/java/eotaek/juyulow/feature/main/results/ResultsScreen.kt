@@ -99,7 +99,7 @@ fun ResultsScreen(
                 if (batch != null) PleosTabs((if (batch.context.journey.destinationOnly) JourneyMode.entries else batch.context.journey.availableModes).map {
                     PleosTab(
                         it,
-                        it.label,
+                        if (batch.context.journey.destinationOnly && it == JourneyMode.WAYPOINT) "경유지로 추가" else if (batch.context.journey.destinationOnly && it == JourneyMode.DESTINATION) "목적지로 설정" else it.label,
                         modeIcon(it),
                         enabled = it in batch.context.journey.availableModes,
                     )
@@ -125,7 +125,9 @@ fun ResultsScreen(
                     )
                 }
                 if (batch?.context?.journey?.destinationOnly == true) Text(
-                    "경유지·왕복 경로는 준비 중이에요.",
+                    if ((batch.context.journey.navigation?.waypoints?.size
+                            ?: 0) >= 2
+                    ) "경유지는 최대 2개까지 설정할 수 있어요. 거리·시간·비용은 주유소까지 기준이에요." else "거리·시간·비용은 주유소까지 기준이에요. 왕복은 준비 중이에요.",
                     style = type.labelSmall
                 )
                 if (batch == null) {

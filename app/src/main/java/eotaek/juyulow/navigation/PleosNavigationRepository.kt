@@ -12,7 +12,6 @@ import ai.pleos.playground.navi.data.RequestWaypointInfo
 import ai.pleos.playground.navi.data.RouteInfo
 import ai.pleos.playground.navi.data.RouteStartInfo
 import ai.pleos.playground.navi.data.RouteStateInfo
-import ai.pleos.playground.navi.data.RouteWithWaypointsRequest
 import ai.pleos.playground.navi.data.TripInfo
 import ai.pleos.playground.navi.data.TripRequest
 import ai.pleos.playground.navi.data.WaypointChangedInfo
@@ -26,6 +25,7 @@ import eotaek.juyulow.core.model.NaviSnapshot
 import eotaek.juyulow.core.model.NaviState
 import eotaek.juyulow.core.model.NaviStatus
 import eotaek.juyulow.core.model.NaviTrip
+import eotaek.juyulow.core.model.confirmsRoute
 import eotaek.juyulow.core.model.sameTripOriginAs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -205,30 +205,14 @@ class PleosNavigationRepository(
             listOf(point) + current.waypoints
         } else emptyList()
         val destination = if (asWaypoint) current.destination!! else point
-        // Set before submission: even a synchronous exception may follow a partially accepted request.
-        val preserveOpaqueDestination = asWaypoint && destination.subId == null
-        if (!preserveOpaqueDestination) {
-            destination.route(current.routeOption)
-            requested.forEach { check(it.subId != null) { "MISSING_SUB_ID" } }
-        }
-        pendingRoute = { actual ->
-            actual.destination?.poiId == destination.poiId && actual.waypoints.map { it.poiId } == requested.map { it.poiId } &&
-                actual.routeOption == current.routeOption &&
-                (if (asWaypoint) actual.destination == current.destination else
-                    near(actual.destination!!.latitude, candidate.routeResponseLatitude) && near(actual.destination!!.longitude, candidate.routeResponseLongitude)) &&
-                actual.waypoints.zip(requested).all { (observed, wanted) ->
-                    if (wanted.poiId == point.poiId) near(observed.latitude, candidate.routeResponseLatitude) && near(observed.longitude, candidate.routeResponseLongitude)
-                    else observed == wanted
-                } && actual.mode in listOf("ROUTE_GUIDING", "SIMULATION_GUIDING")
-        }
+        pendingRoute = { actual -> actual.confirmsRoute(current, candidate, asWaypoint) }
         routeUncertain = true
-        if (preserveOpaqueDestination) client.addWaypoint(RequestWaypointInfo(latitude=point.latitude, longitude=point.longitude,
+        if (asWaypoint) client.addWaypoint(
+            RequestWaypointInfo(
+                latitude = point.latitude,
+                longitude = point.longitude,
             poiName=point.name, waypointIndex=WaypointIndex.FIRST, poiId=point.poiId, poiSubId=point.subId!!,
             address=point.address, poiProvider=point.provider))
-        else if (asWaypoint) client.requestRouteWithWaypoints(RouteWithWaypointsRequest(destination.route(current.routeOption),
-            requested.mapIndexed { i, p -> RequestWaypointInfo(latitude = p.latitude, longitude = p.longitude,
-                poiName = p.name, waypointIndex = if (i == 0) WaypointIndex.FIRST else WaypointIndex.SECOND,
-                poiId = p.poiId, poiSubId = p.subId ?: fail("MISSING_SUB_ID"), address = p.address, poiProvider = p.provider) }))
         else client.requestRoute(destination.route(current.routeOption))
         val deadline = clock() + operationTimeout
         withTimeout(operationTimeout.milliseconds) { while (next() !== Changed) { /* Await route event. */ } }

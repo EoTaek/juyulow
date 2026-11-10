@@ -3,9 +3,9 @@ package eotaek.juyulow.feature.main.results.component
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,15 +42,21 @@ internal fun StationRow(
     ) {
         val price: @Composable () -> Unit =
             { PleosLabelValue("리터당 가격", "${won(row.station.priceWonPerL.toDouble())} 원/L") }
+        val displayMode =
+            if (row.station.observedAtMillis != null) JourneyMode.DESTINATION else mode
         val time: @Composable () -> Unit = {
-            val seconds = when (mode) {
+            val seconds = when (displayMode) {
                 JourneyMode.WAYPOINT -> row.comparison.costDurationSeconds
                 JourneyMode.DESTINATION -> row.station.outboundSeconds
                 JourneyMode.ROUND_TRIP -> row.comparison.totalSeconds
             }
             PleosLabelValue(
-                if (mode == JourneyMode.WAYPOINT) "ETA 변화" else if (mode == JourneyMode.ROUND_TRIP) "왕복 소요시간" else "주유소까지",
-                "${if (mode == JourneyMode.WAYPOINT && seconds >= 0) "+" else ""}${minutes(seconds)} 분"
+                if (displayMode == JourneyMode.WAYPOINT) "ETA 변화" else if (displayMode == JourneyMode.ROUND_TRIP) "왕복 소요시간" else "주유소까지",
+                "${if (displayMode == JourneyMode.WAYPOINT && seconds >= 0) "+" else ""}${
+                    minutes(
+                        seconds
+                    )
+                } 분"
             )
         }
         Column(

@@ -166,3 +166,17 @@ LiveJourneyRepositoryTest는 이 순서에서 Trip 배치가 한 번만 호출�
 실제 에뮬레이터에서도 최초 검색 후 시스템 내비에 한강에너지주유소를 목적지로 설정 → 앱 검색 8곳 표시 → 시스템 안내 종료로 목적지 제거 → 앱 재검색 8곳 표시를 같은
 프로세스에서 확인했다. 세 번의 검색 시점이 같아 기존 편도 Trip 재사용도 확인했다. 변경 후 빌드·로컬 단위 테스트·lint와 LiveNavigationFlowTest 2건이
 통과했다.
+
+## 경유 추가 정책 검증
+
+경유지 0/1/2개 활성화, 목적지 보존과 첫 번째 삽입, (0,0) 좌표 예외와 정상 좌표 불일치 거부, 편도 비교 및 불확실 상태 재확인을 단위 테스트한다. 실제 내비의 순서
+보존은 VerifiedStationsIntegrationTest에 verifiedStationsProbe=true 및 waypointPolicyProbe=true를 전달해
+검사한다. 초기 경로 없음·정차를 전제로 목적지 설정 → 경유 1개 → 경유 2개 → 추가 차단 → 목적지 대체를 실행하고 finally에서 초기 상태를 복원한다.
+
+2026-11-10 정책 변경 검증: 빌드·단위 테스트·lint 통과, LiveNavigationFlowTest 3개 통과. 실제 경유 변경 테스트는 기존 루다와인상점 오포본점
+목적지로 인해 초기 경로 없음 전제에서 중단됐다. NavigationRepositoryIntegrationTest 상태 조회로 해당 목적지·경유지 없음·ROUTE_GUIDING을
+확인했으며 경로를 변경하지 않았다.
+
+레이아웃 최초 실행은 실제 연동 4개 조합 통과, mock 밝은 테마 2개 조합에서 창 위치/스크롤 검사 실패 (총 8개 중 6개 통과). 배치와 스크롤 대기를 보완한 재실행은
+instrumentation Process crashed로 완료되지 않았다. 해당 실행은 Gradle이 BUILD SUCCESSFUL을 반환했으나 XML에 실패가 있으므로 통과로
+간주하지 않는다.

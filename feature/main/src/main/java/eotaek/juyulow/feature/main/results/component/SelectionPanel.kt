@@ -52,7 +52,7 @@ internal fun SelectionPanel(
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                "이동 비용까지 반영한 ${if (result.netSavingWon >= 0) "순절약액" else "추가 지출"}",
+                "${if (context.journey.destinationOnly) "주유소까지 이동 비용 반영" else "이동 비용까지 반영한"} ${if (result.netSavingWon >= 0) "순절약액" else "추가 지출"}",
                 style = type.labelSmall,
                 color = colors.textDarkSecondary
             )
@@ -70,12 +70,12 @@ internal fun SelectionPanel(
         ) {
             PleosIcon(PleosIcon.Route)
             Text(
-                if (mode == JourneyMode.WAYPOINT) "추가 거리" else "이동 거리",
+                if (context.journey.destinationOnly) "주유소까지 거리" else if (mode == JourneyMode.WAYPOINT) "추가 거리" else "이동 거리",
                 style = type.labelSmall,
                 modifier = Modifier.weight(1f)
             )
             Text(
-                "${if (mode == JourneyMode.WAYPOINT && result.costDistanceMeters >= 0) "+" else ""}${
+                "${if (mode == JourneyMode.WAYPOINT && !context.journey.destinationOnly && result.costDistanceMeters >= 0) "+" else ""}${
                     kilometers(
                         result.costDistanceMeters
                     )
@@ -93,13 +93,20 @@ internal fun SelectionPanel(
             if (mode != JourneyMode.DESTINATION) {
                 PleosIcon(PleosIcon.Next, Modifier.size(24.dp))
                 Text(
-                    if (mode == JourneyMode.WAYPOINT) context.journey.destination.orEmpty() else "현재 위치로 복귀",
+                    if (mode == JourneyMode.WAYPOINT) listOfNotNull(
+                        context.journey.waypoint,
+                        context.journey.destination
+                    ).joinToString(" → ") else "현재 위치로 복귀",
                     style = type.labelSmall
                 )
             }
         }
         Text(
-            "전체 ${minutes(result.totalSeconds)}분 · ${kilometers(result.distanceMeters)} km · 주유 ${context.conditions.refuelMinutes}분 포함",
+            "${if (context.journey.destinationOnly) "주유소까지" else "전체"} ${minutes(result.totalSeconds)}분 · ${
+                kilometers(
+                    result.distanceMeters
+                )
+            } km · 주유 ${context.conditions.refuelMinutes}분 포함",
             style = type.labelSmall,
             color = colors.textDarkTertiary
         )
@@ -113,7 +120,7 @@ internal fun SelectionPanel(
         HorizontalDivider(color = colors.basic200)
         CostRow("유가 차이 절감액", "+${won(result.fuelSavingWon)}원")
         CostRow(
-            if (mode == JourneyMode.WAYPOINT) "추가 주행 연료비" else "이동 연료비",
+            if (mode == JourneyMode.WAYPOINT && !context.journey.destinationOnly) "추가 주행 연료비" else "이동 연료비",
             "−${won(result.drivingCostWon)}원"
         )
         CostRow("통행료", result.tollWon?.let { "−${won(it)}원" } ?: "제외")

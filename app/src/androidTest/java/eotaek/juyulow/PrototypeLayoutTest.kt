@@ -140,7 +140,12 @@ class PrototypeLayoutTest(
         // Pleos can reposition the host window immediately after Activity launch.
         compose.waitUntil(10_000) {
             try {
-                compose.onNodeWithTag("confirm-route").assertIsDisplayed(); true
+                compose.onNodeWithTag("confirm-route").assertIsDisplayed()
+                val left =
+                    compose.onNodeWithTag("station-list-pane").fetchSemanticsNode().boundsInRoot
+                val right =
+                    compose.onNodeWithTag("station-detail-pane").fetchSemanticsNode().boundsInRoot
+                right.left >= left.right && kotlin.math.abs(right.width - left.width) <= 1f
             } catch (_: AssertionError) {
                 false
             }
@@ -150,7 +155,16 @@ class PrototypeLayoutTest(
         assertTrue(detail.left >= list.right)
         assertEquals(list.width, detail.width, 1f)
         compose.onNodeWithTag("station-list-scroll").performScrollToNode(hasTestTag("station-7"))
-        compose.onNodeWithTag("station-7").assertIsDisplayed()
+        compose.waitUntil(10_000) {
+            try {
+                compose.onNodeWithTag("station-list-scroll")
+                    .performScrollToNode(hasTestTag("station-7"))
+                compose.onNodeWithTag("station-7").assertIsDisplayed()
+                true
+            } catch (_: AssertionError) {
+                false
+            }
+        }
         compose.onNodeWithTag("confirm-route").assertIsDisplayed()
         val last = compose.onNodeWithTag("station-7").fetchSemanticsNode().boundsInRoot
         val action = compose.onNodeWithTag("confirm-route").fetchSemanticsNode().boundsInRoot

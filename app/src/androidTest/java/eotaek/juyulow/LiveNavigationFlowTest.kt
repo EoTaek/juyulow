@@ -103,6 +103,20 @@ class LiveNavigationFlowTest {
         assertEquals(1, navi.trips)
     }
 
+
+    @Test
+    fun addsFirstWaypointWithoutReplacementDialog() {
+        search()
+        compose.onNodeWithText("경유지로 추가").performClick()
+        compose.onNodeWithTag("confirm-route").performClick()
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("경유지를 추가했어요.").fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals("old", navi.current.destination?.poiId)
+        assertEquals(1, navi.current.waypoints.size)
+        assertEquals(1, navi.routes)
+    }
+
     @Test
     fun uncertainRouteIsReconciledWithoutResubmission() {
         navi.ambiguous = true
@@ -154,7 +168,11 @@ class LiveNavigationFlowTest {
             candidate: NaviCandidate,
             asWaypoint: Boolean
         ): NaviResult<NaviSnapshot> {
-            routes++; current = current.copy(destination = candidate.point)
+            routes++; current =
+                if (asWaypoint) current.copy(waypoints = listOf(candidate.point) + current.waypoints) else current.copy(
+                    destination = candidate.point,
+                    waypoints = emptyList()
+                )
             state.value =
                 NaviState(if (ambiguous) NaviStatus.UNCERTAIN else NaviStatus.READY, current)
             return if (ambiguous) NaviResult.Failure("ROUTE_NOT_CONFIRMED") else NaviResult.Success(

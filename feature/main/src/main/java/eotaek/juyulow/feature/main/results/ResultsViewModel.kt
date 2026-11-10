@@ -48,6 +48,7 @@ class ResultsViewModel(
                     mutableState.update {
                         it.copy(
                             routeExpired = !reusable,
+                            mode = if (it.mode in context.availableModes) it.mode else JourneyMode.DESTINATION,
                             session = if (reusable) session.copy(
                                 context = session.context.copy(
                                     journey = context
@@ -133,7 +134,7 @@ class ResultsViewModel(
         val session = snapshot.session ?: return
         val selected = snapshot.selected ?: return
         if (snapshot.busy || snapshot.completedSelectionId != null || snapshot.routeUncertain || snapshot.routeExpired) return
-        if (session.context.journey.destinationOnly && session.context.journey.hasDestination && !confirmed) {
+        if (session.context.journey.destinationOnly && session.context.journey.hasDestination && snapshot.mode == JourneyMode.DESTINATION && !confirmed) {
             mutableState.update { it.copy(confirmReplacement = true) }
             return
         }

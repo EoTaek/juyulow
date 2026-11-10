@@ -10,6 +10,7 @@ import eotaek.juyulow.core.model.NaviState
 import eotaek.juyulow.core.model.NaviStatus
 import eotaek.juyulow.core.model.NavigationSelection
 import eotaek.juyulow.core.model.Station
+import eotaek.juyulow.core.model.confirmsRoute
 import eotaek.juyulow.core.model.sameContextAs
 import eotaek.juyulow.core.model.sameTripOriginAs
 import kotlinx.coroutines.CoroutineDispatcher
@@ -24,7 +25,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.UUID
-import kotlin.math.abs
 
 /** Only candidates whose Trip and route response coordinates were measured belong here. */
 data class VerifiedStation(val candidate: NaviCandidate, val brand: String, val priceWonPerL: Int)
@@ -48,7 +48,7 @@ class LiveJourneyRepository(
     private var initialized = false
     private var cached: Pair<NaviSnapshot, List<Station>>? = null
     private var pending: NavigationSelection? = null
-    private var pendingOption: String? = null
+    private var pendingExpected: NaviSnapshot? = null
     private var lastSelection: NavigationSelection? = null
 
     private fun <T> NaviResult<T>.value(): T = when (this) {
@@ -135,7 +135,7 @@ class LiveJourneyRepository(
     ): NavigationSelection = scope.async {
         mutex.withLock {
             check(pending == null) { "ROUTE_UNCERTAIN" }
-            check(mode == JourneyMode.DESTINATION && station in session.stations) { "UNSUPPORTED_SELECTION" }
+            check(mode in session.context.journey.availableModes && station in session.stations) { "UNSUPPORTED_SELECTION" }
             check(cached?.second?.contains(station) == true) { "SEARCH_EXPIRED" }
             val expected = requireNotNull(session.context.journey.navigation)
             val current = navigation.refresh().value()
@@ -146,14 +146,21 @@ class LiveJourneyRepository(
             check(canInteract()) { "PARKING_REQUIRED" }
             val selection = NavigationSelection(
                 UUID.randomUUID().toString(), station.id, station.name,
-                mode, station.name, null, station.outboundMeters,
+                mode,
+                if (mode == JourneyMode.WAYPOINT) requireNotNull(expected.destination).name else station.name,
+                if (mode == JourneyMode.WAYPOINT) station.name else null,
+                station.outboundMeters,
                 station.outboundSeconds + session.context.conditions.refuelSeconds,
-                session.context.conditions.refuelSeconds, session.context.conditions
+                session.context.conditions.refuelSeconds,
+                session.context.conditions,
+                outboundOnly = true,
+                routeWaypoints = if (mode == JourneyMode.WAYPOINT) listOf(station.name) + expected.waypoints.map { it.name } else emptyList()
             )
             pending = selection
-            pendingOption = expected.routeOption
+            pendingExpected = expected
             try {
-                val result = navigation.setRoute(expected, candidate, false).value()
+                val result =
+                    navigation.setRoute(expected, candidate, mode == JourneyMode.WAYPOINT).value()
                 publish(result)
                 lastSelection = selection
                 pending = null
@@ -172,12 +179,11 @@ class LiveJourneyRepository(
             publish(snapshot)
             pending?.let { selection ->
                 val c = catalog.single { it.candidate.point.poiId == selection.stationId }.candidate
-                val p = snapshot.destination
-                if (p != null && p.poiId == selection.stationId &&
-                    abs(p.latitude - c.routeResponseLatitude) <= 0.000001 &&
-                    abs(p.longitude - c.routeResponseLongitude) <= 0.000001 &&
-                    snapshot.waypoints.isEmpty() && snapshot.routeOption == pendingOption &&
-                    snapshot.mode in listOf("ROUTE_GUIDING", "SIMULATION_GUIDING")
+                if (snapshot.confirmsRoute(
+                        requireNotNull(pendingExpected),
+                        c,
+                        selection.mode == JourneyMode.WAYPOINT
+                    )
                 ) {
                     lastSelection = selection; pending = null
                     return@withLock selection

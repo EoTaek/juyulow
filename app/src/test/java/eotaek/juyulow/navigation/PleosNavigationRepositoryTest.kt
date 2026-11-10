@@ -1,11 +1,34 @@
 package eotaek.juyulow.navigation
 
-import ai.pleos.playground.navi.constants.*
-import ai.pleos.playground.navi.data.*
-import eotaek.juyulow.core.model.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.test.*
-import org.junit.Assert.*
+import ai.pleos.playground.navi.constants.NaviMode
+import ai.pleos.playground.navi.constants.RouteOption
+import ai.pleos.playground.navi.constants.RoutePointPoiType
+import ai.pleos.playground.navi.constants.RoutePointSettingType
+import ai.pleos.playground.navi.constants.RoutePointType
+import ai.pleos.playground.navi.data.CurrentLocationInfo
+import ai.pleos.playground.navi.data.DestinationInfo
+import ai.pleos.playground.navi.data.NavigationScreenRequest
+import ai.pleos.playground.navi.data.RequestWaypointInfo
+import ai.pleos.playground.navi.data.RouteInfo
+import ai.pleos.playground.navi.data.RoutePointInfo
+import ai.pleos.playground.navi.data.RouteStateInfo
+import ai.pleos.playground.navi.data.RouteWithWaypointsRequest
+import ai.pleos.playground.navi.data.TripInfo
+import ai.pleos.playground.navi.data.TripRequest
+import ai.pleos.playground.navi.data.TripSummary
+import ai.pleos.playground.navi.data.WaypointInfo
+import eotaek.juyulow.core.model.NaviCandidate
+import eotaek.juyulow.core.model.NaviPoint
+import eotaek.juyulow.core.model.NaviResult
+import eotaek.juyulow.core.model.NaviStatus
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -40,12 +63,13 @@ class PleosNavigationRepositoryTest {
         override fun release() { released++ }
     }
     private val candidate = NaviCandidate(NaviPoint(37.0,127.0,"station","station","0"),37.0,127.0)
-    @Test fun missingWaypointCoordinatesNeverBecomeConfirmedSuccess() = runTest {
+    @Test
+    fun missingWaypointCoordinatesAllowConfirmedIdentityAndOrder() = runTest {
         val fake=Fake(); fake.destinationSubId=null; fake.waypointCoordinates=0.0 to 0.0
         val repo=PleosNavigationRepository(fake,NaviTripLedger(),StandardTestDispatcher(testScheduler),clock={testScheduler.currentTime},operationTimeout=1000)
         val snapshot=(repo.initialize() as NaviResult.Success).value
-        assertTrue(repo.setRoute(snapshot,candidate,true) is NaviResult.Failure)
-        assertEquals(NaviStatus.UNCERTAIN,repo.state.value.status)
+        assertTrue(repo.setRoute(snapshot, candidate, true) is NaviResult.Success)
+        assertEquals(NaviStatus.READY, repo.state.value.status)
         assertEquals(listOf("station"),fake.waypointIds)
         assertEquals("original",fake.destinationId)
         repo.release()

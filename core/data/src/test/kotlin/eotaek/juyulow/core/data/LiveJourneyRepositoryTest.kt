@@ -80,8 +80,18 @@ class LiveJourneyRepositoryTest {
             asWaypoint: Boolean
         ): NaviResult<NaviSnapshot> {
             routeCalls++
-            check(!asWaypoint)
-            current = current.copy(destination = candidate.point, mode = "ROUTE_GUIDING")
+            current = if (asWaypoint) current.copy(
+                waypoints = listOf(
+                    candidate.point.copy(
+                        latitude = 0.0,
+                        longitude = 0.0
+                    )
+                ) + current.waypoints, mode = "ROUTE_GUIDING"
+            ) else current.copy(
+                destination = candidate.point,
+                waypoints = emptyList(),
+                mode = "ROUTE_GUIDING"
+            )
             state.value =
                 NaviState(if (ambiguous) NaviStatus.UNCERTAIN else NaviStatus.READY, current)
             return if (ambiguous) NaviResult.Failure("ROUTE_NOT_CONFIRMED") else NaviResult.Success(
@@ -106,6 +116,52 @@ class LiveJourneyRepositoryTest {
     private fun batch(repo: LiveJourneyRepository, stations: List<Station>) =
         InMemoryComparisonSessionRepository()
             .create(repo.context.value, resolveRefuelConditions(RefuelSettings()), stations)
+
+
+    @Test
+    fun waypointSlotsAndOutboundComparisonAndRecovery() = runTest {
+        val n = Navi()
+        val destination = fixtures.last().candidate.point
+        n.current = n.current.copy(destination = destination, mode = "ROUTE_GUIDING")
+        val repo = LiveJourneyRepository({ n }, fixtures, StandardTestDispatcher(testScheduler))
+        try {
+            repo.initialize()
+            val stations = repo.search(repo.context.value)
+            assertEquals(
+                listOf(JourneyMode.WAYPOINT, JourneyMode.DESTINATION),
+                repo.context.value.availableModes
+            )
+            val session = batch(repo, stations)
+            val comparison = compareStation(session.context, stations[0], JourneyMode.WAYPOINT)
+            assertEquals(stations[0].outboundMeters, comparison.costDistanceMeters)
+            n.ambiguous = true
+            expectFailure("ROUTE_NOT_CONFIRMED") {
+                repo.select(
+                    session,
+                    stations[0],
+                    JourneyMode.WAYPOINT
+                )
+            }
+            assertNotNull(repo.reconcile())
+            assertEquals(destination, n.current.destination)
+            n.ambiguous = false
+            repo.select(batch(repo, stations), stations[1], JourneyMode.WAYPOINT)
+            assertEquals(
+                listOf(stations[1].id, stations[0].id),
+                n.current.waypoints.map { it.poiId })
+            assertEquals(listOf(JourneyMode.DESTINATION), repo.context.value.availableModes)
+            expectFailure("UNSUPPORTED_SELECTION") {
+                repo.select(
+                    batch(repo, stations),
+                    stations[2],
+                    JourneyMode.WAYPOINT
+                )
+            }
+            assertEquals(2, n.routeCalls)
+        } finally {
+            repo.release()
+        }
+    }
 
     @Test
     fun mapsRealTripsAndReusesOnlySameContext() = runTest {

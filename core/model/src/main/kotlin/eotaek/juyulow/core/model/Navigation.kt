@@ -41,3 +41,30 @@ sealed interface NaviResult<out T> {
     data class Success<T>(val value: T) : NaviResult<T>
     data class Failure(val reason: String) : NaviResult<Nothing>
 }
+
+/** Missing waypoint coordinates alone do not invalidate the observed route. */
+fun NaviSnapshot.confirmsRoute(
+    expected: NaviSnapshot,
+    candidate: NaviCandidate,
+    asWaypoint: Boolean
+): Boolean {
+    val wanted = if (asWaypoint) listOf(candidate.point) + expected.waypoints else emptyList()
+    fun near(a: Double, b: Double) = kotlin.math.abs(a - b) <= 0.000001
+    return destination != null &&
+            (if (asWaypoint) destination == expected.destination else
+                destination.poiId == candidate.point.poiId &&
+                        near(destination.latitude, candidate.routeResponseLatitude) &&
+                        near(destination.longitude, candidate.routeResponseLongitude)) &&
+            waypoints.map { it.poiId } == wanted.map { it.poiId } &&
+            waypoints.zip(wanted).all { (actual, point) ->
+                actual.latitude == 0.0 && actual.longitude == 0.0 || if (point.poiId == candidate.point.poiId)
+                    near(actual.latitude, candidate.routeResponseLatitude) && near(
+                        actual.longitude,
+                        candidate.routeResponseLongitude
+                    )
+                else actual == point
+            } && routeOption == expected.routeOption && mode in listOf(
+        "ROUTE_GUIDING",
+        "SIMULATION_GUIDING"
+    )
+}

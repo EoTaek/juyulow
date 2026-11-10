@@ -28,13 +28,17 @@ data class JourneyContext(
     val baselineSeconds: Int? = 2_520,
     val waypoint: String? = null,
     val navigation: NaviSnapshot? = null,
+    // Live comparison uses outbound metrics; route application may still insert a waypoint.
     val destinationOnly: Boolean = false,
     val tripOrigin: NaviSnapshot? = null,
 ) {
     val hasDestination: Boolean get() = destination != null
     val defaultMode: JourneyMode get() = if (hasDestination && !destinationOnly) JourneyMode.WAYPOINT else JourneyMode.DESTINATION
     val availableModes: List<JourneyMode>
-        get() = if (destinationOnly) listOf(JourneyMode.DESTINATION) else if (hasDestination) JourneyMode.entries else listOf(
+        get() = if (destinationOnly) (if (hasDestination && navigation != null && navigation.waypoints.size < 2) listOf(
+            JourneyMode.WAYPOINT,
+            JourneyMode.DESTINATION
+        ) else listOf(JourneyMode.DESTINATION)) else if (hasDestination) JourneyMode.entries else listOf(
             JourneyMode.DESTINATION,
             JourneyMode.ROUND_TRIP
         )
@@ -95,6 +99,8 @@ data class NavigationSelection(
     val durationSeconds: Int,
     val refuelSeconds: Int,
     val conditions: RefuelConditions,
+    val outboundOnly: Boolean = false,
+    val routeWaypoints: List<String> = emptyList(),
 )
 
 /** Web journey.ts contract: metres, seconds, KRW; round only at display boundaries. */
@@ -106,20 +112,21 @@ fun compareStation(
     require(mode in context.journey.availableModes)
     require(mode != JourneyMode.WAYPOINT || context.journey.hasDestination)
     require(context.referencePriceWonPerL >= 0)
-    val distance = when (mode) {
+    val calculationMode = if (context.journey.destinationOnly) JourneyMode.DESTINATION else mode
+    val distance = when (calculationMode) {
         JourneyMode.WAYPOINT -> requireNotNull(station.viaMeters)
         JourneyMode.DESTINATION -> station.outboundMeters
         JourneyMode.ROUND_TRIP -> station.outboundMeters + requireNotNull(station.returnMeters)
     }
-    val drive = when (mode) {
+    val drive = when (calculationMode) {
         JourneyMode.WAYPOINT -> requireNotNull(station.viaSeconds)
         JourneyMode.DESTINATION -> station.outboundSeconds
         JourneyMode.ROUND_TRIP -> station.outboundSeconds + requireNotNull(station.returnSeconds)
     }
     val extraDistance =
-        distance - if (mode == JourneyMode.WAYPOINT) requireNotNull(context.journey.baselineMeters) else 0
+        distance - if (calculationMode == JourneyMode.WAYPOINT) requireNotNull(context.journey.baselineMeters) else 0
     val extraTime =
-        drive - (if (mode == JourneyMode.WAYPOINT) requireNotNull(context.journey.baselineSeconds) else 0) + context.conditions.refuelSeconds
+        drive - (if (calculationMode == JourneyMode.WAYPOINT) requireNotNull(context.journey.baselineSeconds) else 0) + context.conditions.refuelSeconds
     return StationComparison(
         distanceMeters = distance,
         drivingSeconds = drive,

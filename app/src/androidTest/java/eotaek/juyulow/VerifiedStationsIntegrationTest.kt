@@ -51,6 +51,26 @@ class VerifiedStationsIntegrationTest {
             val original = (repo.initialize() as NaviResult.Success).value
             check(original.destination == null && original.waypoints.isEmpty() && original.mode == "SAFE_GUIDING")
             val candidates = verifiedStations.map { it.candidate }
+
+            if (InstrumentationRegistry.getArguments().getString("waypointPolicyProbe") == "true") {
+                changed = true
+                val destination =
+                    (repo.setRoute(original, candidates[7], false) as NaviResult.Success).value
+                val first = repo.setRoute(destination, candidates[0], true)
+                check(first is NaviResult.Success) { "FIRST: $first" }
+                val second = repo.setRoute(first.value, candidates[1], true)
+                check(second is NaviResult.Success) { "SECOND: $second" }
+                assertEquals(candidates[7].point.poiId, second.value.destination?.poiId)
+                assertEquals(
+                    listOf(candidates[1].point.poiId, candidates[0].point.poiId),
+                    second.value.waypoints.map { it.poiId })
+                check(repo.setRoute(second.value, candidates[2], true) is NaviResult.Failure)
+                val replaced = repo.setRoute(second.value, candidates[3], false)
+                check(replaced is NaviResult.Success) { "REPLACE: $replaced" }
+                check(replaced.value.waypoints.isEmpty())
+                restore(); changed = false
+                return@runBlocking
+            }
             val trips = repo.trips(candidates)
             check(trips is NaviResult.Success) { "TRIPS: $trips" }
             assertEquals(8, trips.value.size)

@@ -22,7 +22,7 @@ internal val JourneyMode.label: String
     }
 internal val JourneyMode.actionLabel: String
     get() = when (this) {
-        JourneyMode.WAYPOINT -> "경유지로 설정"
+        JourneyMode.WAYPOINT -> "경유지로 추가"
         JourneyMode.DESTINATION -> "목적지로 설정"
         JourneyMode.ROUND_TRIP -> "왕복 경로 설정"
     }
