@@ -22,7 +22,7 @@ class MockRepositoriesTest {
             counts.add(stations.size)
             assertTrue(stations.size in 3..8)
             assertEquals(stations.size, stations.distinctBy { it.id }.size)
-            assertTrue(stations.all { it.viaMeters > route.baselineMeters && it.viaSeconds > route.baselineSeconds })
+            assertTrue(stations.all { it.viaMeters!! > route.baselineMeters!! && it.viaSeconds!! > route.baselineSeconds!! })
             assertTrue(stations.all { it.priceWonPerL in 1590..1745 })
         }
         assertEquals((3..8).toSet(), counts)

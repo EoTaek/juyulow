@@ -24,14 +24,17 @@ data class RefuelSettings(
 
 data class JourneyContext(
     val destination: String? = "서울숲",
-    val baselineMeters: Int = 28_400,
-    val baselineSeconds: Int = 2_520,
+    val baselineMeters: Int? = 28_400,
+    val baselineSeconds: Int? = 2_520,
     val waypoint: String? = null,
+    val navigation: NaviSnapshot? = null,
+    val destinationOnly: Boolean = false,
+    val tripOrigin: NaviSnapshot? = null,
 ) {
     val hasDestination: Boolean get() = destination != null
-    val defaultMode: JourneyMode get() = if (hasDestination) JourneyMode.WAYPOINT else JourneyMode.DESTINATION
+    val defaultMode: JourneyMode get() = if (hasDestination && !destinationOnly) JourneyMode.WAYPOINT else JourneyMode.DESTINATION
     val availableModes: List<JourneyMode>
-        get() = if (hasDestination) JourneyMode.entries else listOf(
+        get() = if (destinationOnly) listOf(JourneyMode.DESTINATION) else if (hasDestination) JourneyMode.entries else listOf(
             JourneyMode.DESTINATION,
             JourneyMode.ROUND_TRIP
         )
@@ -46,12 +49,13 @@ data class Station(
     val longitude: Double,
     val outboundMeters: Int,
     val outboundSeconds: Int,
-    val returnMeters: Int,
-    val returnSeconds: Int,
-    val viaMeters: Int,
-    val viaSeconds: Int,
+    val returnMeters: Int?,
+    val returnSeconds: Int?,
+    val viaMeters: Int?,
+    val viaSeconds: Int?,
     // Incremental toll for WAYPOINT; total toll for DESTINATION / ROUND_TRIP.
-    val tollWon: Int,
+    val tollWon: Int?,
+    val observedAtMillis: Long? = null,
 )
 
 data class ComparisonContext(
@@ -74,10 +78,10 @@ data class StationComparison(
     val costDurationSeconds: Int,
     val fuelSavingWon: Double,
     val drivingCostWon: Double,
-    val tollWon: Double,
+    val tollWon: Double?,
     val timeCostWon: Double,
 ) {
-    val netSavingWon: Double get() = fuelSavingWon - drivingCostWon - tollWon - timeCostWon
+    val netSavingWon: Double get() = fuelSavingWon - drivingCostWon - (tollWon ?: 0.0) - timeCostWon
 }
 
 data class NavigationSelection(
@@ -99,22 +103,23 @@ fun compareStation(
     station: Station,
     mode: JourneyMode
 ): StationComparison {
+    require(mode in context.journey.availableModes)
     require(mode != JourneyMode.WAYPOINT || context.journey.hasDestination)
     require(context.referencePriceWonPerL >= 0)
     val distance = when (mode) {
-        JourneyMode.WAYPOINT -> station.viaMeters
+        JourneyMode.WAYPOINT -> requireNotNull(station.viaMeters)
         JourneyMode.DESTINATION -> station.outboundMeters
-        JourneyMode.ROUND_TRIP -> station.outboundMeters + station.returnMeters
+        JourneyMode.ROUND_TRIP -> station.outboundMeters + requireNotNull(station.returnMeters)
     }
     val drive = when (mode) {
-        JourneyMode.WAYPOINT -> station.viaSeconds
+        JourneyMode.WAYPOINT -> requireNotNull(station.viaSeconds)
         JourneyMode.DESTINATION -> station.outboundSeconds
-        JourneyMode.ROUND_TRIP -> station.outboundSeconds + station.returnSeconds
+        JourneyMode.ROUND_TRIP -> station.outboundSeconds + requireNotNull(station.returnSeconds)
     }
     val extraDistance =
-        distance - if (mode == JourneyMode.WAYPOINT) context.journey.baselineMeters else 0
+        distance - if (mode == JourneyMode.WAYPOINT) requireNotNull(context.journey.baselineMeters) else 0
     val extraTime =
-        drive - (if (mode == JourneyMode.WAYPOINT) context.journey.baselineSeconds else 0) + context.conditions.refuelSeconds
+        drive - (if (mode == JourneyMode.WAYPOINT) requireNotNull(context.journey.baselineSeconds) else 0) + context.conditions.refuelSeconds
     return StationComparison(
         distanceMeters = distance,
         drivingSeconds = drive,
@@ -123,7 +128,7 @@ fun compareStation(
         costDurationSeconds = extraTime,
         fuelSavingWon = (context.referencePriceWonPerL - station.priceWonPerL).toDouble() * context.conditions.liters,
         drivingCostWon = extraDistance / 1000.0 / context.conditions.efficiencyKmPerL * context.referencePriceWonPerL,
-        tollWon = station.tollWon.toDouble(),
+        tollWon = station.tollWon?.toDouble(),
         timeCostWon = extraTime / 3600.0 * context.conditions.timeWonPerHour,
     )
 }

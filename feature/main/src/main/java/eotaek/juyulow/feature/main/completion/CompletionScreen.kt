@@ -39,7 +39,9 @@ fun CompletionScreen(
     selection: NavigationSelection?,
     onCompare: () -> Unit,
     onHome: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onOpenNavigation: (() -> Unit)? = null,
+    error: String? = null,
 ) {
     val colors = JUYULOWTheme.colors
     val type = JUYULOWTheme.typography
@@ -110,6 +112,8 @@ fun CompletionScreen(
                         }
                     }
                     RefuelConditionsSummary(selection.conditions)
+                    error?.let { Text(it, style = type.labelSmall) }
+                    onOpenNavigation?.let { PleosButton("내비게이션 열기", it) }
                     if (narrow) Column(
                         Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(16.dp)

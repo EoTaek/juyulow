@@ -91,7 +91,7 @@ fun HomeScreen(
                                         color = colors.textDarkTertiary
                                     )
                                     Text(
-                                        state.journey.destination ?: "광운대학교 인근",
+                                        state.journey.destination ?: "목적지 없음",
                                         style = type.titleSmallBold
                                     )
                                     state.journey.waypoint?.let {
@@ -102,8 +102,8 @@ fun HomeScreen(
                                         )
                                     }
                                 }
-                                if (state.journey.hasDestination) Text(
-                                    "${minutes(state.journey.baselineSeconds)}분",
+                                if (state.journey.hasDestination && state.journey.baselineSeconds != null) Text(
+                                    "${minutes(state.journey.baselineSeconds!!)}분",
                                     style = type.titleLargeBold
                                 )
                             }
@@ -118,7 +118,7 @@ fun HomeScreen(
                             icon = PleosIcon.Search,
                             trailingIcon = PleosIcon.Next,
                             loading = state.searching,
-                            enabled = state.settings != null,
+                            enabled = state.settings != null && state.navigationReady,
                         )
                         state.conditions?.let { conditions ->
                             VehicleEnergySummary(conditions.energy)
@@ -133,6 +133,7 @@ fun HomeScreen(
                                 style = type.labelSmall, color = colors.textDarkTertiary,
                             )
                         }
+                        state.navigationMessage?.let { Text(it, style = type.labelMedium) }
                         state.error?.let {
                             PleosInlineError(it, style = type.labelMedium)
                         }
@@ -141,7 +142,7 @@ fun HomeScreen(
                 HorizontalDivider(color = colors.basic200)
                 Spacer(Modifier.height(24.dp))
                 val destination: @Composable () -> Unit = {
-                    PleosSwitch(
+                    if (!state.journey.destinationOnly) PleosSwitch(
                         state.journey.hasDestination,
                         "유효 목적지 ${if (state.journey.hasDestination) "있음" else "없음"}",
                         onDestinationChange,

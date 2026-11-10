@@ -22,12 +22,37 @@ class HomeViewModel(
     settings: SettingsRepository,
     vehicle: VehicleInfoRepository,
 ) : ViewModel() {
-    private val mutableState = MutableStateFlow(HomeUiState())
+    private val mutableState = MutableStateFlow(
+        HomeUiState(
+            journey = journeys.context.value,
+            navigationReady = journeys.navigationState == null
+        )
+    )
     val state = mutableState.asStateFlow()
     private var searchJob: Job? = null
     private var searchGeneration = 0
 
     init {
+        journeys.navigationState?.let { navigation ->
+            mutableState.update { it.copy(navigationReady = false) }
+            viewModelScope.launch {
+                navigation.collect { n ->
+                    mutableState.update {
+                        it.copy(
+                            navigationReady = n.status == eotaek.juyulow.core.model.NaviStatus.READY,
+                            navigationMessage = if (n.tripTotal > 0) "주유소 경로 조회 ${n.tripCompleted}/${n.tripTotal}" else when (n.status) {
+                                eotaek.juyulow.core.model.NaviStatus.IDLE,
+                                eotaek.juyulow.core.model.NaviStatus.CONNECTING -> "내비게이션에 연결하고 있어요."
+
+                                eotaek.juyulow.core.model.NaviStatus.READING -> "내비게이션 상태를 확인하고 있어요."
+                                eotaek.juyulow.core.model.NaviStatus.READY -> null
+                                else -> "내비게이션 상태를 확인할 수 없어요."
+                            }
+                        )
+                    }
+                }
+            }
+        }
         viewModelScope.launch {
             vehicle.fields.collect { fields -> mutableState.update { it.copy(vehicleFields = fields) } }
         }
@@ -45,7 +70,7 @@ class HomeViewModel(
                 settings.settings.collect { value -> mutableState.update { it.copy(settings = value) } }
             } catch (error: CancellationException) {
                 throw error
-            } catch (_: Exception) {
+            } catch (error: Exception) {
                 mutableState.update {
                     it.copy(
                         settings = RefuelSettings(),
@@ -63,22 +88,27 @@ class HomeViewModel(
     fun search() {
         val snapshot = state.value
         val conditions = snapshot.conditions ?: return
-        if (snapshot.searching || snapshot.readySessionId != null) return
+        if (snapshot.searching || snapshot.readySessionId != null || !snapshot.navigationReady) return
         val generation = ++searchGeneration
         mutableState.update { it.copy(searching = true, error = null) }
         searchJob = viewModelScope.launch {
             try {
                 val found = stations.search(snapshot.journey)
                 if (generation != searchGeneration) return@launch
-                val session = sessions.create(snapshot.journey, conditions, found)
+                val journey =
+                    if (snapshot.journey.destinationOnly) journeys.context.value else snapshot.journey
+                val session = sessions.create(journey, conditions, found)
                 mutableState.update { it.copy(searching = false, readySessionId = session.id) }
             } catch (error: CancellationException) {
                 throw error
-            } catch (_: Exception) {
+            } catch (error: Exception) {
                 if (generation == searchGeneration) mutableState.update {
                     it.copy(
                         searching = false,
-                        error = "주유소를 찾지 못했어요. 다시 시도해 주세요."
+                        error = eotaek.juyulow.feature.main.common.navigationFailureMessage(
+                            error,
+                            "주유소를 찾지 못했어요. 다시 시도해 주세요."
+                        )
                     )
                 }
             }

@@ -32,11 +32,11 @@ fun generateStations(journey: JourneyContext, random: Random = Random.Default): 
             returnMeters = random.nextInt(9, 66) * 100, returnSeconds = random.nextInt(4, 18) * 60,
             viaMeters = maxOf(
                 outboundMeters + 500,
-                journey.baselineMeters + random.nextInt(5, 86) * 100
+                (journey.baselineMeters ?: 0) + random.nextInt(5, 86) * 100
             ),
             viaSeconds = maxOf(
                 outboundSeconds + 180,
-                journey.baselineSeconds + random.nextInt(2, 19) * 60
+                (journey.baselineSeconds ?: 0) + random.nextInt(2, 19) * 60
             ),
             tollWon = if (random.nextDouble() > .78) 500 else 0,
         )

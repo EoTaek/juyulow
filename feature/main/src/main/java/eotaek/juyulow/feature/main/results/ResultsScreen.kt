@@ -53,6 +53,7 @@ fun ResultsScreen(
     state: ResultsUiState, onBack: () -> Unit, onRefresh: () -> Unit, onSelect: (String) -> Unit,
     onMode: (JourneyMode) -> Unit, onSort: (StationSort) -> Unit, onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
+    onReconcile: () -> Unit = {},
 ) {
     val colors = JUYULOWTheme.colors
     val type = JUYULOWTheme.typography
@@ -79,28 +80,54 @@ fun ResultsScreen(
                         if (batch != null) {
                             val route = batch.context.journey
                             Text(
-                                if (route.hasDestination) "${route.destination}까지 ${minutes(route.baselineSeconds)}분 · ${
+                                if (route.hasDestination && route.baselineSeconds != null && route.baselineMeters != null) "${route.destination}까지 ${
+                                    minutes(
+                                        route.baselineSeconds!!
+                                    )
+                                }분 · ${
                                     kilometers(
-                                        route.baselineMeters
+                                        route.baselineMeters!!
                                     )
                                 } km / ${vehicleNumber(batch.context.conditions.liters)} L 주유 기준"
-                                else "현재 위치 · 광운대학교 인근 / ${vehicleNumber(batch.context.conditions.liters)} L 주유 기준",
+                                else "${route.destination ?: "현재 위치"} / ${vehicleNumber(batch.context.conditions.liters)} L 주유 기준",
                                 style = type.labelMedium, color = colors.textDarkSecondary,
                             )
                             RefuelConditionsSummary(batch.context.conditions)
                         }
                     }
                 }
-                if (batch != null) PleosTabs(batch.context.journey.availableModes.map {
+                if (batch != null) PleosTabs((if (batch.context.journey.destinationOnly) JourneyMode.entries else batch.context.journey.availableModes).map {
                     PleosTab(
                         it,
                         it.label,
-                        modeIcon(it)
+                        modeIcon(it),
+                        enabled = it in batch.context.journey.availableModes,
                     )
                 }, state.mode, onMode, enabled = !state.busy)
                 state.error?.let {
                     PleosInlineError(it)
                 }
+                if (state.routeUncertain) PleosButton(
+                    "상태 다시 확인",
+                    onReconcile,
+                    enabled = !state.busy
+                )
+                if (state.routeExpired) Text(
+                    "위치나 경로가 달라져 이전 검색 결과로 설정할 수 없어요.",
+                    style = type.labelSmall
+                )
+                batch?.stations?.firstOrNull()?.observedAtMillis?.let { time ->
+                    Text(
+                        "검색 시점 ${
+                            java.text.SimpleDateFormat("HH:mm", java.util.Locale.KOREA)
+                                .format(java.util.Date(time))
+                        } 기준", style = type.labelSmall
+                    )
+                }
+                if (batch?.context?.journey?.destinationOnly == true) Text(
+                    "경유지·왕복 경로는 준비 중이에요.",
+                    style = type.labelSmall
+                )
                 if (batch == null) {
                     PleosButton("홈으로", onBack)
                 } else {
@@ -180,7 +207,7 @@ fun ResultsScreen(
                                     .fillMaxWidth()
                                     .testTag("confirm-route"),
                                 icon = PleosIcon.Navigation,
-                                enabled = state.selected != null && !state.busy,
+                                enabled = state.selected != null && !state.busy && !state.routeUncertain && !state.routeExpired,
                                 loading = state.settingRoute
                             )
                         }

@@ -109,8 +109,10 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
   테스트용 Density를 사용하지 않는다.
 - 레이아웃 테스트 전용 `PrototypeTestActivity`는 debug 빌드에만 포함하며 런처 진입점은 없다. Pleos의 자동 창 재배치로 테스트가 주입한
   composition이 소실되지 않도록 구성 변경을 처리한다. 실제 MainActivity의 재생성·상태 유지는 별도 흐름 테스트가 검증한다.
-- mock 검색은 850ms 지연 후 3~8곳을 생성한다. 앱에 실패 시나리오 선택 메뉴는 없으며, 검색·경로·저장 실패는 로컬 단위 테스트의 Fake로 주입한다.
-- 정차 시연용이다. startup 차량 조회 외 SDK·네트워크 호출, 실제 내비 설정과 앱 전체의 주행 중 사용 적합성은 검증 범위에 포함하지 않는다. 과거 PoC
+- 일반 UI 테스트의 mock 검색은 850ms 지연 후 3~8곳을 생성한다. 실제 화면은 고정 후보 8곳의 Trip을 순차 조회한다. 앱에 실패 시나리오 선택 메뉴는 없으며,
+  검색·경로·저장 실패는 로컬 단위 테스트의 Fake로 주입한다.
+- 정차 시연용이다. 일반 UI 회귀 테스트는 실제 내비 설정을 포함하지 않으며 별도 opt-in 연결 테스트로 검증한다. 앱 전체의 주행 중 사용 적합성은 검증 범위에 포함하지
+  않는다. 과거 PoC
   결과는 [실험 보고서](poc/POC_TRIP_REPORT.md)에 보존한다.
 
 ### Startup 실기 확인 기록 (2026-11-09)
@@ -132,3 +134,35 @@ Pleos 미지원 3항목은 debug logcat에 유지됐다. % 대체와 소수 계�
 
 주유량 수정 정책: 자동값에서 수정한 소수 주유량이 늦은 fetch보다 우선하고 적용 전에는 저장소에 영향을 주지 않는지 SettingsViewModelTest로 확인한다.
 PreferencesSettingsRepositoryTest는 주유량 override가 같은 실행에서는 유지되고 새 저장소에서는 초기화되는지 검증한다.
+
+## 고정 주유소 연결 검증
+
+`LiveJourneyRepositoryTest`는 실제 Trip 매핑, 미조회 항목 null, 통행료 제외 계산, 동일 문맥 캐시 재사용,
+위치 변경 만료·재조회 차단, 미지원 모드 거부, 중복 제출 차단, 결과 불명 재확인, 화면 대기 취소 후 SDK 작업 보존을 검증한다.
+`LiveNavigationFlowTest`는 실제 UI 세션 구현과 Fake NavigationRepository로 변경 확인 취소·완료·내비 열기,
+결과 불명 후 재제출 없는 성공 확인을 검증한다. PrototypeFlowTest도 내비/후보 저장소를 Fake로 주입해 실제 경로를 바꾸지 않는다.
+PrototypeLayoutTest는 기존 mock 모드와 실제 주유소 8곳 이름·nullable 경로·통행료 제외·검색 시점·비활성 탭을
+1700/840 × 라이트/다크의 8가지 조합으로 검사하고 `results-<너비>-<테마>-live.png`를 저장한다.
+
+실제 SDK 검증은 정차·목적지/경유지 없는 초기 상태에서만 명시적으로 실행한다. 각 목적지 설정 후 초기 상태로 복원한다.
+
+```powershell
+$env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
+.\gradlew.bat :app:connectedDebugAndroidTest '-Pandroid.testInstrumentationRunnerArguments.class=eotaek.juyulow.VerifiedStationsIntegrationTest' '-Pandroid.testInstrumentationRunnerArguments.verifiedStationsProbe=true' --console=plain
+```
+
+2026-11-10 Pleos Connect 2.1.0 / Navigation 3.3.2-rc5-hotfix.3에서 8곳 전체 Trip·목적지 설정·복원을 통과했다.
+실측 좌표 수집용 StationCalibrationTest는 `stationCalibration=true`와 검색에서 얻은 8개 `{id,name,lat,lon}` JSON 배열의
+UTF-8 Base64 `inputs` 인자를 요구한다. StationFixtureCaptureTest는 내비 검색 화면을 열고 `stationSearchProbe=true`,
+UTF-8 Base64 `queryBase64`를 지정할 때만 검색 필드를 조작한다. 두 도구는 활성 사용자 10에서 실행하며 UIAutomation을 사용하는
+다른 도구와 동시에 실행하지 않는다. 앱 데이터 삭제·uninstall은 사용하지 않는다. 원래 경로가 있으면 calibration은 변경을 거부한다.
+최종 검증: 전체 연결 테스트 32건 중 27건 통과, 명시적 실행 인자가 필요한 SDK/개발 도구 테스트 5건은 기본 실행에서 건너뛰었다.
+실제 SDK 8곳 목적지 설정/복원은 별도 opt-in 실행으로 통과했다. 앱 직접 조작으로도 8곳 검색 → 세종주유소 목적지 설정 →
+완료 화면 → 내비게이션 열기 → 안내 종료 후 홈의 목적지 없음 복원을 확인했다. 빌드·로컬 단위 테스트·lint도 통과했다.
+목적지 대체 정책: 시스템 내비 목적지 설정 → 재검색 → 목적지 제거 → 재검색을 동일 프로세스에서 허용한다.
+LiveJourneyRepositoryTest는 이 순서에서 Trip 배치가 한 번만 호출되고 같은 8개 결과를 재사용하는지 확인한다.
+기존 목적지·경유·안내·route ID/index는 편도 Trip 재사용 조건에서 제외하며, 최초 출발 위치 50m 이내·동일 옵션을 기준으로 한다.
+화면은 최신 목적지로 갱신하고, 목적지 대체 성공 후에도 다시 비교·대체할 수 있다. 제출 전 문맥 변경 확인과 결과 불명 재제출 차단은 유지한다.
+실제 에뮬레이터에서도 최초 검색 후 시스템 내비에 한강에너지주유소를 목적지로 설정 → 앱 검색 8곳 표시 → 시스템 안내 종료로 목적지 제거 → 앱 재검색 8곳 표시를 같은
+프로세스에서 확인했다. 세 번의 검색 시점이 같아 기존 편도 Trip 재사용도 확인했다. 변경 후 빌드·로컬 단위 테스트·lint와 LiveNavigationFlowTest 2건이
+통과했다.

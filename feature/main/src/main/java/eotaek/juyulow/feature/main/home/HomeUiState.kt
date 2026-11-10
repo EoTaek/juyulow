@@ -12,6 +12,8 @@ data class HomeUiState(
     val searching: Boolean = false,
     val error: String? = null,
     val readySessionId: String? = null,
+    val navigationReady: Boolean = true,
+    val navigationMessage: String? = null,
     val vehicleFields: Map<VehicleProperty, VehicleField> = emptyMap(),
 ) {
     val conditions get() = settings?.let { resolveRefuelConditions(it, vehicleFields) }

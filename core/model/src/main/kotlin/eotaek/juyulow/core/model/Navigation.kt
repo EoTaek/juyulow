@@ -7,9 +7,33 @@ data class NaviLocation(val latitude: Double, val longitude: Double, val routeId
 data class NaviSnapshot(val location: NaviLocation, val destination: NaviPoint?,
     val waypoints: List<NaviPoint>, val mode: String, val routing: Boolean,
     val routeOption: String, val observedAtMillis: Long)
+
+/** Observation timestamps do not change route identity; position uses the SDK response tolerance. */
+fun NaviSnapshot.sameContextAs(other: NaviSnapshot): Boolean = destination == other.destination &&
+        waypoints == other.waypoints && mode == other.mode && routing == other.routing &&
+        routeOption == other.routeOption && location.routeId == other.location.routeId &&
+        location.routeIndex == other.location.routeIndex &&
+        kotlin.math.abs(location.latitude - other.location.latitude) <= 0.000001 &&
+        kotlin.math.abs(location.longitude - other.location.longitude) <= 0.000001
+
+/** A one-way station Trip does not depend on the existing destination or waypoint list. */
+fun NaviSnapshot.sameTripOriginAs(other: NaviSnapshot): Boolean {
+    if (routeOption != other.routeOption) return false
+    val lat1 = Math.toRadians(location.latitude)
+    val lat2 = Math.toRadians(other.location.latitude)
+    val dLat = lat2 - lat1
+    val dLon = Math.toRadians(other.location.longitude - location.longitude)
+    val a = kotlin.math.sin(dLat / 2).let { it * it } +
+            kotlin.math.cos(lat1) * kotlin.math.cos(lat2) * kotlin.math.sin(dLon / 2)
+        .let { it * it }
+    val meters = 6_371_000.0 * 2 * kotlin.math.asin(kotlin.math.sqrt(a.coerceIn(0.0, 1.0)))
+    return meters <= 50.0
+}
 enum class NaviStatus { IDLE, CONNECTING, READY, READING, FAILED, UNCERTAIN, RELEASED }
 data class NaviState(val status: NaviStatus = NaviStatus.IDLE, val snapshot: NaviSnapshot? = null,
-    val receivedFields: Set<String> = emptySet(), val error: String? = null)
+                     val receivedFields: Set<String> = emptySet(), val error: String? = null,
+                     val tripCompleted: Int = 0, val tripTotal: Int = 0
+)
 data class NaviCandidate(val point: NaviPoint, val responseLatitude: Double, val responseLongitude: Double,
     val routeResponseLatitude: Double = responseLatitude, val routeResponseLongitude: Double = responseLongitude)
 data class NaviTrip(val candidate: NaviCandidate, val meters: Int, val seconds: Int, val observedAtMillis: Long)

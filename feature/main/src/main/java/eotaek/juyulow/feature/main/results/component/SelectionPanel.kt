@@ -116,7 +116,7 @@ internal fun SelectionPanel(
             if (mode == JourneyMode.WAYPOINT) "추가 주행 연료비" else "이동 연료비",
             "−${won(result.drivingCostWon)}원"
         )
-        CostRow("통행료", "−${won(result.tollWon)}원")
+        CostRow("통행료", result.tollWon?.let { "−${won(it)}원" } ?: "제외")
         CostRow(
             "시간 비용",
             if (context.conditions.includeTimeCost) "−${won(result.timeCostWon)}원" else "제외"

@@ -4,7 +4,8 @@
 `AndroidNaviHelperApi`만 실제 SDK 객체를 생성한다. 순수 JVM인 `core:data`에는 SDK 타입이나 Android 의존성을 추가하지 않는다.
 
 Koin에 `factory<NaviClient>`로 등록한다. 요청할 때마다 새 클라이언트를 받는 것이 아니라, 사용 범위의 소유자가 한 번 주입받아 보관하고 종료 시
-`release()`를 호출한다. 등록 자체로 SDK를 초기화하지 않는다. 현재 화면의 mock 저장소는 그대로이며 화면에서 이 클라이언트를 사용하지 않는다.
+`release()`를 호출한다. 등록 자체로 SDK를 초기화하지 않는다. 화면의 LiveJourneyRepository가 하나의 NavigationRepository 세션을
+공유하며 앱 루트 ViewModel이 이를 소유한다.
 
 ## 사용 순서
 
@@ -51,7 +52,8 @@ Koin에 `factory<NaviClient>`로 등록한다. 요청할 때마다 새 클라이
 
 `core:data/NavigationRepository`와 `core:model/Navigation.kt`는 SDK 독립 계약이다. `app/navigation/PleosNavigationRepository`를
 Koin factory로 주입하고 소유자가 initialize → refresh(복귀 시 포함) → release를 호출한다. 등록 자체로 SDK를 연결하지 않는다.
-화면의 mock JourneyRepository는 교체하지 않았다. 변경 이벤트는 idle 시 재조회를 예약한다. 요청·콜백 처리는 main dispatcher로 직렬화한다.
+화면은 LiveJourneyRepository로 실제 내비 저장소에 연결했다. 변경 이벤트는 idle 시 재조회를 예약한다. 요청·콜백 처리는 main dispatcher로
+직렬화한다.
 
 - 4종 상태를 모두 수신해야 스냅샷을 제공하며 수신 필드 목록으로 부분 응답을 드러낸다. 이전 스냅샷은 오류 상태에서 과거 관측값으로만 유지한다.
   스냅샷은 트랜잭션 보장이 아니다. 연결/조회 10초, Trip/경로 이벤트 대기 30초다. 조회 귀속이 불명확해지면 해당 저장소의 후속 조회를 차단한다.
@@ -60,7 +62,8 @@ Koin factory로 주입하고 소유자가 initialize → refresh(복귀 시 포�
 - 후보는 외부 주유소 ID가 아닌 내비 POI ID, 명시적인 sub-ID와 검증된 응답 좌표가 필요하다. sub-ID가 null인 후보는 자동으로 0으로 바꾸지 않는다.
   기존 PoC의 null sub-ID fixture를 그대로 경로 설정에 사용할 수 있다고 가정하지 않는다.
 - Trip은 후보별 순차 요청이며 단일 응답 목적지 ID와 축별 0.000001도 좌표를 대조한다. 편도 m/초에 주유시간을 더하지 않는다.
-  배치 전후 위치·목적지·경유지·안내 상태·옵션이 달라지면 실패한다. 요청 후보는 프로세스 내 재조회하지 않으며
+  편도 Trip 배치 전후에는 출발 위치 50m 이내·동일 경로 옵션을 확인하며, 기존 목적지·경유지·안내 상태 변경은 실패 조건에서 제외한다. 요청 후보는 프로세스 내
+  재조회하지 않으며
   오류/타임아웃/취소/귀속 불명 시 공유 ledger가 후속 Trip을 차단한다. 프로세스 재시작이 서버 취소를 보장하지 않는다.
 - 경로 확정 직전 현재 상태와 입력 스냅샷을 대조한다. 목적지 대체는 기존 경유지 제거까지 확인하며, 경유는
   requestRouteWithWaypoints로 주유소 → 기존 경유지 → 목적지 순서를 명시한다. 기존 목적지 sub-ID가 null이면
@@ -101,3 +104,38 @@ Reference에서 세 권한은 normal로 명시하며, 스마트폰 위치 권한
 
 구현 근거:
 로컬 [초기화·해제](../pleos_sdk_guide/앱%20개발·연동%20가이드/SDK%20사용%20가이드/NaviHelper%20SDK/Programming%20Guide/Initialization.md), [권한](../pleos_sdk_guide/앱%20개발·연동%20가이드/SDK%20사용%20가이드/NaviHelper%20SDK/Programming%20Guide/Declaring%20permissions.md), [API Reference](../pleos_sdk_guide/앱%20개발·연동%20가이드/SDK%20사용%20가이드/NaviHelper%20SDK/API%20Reference/ai.pleos.playground.navi.helper/NaviHelper/NaviHelper.md).
+
+## 고정 주유소 UI 연결 (2026-11-10)
+
+`LiveJourneyRepository`는 StationRepository/JourneyRepository를 함께 구현한다. 앱 루트 ViewModel이 세션을 초기화하고,
+포그라운드 복귀 시 상태를 재확인하며 종료 시 해제한다. 재구성·화면 이동은 이미 제출한 SDK 작업을 취소하거나 중복 제출하지 않는다.
+홈의 목적지 유무 스위치·고정 지역명·임의 ETA는 실제 화면에서 제거했다. 목적지 교체는 기존 목적지와 경유지 제거를 확인받는다.
+SDK의 실제 반영을 확인한 뒤 완료하고, 결과 불명은 재제출 없이 명시적 상태 재확인으로만 복구한다. 완료 화면의 내비 열기는 별도 요청이다.
+
+`VerifiedStations.kt`는 내비 공식 검색의 DRIVING guidePoint를 입력으로 사용한다. 명시적 sub-ID `0`을 이 8곳에서
+검증했으며 다른 POI의 null sub-ID를 0으로 보정하는 정책은 아니다. Trip 응답 좌표와 목적지 조회 좌표는 별도로 저장한다.
+아래 거리·시간은 고정 내비 위치 `(37.4127212,127.094681)`에서의 측정 기록이며 런타임 계산에는 새 Trip 응답을 사용한다.
+
+| 주유소                           | 내비 POI ID            | 측정 편도 m / 초 |
+|----------------------------------|------------------------|------------------|
+| HD현대오일뱅크 세종주유소        | `36khp23245r6cm5nqhe3` | 1718 / 370       |
+| S-OIL 셀프 분당제일에너지주유소  | `36khp274nejqcm5nqhe3` | 1962 / 393       |
+| GS칼텍스 셀프 판교서일주유소     | `36khp265rmp5cm5nqhe3` | 2078 / 467       |
+| HD현대오일뱅크 셀프 동판교주유소 | `36khp24k4r58cm5nqhe3` | 2488 / 523       |
+| SK에너지 스타팅광동주유소        | `36khde5jsnq3cm5nqhe3` | 2865 / 589       |
+| SK에너지 판교운중주유소          | `36khde5j4sc5cm5nqhe3` | 3202 / 706       |
+| SK에너지 셀프 한강에너지주유소   | `36khp2d3qjj5cm5nqhe3` | 4795 / 625       |
+| SK에너지 셀프 퍼스트주유소       | `36khp4qgm7fscm5nqhe3` | 11781 / 1756     |
+
+8곳 모두 원시 SDK 측정과 NavigationRepository의 ID·좌표·이벤트·안내 상태 검증을 통과했고, 각 목적지 설정 후
+목적지·경유지 없는 SAFE_GUIDING 초기 상태 복원을 확인했다. 지도/내비 버전·출발 위치 변경 시 좌표 재검증이 필요하다.
+가격은 1590~1740원/L의 고정 mock이며 화면에 가격 출처 배지를 추가하지 않는다. 오피넷 연결과 일반 POI 매핑은 후속 작업이다.
+통행료는 미조회 (null)로 계산에서 제외하며 UI에 제외를 표시한다. 경유·왕복 탭은 비활성 상태다.
+
+최초 출발 위치 50m 이내·동일 경로 옵션이면 최초 편도 Trip과 검색 시점을 재사용한다. route ID/index·기존 목적지·경유 순서·안내 상태의 변경이나 목적지 제거는
+재검색을 막지 않는다.
+출발 위치가 재사용 범위를 벗어나거나 경로 옵션이 달라진 동안만 캐시 재사용을 차단한다. 원래 조건으로 돌아오면 재사용할 수 있다. 목적지 설정 성공만으로 캐시를 만료하지 않는다.
+결과 화면도 최신 목적지로 갱신하며, 대체 확인 후 제출 직전 목적지·경유 순서·옵션·안내 상태가 달라졌으면 재확인을 요구한다. 현재 세션에서 같은 POI의 Trip을 재요청하지
+않는다.
+SDK 조회 불명/오류 역시 자동 재시도하지 않는다. 프로세스 재시작은 서버 요청 취소의 증명이 아니다.
+검색과 목적지 제출 직전 CarUxRestrictions가 정차 UI를 허용하는지 확인하며, 규제 상태를 확인할 수 없어도 제출을 차단한다.

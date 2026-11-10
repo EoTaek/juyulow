@@ -7,6 +7,8 @@ import eotaek.juyulow.core.data.JourneyRepository
 import eotaek.juyulow.core.data.StationRepository
 import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.StationSort
+import eotaek.juyulow.core.model.sameContextAs
+import eotaek.juyulow.core.model.sameTripOriginAs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +35,31 @@ class ResultsViewModel(
     val state = mutableState.asStateFlow()
     private var searchJob: Job? = null
     private var generation = 0
+
+    init {
+        if (initial?.context?.journey?.destinationOnly == true) viewModelScope.launch {
+            journeys.context.collect { context ->
+                val session = state.value.session ?: return@collect
+                val a = session.context.journey.navigation
+                val b = context.navigation
+                if (a != null && b != null) {
+                    val origin = session.context.journey.tripOrigin ?: a
+                    val reusable = origin.sameTripOriginAs(b)
+                    mutableState.update {
+                        it.copy(
+                            routeExpired = !reusable,
+                            session = if (reusable) session.copy(
+                                context = session.context.copy(
+                                    journey = context
+                                )
+                            ) else session,
+                            confirmReplacement = a.sameContextAs(b) && it.confirmReplacement,
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     fun select(id: String) {
         if (!state.value.busy && state.value.session?.stations?.any { it.id == id } == true) mutableState.update {
@@ -67,7 +94,7 @@ class ResultsViewModel(
                 if (request != generation) return@launch
                 val next =
                     sessions.create(
-                        oldSession.context.journey,
+                        if (oldSession.context.journey.destinationOnly) journeys.context.value else oldSession.context.journey,
                         oldSession.context.conditions,
                         found
                     )
@@ -83,23 +110,40 @@ class ResultsViewModel(
                 }
             } catch (error: CancellationException) {
                 throw error
-            } catch (_: Exception) {
+            } catch (error: Exception) {
                 if (request == generation) mutableState.update {
                     it.copy(
                         searching = false,
-                        error = "다시 찾지 못했어요. 기존 검색 결과를 표시해요."
+                        error = eotaek.juyulow.feature.main.common.navigationFailureMessage(
+                            error,
+                            "다시 찾지 못했어요. 기존 검색 결과를 표시해요."
+                        )
                     )
                 }
             }
         }
     }
 
-    fun confirm() {
+    fun dismissReplacement() {
+        mutableState.update { it.copy(confirmReplacement = false) }
+    }
+
+    fun confirm(confirmed: Boolean = false) {
         val snapshot = state.value
         val session = snapshot.session ?: return
         val selected = snapshot.selected ?: return
-        if (snapshot.busy || snapshot.completedSelectionId != null) return
-        mutableState.update { it.copy(settingRoute = true, error = null) }
+        if (snapshot.busy || snapshot.completedSelectionId != null || snapshot.routeUncertain || snapshot.routeExpired) return
+        if (session.context.journey.destinationOnly && session.context.journey.hasDestination && !confirmed) {
+            mutableState.update { it.copy(confirmReplacement = true) }
+            return
+        }
+        mutableState.update {
+            it.copy(
+                settingRoute = true,
+                confirmReplacement = false,
+                error = null
+            )
+        }
         viewModelScope.launch {
             try {
                 val selection = journeys.select(session, selected.station, snapshot.mode)
@@ -111,11 +155,17 @@ class ResultsViewModel(
                 }
             } catch (error: CancellationException) {
                 throw error
-            } catch (_: Exception) {
+            } catch (error: Exception) {
                 mutableState.update {
                     it.copy(
                         settingRoute = false,
-                        error = "경로를 설정하지 못했어요. 다시 시도해 주세요."
+                        routeUncertain = journeys.navigationState?.value?.status == eotaek.juyulow.core.model.NaviStatus.UNCERTAIN,
+                        error = if (journeys.navigationState?.value?.status == eotaek.juyulow.core.model.NaviStatus.UNCERTAIN)
+                            "경로 설정 결과를 확인하지 못했어요. 상태를 다시 확인해 주세요."
+                        else eotaek.juyulow.feature.main.common.navigationFailureMessage(
+                            error,
+                            "경로를 설정하지 못했어요. 현재 위치나 경로가 달라졌는지 확인해 주세요."
+                        )
                     )
                 }
             }
@@ -124,6 +174,31 @@ class ResultsViewModel(
 
     fun consumeSelection() {
         mutableState.update { it.copy(completedSelectionId = null) }
+    }
+
+    fun reconcile() {
+        if (state.value.busy) return
+        mutableState.update { it.copy(settingRoute = true) }
+        viewModelScope.launch {
+            try {
+                val recovered = journeys.reconcile()
+                mutableState.update {
+                    it.copy(
+                        settingRoute = false, completedSelectionId = recovered?.id,
+                        error = if (recovered == null) "아직 경로 설정 결과를 확인하지 못했어요." else null
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                mutableState.update {
+                    it.copy(
+                        settingRoute = false,
+                        error = "내비게이션 상태를 확인하지 못했어요."
+                    )
+                }
+            }
+        }
     }
 
     fun cancelSearch() {

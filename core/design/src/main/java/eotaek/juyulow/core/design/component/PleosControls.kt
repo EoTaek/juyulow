@@ -107,7 +107,12 @@ fun PleosIconButton(
     ) { PleosIcon(icon, contentDescription = label) }
 }
 
-data class PleosTab<T>(val value: T, val label: String, val icon: PleosIcon? = null)
+data class PleosTab<T>(
+    val value: T,
+    val label: String,
+    val icon: PleosIcon? = null,
+    val enabled: Boolean = true
+)
 
 @Composable
 fun <T> PleosTabs(
@@ -130,7 +135,7 @@ fun <T> PleosTabs(
             val active = tab.value == selected
             Surface(
                 color = if (active) colors.basic900 else colors.surfaceHigh,
-                contentColor = if (active) colors.basic00 else colors.textDarkSecondary,
+                contentColor = if (!tab.enabled) colors.textDarkTertiary else if (active) colors.basic00 else colors.textDarkSecondary,
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier
                     .weight(1f, fill = false)
@@ -146,7 +151,7 @@ fun <T> PleosTabs(
                         .testTag("tab-${tab.value}")
                         .selectable(
                             active,
-                            enabled = enabled,
+                            enabled = enabled && tab.enabled,
                             role = Role.Tab,
                             onClick = { onSelect(tab.value) })
                         .heightIn(min = 64.dp)

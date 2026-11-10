@@ -1,13 +1,48 @@
 package eotaek.juyulow.navigation
 
-import ai.pleos.playground.navi.constants.*
-import ai.pleos.playground.navi.data.*
+import ai.pleos.playground.navi.constants.NaviErrorCode
+import ai.pleos.playground.navi.constants.NaviMode
+import ai.pleos.playground.navi.constants.RouteOption
+import ai.pleos.playground.navi.constants.RoutePointType
+import ai.pleos.playground.navi.constants.WaypointIndex
+import ai.pleos.playground.navi.data.CurrentLocationInfo
+import ai.pleos.playground.navi.data.DestinationInfo
+import ai.pleos.playground.navi.data.NavigationScreenRequest
+import ai.pleos.playground.navi.data.RequestWaypointInfo
+import ai.pleos.playground.navi.data.RouteInfo
+import ai.pleos.playground.navi.data.RouteStartInfo
+import ai.pleos.playground.navi.data.RouteStateInfo
+import ai.pleos.playground.navi.data.RouteWithWaypointsRequest
+import ai.pleos.playground.navi.data.TripInfo
+import ai.pleos.playground.navi.data.TripRequest
+import ai.pleos.playground.navi.data.WaypointChangedInfo
+import ai.pleos.playground.navi.data.WaypointInfo
 import eotaek.juyulow.core.data.NavigationRepository
-import eotaek.juyulow.core.model.*
-import kotlinx.coroutines.*
+import eotaek.juyulow.core.model.NaviCandidate
+import eotaek.juyulow.core.model.NaviLocation
+import eotaek.juyulow.core.model.NaviPoint
+import eotaek.juyulow.core.model.NaviResult
+import eotaek.juyulow.core.model.NaviSnapshot
+import eotaek.juyulow.core.model.NaviState
+import eotaek.juyulow.core.model.NaviStatus
+import eotaek.juyulow.core.model.NaviTrip
+import eotaek.juyulow.core.model.sameTripOriginAs
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -137,6 +172,7 @@ class PleosNavigationRepository(
         candidates.forEach { validate(it); check(it.point.poiId !in ledger.requested) { "REPEAT_CANDIDATE" } }
         val before = read()
         check(!ledger.uncertain) { "TRIP_UNCERTAIN" }
+        mutableState.value = state.value.copy(tripCompleted = 0, tripTotal = candidates.size)
         try {
             val result = candidates.map { c ->
                 ledger.requested += c.point.poiId
@@ -148,10 +184,12 @@ class PleosNavigationRepository(
                     check(points.size == 1 && points.single().pointType == RoutePointType.DESTINATION && points.single().poiId == c.point.poiId &&
                         near(points.single().latitude, c.responseLatitude) && near(points.single().longitude, c.responseLongitude)) { "TRIP_MISMATCH" }
                     check(trip.distance >= 0 && trip.eta >= 0) { "INVALID_TRIP" }
+                    mutableState.value =
+                        state.value.copy(tripCompleted = state.value.tripCompleted + 1)
                     NaviTrip(c, trip.distance, trip.eta, clock())
                 }
             }
-            check(same(before, read(), true)) { "CONTEXT_CHANGED" }
+            check(before.sameTripOriginAs(read())) { "CONTEXT_CHANGED" }
             result
         } catch (e: Exception) { ledger.uncertain = true; throw e }
     }
