@@ -107,7 +107,7 @@ fun CompletionScreen(
                                 PleosLabelValue("최종 목적지", selection.destination, valueStyle = type.titleSmallBold)
                             }
                             PleosLabelValue(
-                                "${if (selection.outboundOnly) "주유소까지 " else ""}${
+                                "${if (selection.outboundOnly) "검색 시점 기준 · 주유소까지 " else ""}${
                                     kilometers(
                                         selection.distanceMeters
                                     )

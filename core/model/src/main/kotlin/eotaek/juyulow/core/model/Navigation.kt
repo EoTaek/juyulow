@@ -16,7 +16,14 @@ fun NaviSnapshot.sameContextAs(other: NaviSnapshot): Boolean = destination == ot
         kotlin.math.abs(location.latitude - other.location.latitude) <= 0.000001 &&
         kotlin.math.abs(location.longitude - other.location.longitude) <= 0.000001
 
-/** A one-way station Trip does not depend on the existing destination or waypoint list. */
+/** Confirmed route targets survive movement and rerouting; target changes require confirmation. */
+fun NaviSnapshot.sameRouteTargetsAs(other: NaviSnapshot): Boolean {
+    fun NaviPoint.key() = poiId to subId
+    return destination?.key() == other.destination?.key() &&
+            waypoints.map { it.key() } == other.waypoints.map { it.key() }
+}
+
+/** Only comparison metrics depend on the original position and routing option. */
 fun NaviSnapshot.sameTripOriginAs(other: NaviSnapshot): Boolean {
     if (routeOption != other.routeOption) return false
     val lat1 = Math.toRadians(location.latitude)

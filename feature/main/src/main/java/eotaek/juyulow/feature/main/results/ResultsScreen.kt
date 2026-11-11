@@ -112,8 +112,8 @@ fun ResultsScreen(
                     onReconcile,
                     enabled = !state.busy
                 )
-                if (state.routeExpired) Text(
-                    "위치나 경로가 달라져 이전 검색 결과로 설정할 수 없어요.",
+                if (state.comparisonExpired) Text(
+                    "거리·시간·절약액은 이전 검색 기준이에요. 목적지 설정은 가능해요.",
                     style = type.labelSmall
                 )
                 batch?.stations?.firstOrNull()?.observedAtMillis?.let { time ->
@@ -209,7 +209,7 @@ fun ResultsScreen(
                                     .fillMaxWidth()
                                     .testTag("confirm-route"),
                                 icon = PleosIcon.Navigation,
-                                enabled = state.selected != null && !state.busy && !state.routeUncertain && !state.routeExpired,
+                                enabled = state.selected != null && !state.busy && !state.routeUncertain,
                                 loading = state.settingRoute
                             )
                         }

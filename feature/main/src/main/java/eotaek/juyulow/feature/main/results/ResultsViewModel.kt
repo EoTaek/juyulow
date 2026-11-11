@@ -7,7 +7,7 @@ import eotaek.juyulow.core.data.JourneyRepository
 import eotaek.juyulow.core.data.StationRepository
 import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.StationSort
-import eotaek.juyulow.core.model.sameContextAs
+import eotaek.juyulow.core.model.sameRouteTargetsAs
 import eotaek.juyulow.core.model.sameTripOriginAs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -47,14 +47,14 @@ class ResultsViewModel(
                     val reusable = origin.sameTripOriginAs(b)
                     mutableState.update {
                         it.copy(
-                            routeExpired = !reusable,
+                            comparisonExpired = !reusable,
                             mode = if (it.mode in context.availableModes) it.mode else JourneyMode.DESTINATION,
-                            session = if (reusable) session.copy(
+                            session = session.copy(
                                 context = session.context.copy(
                                     journey = context
                                 )
-                            ) else session,
-                            confirmReplacement = a.sameContextAs(b) && it.confirmReplacement,
+                            ),
+                            confirmReplacement = a.sameRouteTargetsAs(b) && it.confirmReplacement,
                         )
                     }
                 }
@@ -133,7 +133,7 @@ class ResultsViewModel(
         val snapshot = state.value
         val session = snapshot.session ?: return
         val selected = snapshot.selected ?: return
-        if (snapshot.busy || snapshot.completedSelectionId != null || snapshot.routeUncertain || snapshot.routeExpired) return
+        if (snapshot.busy || snapshot.completedSelectionId != null || snapshot.routeUncertain) return
         if (session.context.journey.destinationOnly && session.context.journey.hasDestination && snapshot.mode == JourneyMode.DESTINATION && !confirmed) {
             mutableState.update { it.copy(confirmReplacement = true) }
             return

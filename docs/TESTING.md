@@ -138,7 +138,7 @@ PreferencesSettingsRepositoryTest는 주유량 override가 같은 실행에서�
 ## 고정 주유소 연결 검증
 
 `LiveJourneyRepositoryTest`는 실제 Trip 매핑, 미조회 항목 null, 통행료 제외 계산, 동일 문맥 캐시 재사용,
-위치 변경 만료·재조회 차단, 미지원 모드 거부, 중복 제출 차단, 결과 불명 재확인, 화면 대기 취소 후 SDK 작업 보존을 검증한다.
+위치 변경 시 비교 캐시 만료·재조회 차단과 경로 제출 허용, 미지원 모드 거부, 중복 제출 차단, 결과 불명 재확인, 화면 대기 취소 후 SDK 작업 보존을 검증한다.
 `LiveNavigationFlowTest`는 실제 UI 세션 구현과 Fake NavigationRepository로 변경 확인 취소·완료·내비 열기,
 결과 불명 후 재제출 없는 성공 확인을 검증한다. PrototypeFlowTest도 내비/후보 저장소를 Fake로 주입해 실제 경로를 바꾸지 않는다.
 PrototypeLayoutTest는 기존 mock 모드와 실제 주유소 8곳 이름·nullable 경로·통행료 제외·검색 시점·비활성 탭을
@@ -166,6 +166,18 @@ LiveJourneyRepositoryTest는 이 순서에서 Trip 배치가 한 번만 호출�
 실제 에뮬레이터에서도 최초 검색 후 시스템 내비에 한강에너지주유소를 목적지로 설정 → 앱 검색 8곳 표시 → 시스템 안내 종료로 목적지 제거 → 앱 재검색 8곳 표시를 같은
 프로세스에서 확인했다. 세 번의 검색 시점이 같아 기존 편도 Trip 재사용도 확인했다. 변경 후 빌드·로컬 단위 테스트·lint와 LiveNavigationFlowTest 2건이
 통과했다.
+
+## 경로 제출과 비교 수치 유효성 분리
+
+2026-11-11 정책: 비교 Trip은 최초 위치 50m·동일 옵션 조건을 유지하되, 경로 제출에는 해당 조건을 적용하지 않는다.
+NavigationContextTest는 목적지/경유지 식별정보·순서만 제출 문맥으로 검사하는지 검증한다.
+PleosNavigationRepositoryTest는 위치·route ID/index·안내/재탐색·옵션이 달라도 제출 가능한지 검사한다.
+LiveJourneyRepositoryTest는 비교 검색 만료 이후 목적지 제출·불확실 결과 재확인이 가능한지 검사한다.
+MainViewModelsTest는 이동으로 비교 수치가 만료되어도 확인 팝업이 유지되고 확인 후 제출되는지 검사한다.
+이 검증은 주행 중 UI 사용 허용을 의미하지 않는다. 현재 DO 미선언 및 CarUxRestrictions 게이트는 유지한다.
+빌드·단위 테스트·lint 통과. Pleos Connect v2.1.0 / Android 14의 LiveNavigationFlowTest 4개도 통과했으며,
+추가한 테스트는 팝업을 연 상태에서 위치·route ID/index·재탐색·옵션을 바꾼 뒤 확인해 완료되는 흐름을 검증한다.
+내비 저장소는 Fake이므로 실제 주행·GPS 변화 및 차량 규제 전환 검증과 구분한다.
 
 ## 경유 추가 정책 검증
 

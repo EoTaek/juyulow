@@ -26,6 +26,7 @@ import eotaek.juyulow.core.model.NaviState
 import eotaek.juyulow.core.model.NaviStatus
 import eotaek.juyulow.core.model.NaviTrip
 import eotaek.juyulow.core.model.confirmsRoute
+import eotaek.juyulow.core.model.sameRouteTargetsAs
 import eotaek.juyulow.core.model.sameTripOriginAs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -75,7 +76,7 @@ class PleosNavigationRepository(
         events.trySend(Changed)
         refreshJob?.cancel()
         refreshJob = scope.launch {
-            delay(100)
+            delay(100.milliseconds)
             if (!mutex.isLocked && connected && !closed && !readUncertain) refresh()
         }
     }
@@ -197,7 +198,7 @@ class PleosNavigationRepository(
         check(!routeUncertain) { "ROUTE_UNCERTAIN" }
         validate(candidate)
         val current = read()
-        check(same(expected, current, false)) { "CONTEXT_CHANGED" }
+        check(expected.sameRouteTargetsAs(current)) { "CONTEXT_CHANGED" }
         val point = candidate.point
         if (asWaypoint) {
             check(current.destination != null && current.waypoints.isEmpty()) { "WAYPOINT_UNAVAILABLE" }
@@ -232,10 +233,6 @@ class PleosNavigationRepository(
         check(c.point.poiId.isNotBlank() && c.point.subId != null && valid(c.point.latitude, c.point.longitude) &&
             valid(c.responseLatitude, c.responseLongitude) && valid(c.routeResponseLatitude, c.routeResponseLongitude)) { "UNVERIFIED_POINT" }
     }
-    private fun same(a: NaviSnapshot, b: NaviSnapshot, location: Boolean) =
-        a.destination == b.destination && a.waypoints == b.waypoints && a.mode == b.mode &&
-            a.routing == b.routing && a.routeOption == b.routeOption && (!location ||
-            (near(a.location.latitude, b.location.latitude) && near(a.location.longitude, b.location.longitude)))
     private fun near(a: Double, b: Double) = abs(a - b) <= 0.000001
     private fun valid(lat: Double, lon: Double) = lat.isFinite() && lon.isFinite() && lat in -90.0..90.0 && lon in -180.0..180.0
     private fun DestinationInfo.point() = NaviPoint(latitude, longitude, name, poiId, poiSubId, address, poiProvider)

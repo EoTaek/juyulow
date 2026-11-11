@@ -105,6 +105,28 @@ class LiveNavigationFlowTest {
 
 
     @Test
+    fun movingWhileConfirmationIsOpenStillAllowsDestinationSetting() {
+        search()
+        compose.onNodeWithTag("confirm-route").performClick()
+        compose.runOnIdle {
+            navi.current = navi.current.copy(
+                location = navi.current.location.copy(
+                    latitude = 38.0,
+                    routeId = "rerouted",
+                    routeIndex = 12
+                ),
+                routing = true,
+                routeOption = "FAST",
+            )
+            navi.state.value = NaviState(NaviStatus.READY, navi.current)
+        }
+        compose.onNodeWithText("목적지를 변경할까요?").assertIsDisplayed()
+        compose.onNodeWithText("목적지 변경").performClick()
+        waitForCompletion()
+        assertEquals(1, navi.routes)
+    }
+
+    @Test
     fun addsFirstWaypointWithoutReplacementDialog() {
         search()
         compose.onNodeWithText("경유지로 추가").performClick()

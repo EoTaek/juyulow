@@ -195,14 +195,16 @@ class LiveJourneyRepositoryTest {
             n.current = n.current.copy(location = n.current.location.copy(latitude = 37.5))
             repo.refresh()
             expectFailure("SEARCH_EXPIRED") { repo.search(repo.context.value) }
-            expectFailure("SEARCH_EXPIRED") {
-                repo.select(
-                    saved,
-                    stations[0],
-                    JourneyMode.DESTINATION
-                )
+            n.current = n.current.copy(
+                routeOption = "FAST", routing = true,
+                location = n.current.location.copy(routeId = "new", routeIndex = 99)
+            )
+            n.ambiguous = true
+            expectFailure("ROUTE_NOT_CONFIRMED") {
+                repo.select(saved, stations[0], JourneyMode.DESTINATION)
             }
-            assertEquals(1, n.tripCalls); assertEquals(0, n.routeCalls)
+            assertNotNull(repo.reconcile())
+            assertEquals(1, n.tripCalls); assertEquals(1, n.routeCalls)
         } finally {
             repo.release()
         }

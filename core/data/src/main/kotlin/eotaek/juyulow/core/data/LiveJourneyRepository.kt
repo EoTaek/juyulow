@@ -11,7 +11,7 @@ import eotaek.juyulow.core.model.NaviStatus
 import eotaek.juyulow.core.model.NavigationSelection
 import eotaek.juyulow.core.model.Station
 import eotaek.juyulow.core.model.confirmsRoute
-import eotaek.juyulow.core.model.sameContextAs
+import eotaek.juyulow.core.model.sameRouteTargetsAs
 import eotaek.juyulow.core.model.sameTripOriginAs
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -140,7 +140,6 @@ class LiveJourneyRepository(
             val expected = requireNotNull(session.context.journey.navigation)
             val current = navigation.refresh().value()
             publish(current)
-            check(cached!!.first.sameTripOriginAs(current)) { "SEARCH_EXPIRED" }
             check(same(expected, current)) { "CONTEXT_CHANGED" }
             val candidate = catalog.single { it.candidate.point.poiId == station.id }.candidate
             check(canInteract()) { "PARKING_REQUIRED" }
@@ -157,10 +156,10 @@ class LiveJourneyRepository(
                 routeWaypoints = if (mode == JourneyMode.WAYPOINT) listOf(station.name) + expected.waypoints.map { it.name } else emptyList()
             )
             pending = selection
-            pendingExpected = expected
+            pendingExpected = current
             try {
                 val result =
-                    navigation.setRoute(expected, candidate, mode == JourneyMode.WAYPOINT).value()
+                    navigation.setRoute(current, candidate, mode == JourneyMode.WAYPOINT).value()
                 publish(result)
                 lastSelection = selection
                 pending = null
@@ -202,5 +201,5 @@ class LiveJourneyRepository(
         closed = true; scope.cancel(); navigation.release()
     }
 
-    private fun same(a: NaviSnapshot, b: NaviSnapshot) = a.sameContextAs(b)
+    private fun same(a: NaviSnapshot, b: NaviSnapshot) = a.sameRouteTargetsAs(b)
 }

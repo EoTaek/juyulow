@@ -96,6 +96,47 @@ class MainViewModelsTest {
     }
 
     @Test
+    fun movementKeepsReplacementConfirmationAndAllowsExpiredComparisonSelection() =
+        runTest(dispatcher) {
+            val point = eotaek.juyulow.core.model.NaviPoint(37.4, 127.0, "기존 목적지", "old", "0")
+            val original = eotaek.juyulow.core.model.NaviSnapshot(
+                eotaek.juyulow.core.model.NaviLocation(37.4, 127.0, "r", 0, 1),
+                point, emptyList(), "ROUTE_GUIDING", false, "RECOMMENDED", 1
+            )
+            val context = MutableStateFlow(
+                JourneyContext(
+                    point.name, navigation = original,
+                    destinationOnly = true, tripOrigin = original
+                )
+            )
+            val delegate = MockJourneyRepository()
+            val journeys = object : JourneyRepository by delegate {
+                override val context = context
+            }
+            val sessions = InMemoryComparisonSessionRepository()
+            val batch = sessions.create(
+                context.value,
+                resolveRefuelConditions(RefuelSettings()),
+                previewSession().stations
+            )
+            val results = keep(ResultsViewModel(batch.id, Stations(), sessions, journeys))
+            runCurrent()
+            results.confirm()
+            assertTrue(results.state.value.confirmReplacement)
+            val moved = original.copy(
+                location = original.location.copy(latitude = 37.5, routeId = "new", routeIndex = 9),
+                routing = true, routeOption = "FAST"
+            )
+            context.value = context.value.copy(navigation = moved)
+            runCurrent()
+            assertTrue(results.state.value.comparisonExpired)
+            assertTrue(results.state.value.confirmReplacement)
+            results.confirm(true)
+            advanceUntilIdle()
+            assertNotNull(results.state.value.completedSelectionId)
+        }
+
+    @Test
     fun duplicateSearchIsIgnoredAndConditionsAreCapturedAtStart() = runTest(dispatcher) {
         val settings = Settings()
         val stations = Stations()

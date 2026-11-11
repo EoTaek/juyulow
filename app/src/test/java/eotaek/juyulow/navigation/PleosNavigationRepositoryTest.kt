@@ -64,6 +64,20 @@ class PleosNavigationRepositoryTest {
     }
     private val candidate = NaviCandidate(NaviPoint(37.0,127.0,"station","station","0"),37.0,127.0)
     @Test
+    fun movementAndRoutingStateDoNotInvalidateRouteSubmission() = runTest {
+        val fake = Fake()
+        val repo =
+            PleosNavigationRepository(fake, NaviTripLedger(), StandardTestDispatcher(testScheduler))
+        val current = (repo.initialize() as NaviResult.Success).value
+        val old = current.copy(
+            location = current.location.copy(latitude = 38.0, routeId = "old", routeIndex = 42),
+            mode = "SAFE_GUIDING", routing = true, routeOption = "FAST"
+        )
+        assertTrue(repo.setRoute(old, candidate, false) is NaviResult.Success)
+        assertEquals(1, fake.routeCalls)
+        repo.release()
+    }
+    @Test
     fun missingWaypointCoordinatesAllowConfirmedIdentityAndOrder() = runTest {
         val fake=Fake(); fake.destinationSubId=null; fake.waypointCoordinates=0.0 to 0.0
         val repo=PleosNavigationRepository(fake,NaviTripLedger(),StandardTestDispatcher(testScheduler),clock={testScheduler.currentTime},operationTimeout=1000)

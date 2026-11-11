@@ -6,6 +6,33 @@ import org.junit.Test
 
 class NavigationContextTest {
     @Test
+    fun routeSubmissionOnlyDependsOnTargetIdentityAndOrder() {
+        val destination = NaviPoint(37.4, 127.0, "목적지", "dest", "0")
+        val waypoint = destination.copy(poiId = "way")
+        val a = NaviSnapshot(
+            NaviLocation(37.4, 127.0, "r", 0, 1), destination,
+            listOf(waypoint), "ROUTE_GUIDING", false, "RECOMMENDED", 1
+        )
+        assertTrue(
+            a.sameRouteTargetsAs(
+                a.copy(
+                    location = a.location.copy(
+                        latitude = 38.0,
+                        routeId = "new", routeIndex = 10
+                    ),
+                    mode = "SIMULATION_GUIDING",
+                    routing = true,
+                    routeOption = "FAST",
+                    destination = destination.copy(latitude = 37.5, address = "갱신")
+                )
+            )
+        )
+        assertFalse(a.sameRouteTargetsAs(a.copy(destination = destination.copy(poiId = "other"))))
+        assertFalse(a.sameRouteTargetsAs(a.copy(waypoints = emptyList())))
+        assertFalse(a.sameRouteTargetsAs(a.copy(waypoints = listOf(destination, waypoint))))
+    }
+
+    @Test
     fun oneWayTripReuseIgnoresDestinationAndUsesFiftyMeterRadius() {
         val a = NaviSnapshot(
             NaviLocation(37.4, 127.0, "", 0, 1),
