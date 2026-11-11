@@ -30,7 +30,7 @@ import eotaek.juyulow.core.design.component.PleosIconButton
 import eotaek.juyulow.core.design.component.PleosInlineError
 import eotaek.juyulow.core.design.component.PleosTab
 import eotaek.juyulow.core.design.component.PleosTabs
-import eotaek.juyulow.core.design.component.RefuelConditionsSummary
+import eotaek.juyulow.core.design.component.VehicleEnergySummary
 import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.ComparisonContext
@@ -91,7 +91,10 @@ fun ResultsScreen(
                                 else "${route.destination ?: "현재 위치"} / ${vehicleNumber(batch.context.conditions.liters)} L 주유 기준",
                                 style = type.labelMedium, color = colors.textDarkSecondary,
                             )
-                            RefuelConditionsSummary(batch.context.conditions)
+                            VehicleEnergySummary(
+                                batch.context.conditions.energy,
+                                showElectricNotice = false
+                            )
                         }
                     }
                 }
@@ -105,20 +108,6 @@ fun ResultsScreen(
                 )
                 if (state.comparisonExpired) Text(
                     "거리·시간·절약액은 이전 검색 기준이에요. 목적지 설정은 가능해요.",
-                    style = type.labelSmall
-                )
-                batch?.stations?.firstOrNull()?.observedAtMillis?.let { time ->
-                    Text(
-                        "검색 시점 ${
-                            java.text.SimpleDateFormat("HH:mm", java.util.Locale.KOREA)
-                                .format(java.util.Date(time))
-                        } 기준", style = type.labelSmall
-                    )
-                }
-                if (batch?.context?.journey?.destinationOnly == true) Text(
-                    if ((batch.context.journey.navigation?.waypoints?.size
-                            ?: 0) >= 1
-                    ) "기존 경유지가 있으면 경유지로 추가할 수 없어요. 거리·시간·비용은 주유소까지 기준이에요." else "거리·시간·비용은 주유소까지 기준이에요.",
                     style = type.labelSmall
                 )
                 if (batch == null) {
