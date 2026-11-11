@@ -94,7 +94,8 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
 .\gradlew.bat :app:connectedDebugAndroidTest --console=plain
 ```
 
-- `PrototypeFlowTest`: 실제 Koin·Navigation 3·DataStore를 사용하는 홈 → 검색 → 세 이동 방식의 경로 설정·완료·뒤로가기, 목적지 없는
+- `PrototypeFlowTest`: 실제 Koin·Navigation 3·DataStore를 사용하는 홈 → 검색 → 하단 경유 추가·목적지 설정 버튼의 경로
+  설정·완료·뒤로가기, 목적지 없는
   검색, Activity 재생성 후 선택 유지, 주유 시간의 설정 취소·적용·다시 열기를 검증한다. 테스트 전의 주유 조건은 종료 시 복원한다.
 - `PrototypeLayoutTest`: 논리 앱 영역 1700 × 1184dp와 840 × 1184dp를 두 테마로 렌더링해 동일 너비 좌우 배치·마지막 항목 스크롤·버튼
   비겹침·텍스트 overflow를 검증한다. Pleos 호스트 창에 들어가도록 테스트에서만 Density를 0.5로 설정한다. 이는 실제 Pleos 폼 팩터 테스트를 대체하지
@@ -140,8 +141,9 @@ PreferencesSettingsRepositoryTest는 주유량 override가 같은 실행에서�
 `LiveJourneyRepositoryTest`는 실제 Trip 매핑, 미조회 항목 null, 통행료 제외 계산, 동일 문맥 캐시 재사용,
 위치 변경 시 비교 캐시 만료·재조회 차단과 경로 제출 허용, 미지원 모드 거부, 중복 제출 차단, 결과 불명 재확인, 화면 대기 취소 후 SDK 작업 보존을 검증한다.
 `LiveNavigationFlowTest`는 실제 UI 세션 구현과 Fake NavigationRepository로 변경 확인 취소·완료·내비 열기,
-결과 불명 후 재제출 없는 성공 확인을 검증한다. PrototypeFlowTest도 내비/후보 저장소를 Fake로 주입해 실제 경로를 바꾸지 않는다.
-PrototypeLayoutTest는 기존 mock 모드와 실제 주유소 8곳 이름·nullable 경로·통행료 제외·검색 시점·이동 방식 탭을
+결과 불명 후 재제출 없는 성공 확인을 검증한다. 경유 추가/목적지 버튼의 순서·직접 실행, 이동 방식 탭 제거, 목적지 없음·기존 경유지 있음 상태의 목적지 단일 버튼도
+확인한다. PrototypeFlowTest도 내비/후보 저장소를 Fake로 주입해 실제 경로를 바꾸지 않는다.
+PrototypeLayoutTest는 기존 mock 모드와 실제 주유소 8곳 이름·nullable 경로·통행료 제외·검색 시점·하단 경로 설정 버튼 행을
 1700/840 × 라이트/다크의 8가지 조합으로 검사하고 `results-<너비>-<테마>-live.png`를 저장한다.
 
 실제 SDK 검증은 정차·목적지/경유지 없는 초기 상태에서만 명시적으로 실행한다. 각 목적지 설정 후 초기 상태로 복원한다.
@@ -198,3 +200,12 @@ Pleos Connect v2.1.0 / Android 14에서 Fake 내비 저장소를 사용하는 `L
 레이아웃 최초 실행은 실제 연동 4개 조합 통과, mock 밝은 테마 2개 조합에서 창 위치/스크롤 검사 실패 (총 8개 중 6개 통과). 배치와 스크롤 대기를 보완한 재실행은
 instrumentation Process crashed로 완료되지 않았다. 해당 실행은 Gradle이 BUILD SUCCESSFUL을 반환했으나 XML에 실패가 있으므로 통과로
 간주하지 않는다.
+
+## 하단 경로 설정 버튼 통합 검증
+
+2026-11-11 이동 방식 탭을 제거하고 하단 경유 추가 → 목적지 설정 버튼으로 통합했다.
+빌드·feature:main 단위 테스트·lint 통과. Pleos 에뮬레이터의 LiveNavigationFlowTest 6개, PrototypeFlowTest 3개,
+PrototypeLayoutTest 8개가 모두 통과했다. 최초 실행에서 발견한 840dp 두 버튼의 줄바꿈 텍스트 잘림은
+행 높이 강제를 제거해 수정했으며 재실행에서 17개 모두 실패 없이 완료됐다. 레이아웃 검증은 테스트용 Density 0.5 기준이다.
+실제 검색 화면에서도 경유 추가·목적지 설정 버튼 순서와 이동 방식 탭 제거를 확인했다.
+경로 제출 흐름 테스트는 Fake 내비 저장소를 사용하며 시스템 내비 경로를 변경하지 않는다.

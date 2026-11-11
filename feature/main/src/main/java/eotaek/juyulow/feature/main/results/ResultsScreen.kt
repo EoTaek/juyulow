@@ -43,7 +43,6 @@ import eotaek.juyulow.core.model.StationSort
 import eotaek.juyulow.core.model.resolveRefuelConditions
 import eotaek.juyulow.feature.main.common.actionLabel
 import eotaek.juyulow.feature.main.common.kilometers
-import eotaek.juyulow.feature.main.common.label
 import eotaek.juyulow.feature.main.common.minutes
 import eotaek.juyulow.feature.main.results.component.SelectionPanel
 import eotaek.juyulow.feature.main.results.component.StationRow
@@ -51,7 +50,7 @@ import eotaek.juyulow.feature.main.results.component.StationRow
 @Composable
 fun ResultsScreen(
     state: ResultsUiState, onBack: () -> Unit, onRefresh: () -> Unit, onSelect: (String) -> Unit,
-    onMode: (JourneyMode) -> Unit, onSort: (StationSort) -> Unit, onConfirm: () -> Unit,
+    onSort: (StationSort) -> Unit, onConfirm: (JourneyMode) -> Unit,
     modifier: Modifier = Modifier,
     onReconcile: () -> Unit = {},
 ) {
@@ -96,13 +95,6 @@ fun ResultsScreen(
                         }
                     }
                 }
-                if (batch != null) PleosTabs(batch.context.journey.availableModes.map {
-                    PleosTab(
-                        it,
-                        if (batch.context.journey.destinationOnly && it == JourneyMode.WAYPOINT) "경유지로 추가" else if (batch.context.journey.destinationOnly && it == JourneyMode.DESTINATION) "목적지로 설정" else it.label,
-                        modeIcon(it),
-                    )
-                }, state.mode, onMode, enabled = !state.busy)
                 state.error?.let {
                     PleosInlineError(it)
                 }
@@ -201,16 +193,30 @@ fun ResultsScreen(
                                     )
                                 }
                             }
-                            PleosButton(
-                                state.mode.actionLabel,
-                                onConfirm,
-                                Modifier
-                                    .fillMaxWidth()
-                                    .testTag("confirm-route"),
-                                icon = PleosIcon.Navigation,
-                                enabled = state.selected != null && !state.busy && !state.routeUncertain,
-                                loading = state.settingRoute
-                            )
+                            val actions = listOf(JourneyMode.WAYPOINT, JourneyMode.DESTINATION)
+                                .filter { it in batch.context.journey.availableModes }
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.Bottom,
+                            ) {
+                                actions.forEach { mode ->
+                                    PleosButton(
+                                        mode.actionLabel,
+                                        { onConfirm(mode) },
+                                        Modifier
+                                            .weight(1f)
+                                            .testTag(
+                                                if (mode == JourneyMode.DESTINATION) "confirm-route" else "add-waypoint"
+                                            ),
+                                        icon = if (narrow && actions.size > 1) null else modeIcon(
+                                            mode
+                                        ),
+                                        enabled = state.selected != null && !state.busy && !state.routeUncertain,
+                                        loading = state.settingRoute && state.mode == mode,
+                                    )
+                                }
+                            }
                         }
                         VerticalDivider(color = colors.basic200)
                         Box(
@@ -306,7 +312,7 @@ private fun ResultsPreview() {
                 previewSession(),
                 JourneyMode.WAYPOINT,
                 selectedId = "station-0"
-            ), {}, {}, {}, {}, {}, {})
+            ), {}, {}, {}, {}, {})
     }
 }
 
@@ -320,6 +326,6 @@ private fun ResultsDarkPreview() {
                 previewSession(),
                 JourneyMode.WAYPOINT,
                 selectedId = "station-0"
-            ), {}, {}, {}, {}, {}, {})
+            ), {}, {}, {}, {}, {})
     }
 }

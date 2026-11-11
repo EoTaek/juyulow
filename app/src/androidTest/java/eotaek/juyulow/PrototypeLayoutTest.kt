@@ -132,7 +132,7 @@ class PrototypeLayoutTest(
                                 session,
                                 if (live) JourneyMode.DESTINATION else JourneyMode.WAYPOINT,
                                 selectedId = "station-0"
-                            ), {}, {}, {}, {}, {}, {})
+                            ), {}, {}, {}, {}, {})
                     }
                 }
             }

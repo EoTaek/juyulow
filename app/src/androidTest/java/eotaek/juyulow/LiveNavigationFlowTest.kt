@@ -129,13 +129,40 @@ class LiveNavigationFlowTest {
     @Test
     fun addsFirstWaypointWithoutReplacementDialog() {
         search()
-        compose.onNodeWithText("경유지로 추가").performClick()
-        compose.onNodeWithTag("confirm-route").performClick()
+        val waypoint = compose.onNodeWithTag("add-waypoint").fetchSemanticsNode().boundsInRoot
+        val destination = compose.onNodeWithTag("confirm-route").fetchSemanticsNode().boundsInRoot
+        org.junit.Assert.assertTrue(waypoint.right <= destination.left)
+        assertEquals(waypoint.top, destination.top, 1f)
+        compose.onNodeWithTag("tab-WAYPOINT").assertDoesNotExist()
+        compose.onNodeWithTag("tab-DESTINATION").assertDoesNotExist()
+        compose.onNodeWithTag("add-waypoint").performClick()
         compose.waitUntil(10_000) {
             compose.onAllNodesWithText("경유지를 추가했어요.").fetchSemanticsNodes().isNotEmpty()
         }
         assertEquals("old", navi.current.destination?.poiId)
         assertEquals(1, navi.current.waypoints.size)
+        assertEquals(1, navi.routes)
+    }
+
+    @Test
+    fun existingWaypointOnlyOffersDestinationReplacement() {
+        navi.current =
+            navi.current.copy(waypoints = listOf(NaviPoint(37.4, 127.1, "기존 경유지", "via", "0")))
+        search()
+        compose.onNodeWithTag("add-waypoint").assertDoesNotExist()
+        compose.onNodeWithTag("confirm-route").performClick()
+        compose.onNodeWithText("목적지 변경").performClick()
+        waitForCompletion()
+        assertEquals(0, navi.current.waypoints.size)
+    }
+
+    @Test
+    fun noDestinationOnlyOffersDestinationSetting() {
+        navi.current = navi.current.copy(destination = null)
+        search()
+        compose.onNodeWithTag("add-waypoint").assertDoesNotExist()
+        compose.onNodeWithTag("confirm-route").performClick()
+        waitForCompletion()
         assertEquals(1, navi.routes)
     }
 

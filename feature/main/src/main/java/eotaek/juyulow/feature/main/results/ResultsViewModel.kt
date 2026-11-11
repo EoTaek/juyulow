@@ -129,6 +129,15 @@ class ResultsViewModel(
         mutableState.update { it.copy(confirmReplacement = false) }
     }
 
+    fun requestRoute(mode: JourneyMode) {
+        val snapshot = state.value
+        if (snapshot.busy || snapshot.routeUncertain || snapshot.completedSelectionId != null ||
+            mode !in (snapshot.session?.context?.journey?.availableModes ?: emptyList())
+        ) return
+        changeMode(mode)
+        confirm()
+    }
+
     fun confirm(confirmed: Boolean = false) {
         val snapshot = state.value
         val session = snapshot.session ?: return

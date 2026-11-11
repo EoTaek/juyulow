@@ -37,9 +37,8 @@ fun ResultsRoute(
         },
         viewModel::refresh,
         viewModel::select,
-        viewModel::changeMode,
         viewModel::changeSort,
-        { viewModel.confirm() },
+        viewModel::requestRoute,
         onReconcile = viewModel::reconcile,
     )
 }
