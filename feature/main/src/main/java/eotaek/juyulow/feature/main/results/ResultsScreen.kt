@@ -96,12 +96,11 @@ fun ResultsScreen(
                         }
                     }
                 }
-                if (batch != null) PleosTabs((if (batch.context.journey.destinationOnly) JourneyMode.entries else batch.context.journey.availableModes).map {
+                if (batch != null) PleosTabs(batch.context.journey.availableModes.map {
                     PleosTab(
                         it,
                         if (batch.context.journey.destinationOnly && it == JourneyMode.WAYPOINT) "경유지로 추가" else if (batch.context.journey.destinationOnly && it == JourneyMode.DESTINATION) "목적지로 설정" else it.label,
                         modeIcon(it),
-                        enabled = it in batch.context.journey.availableModes,
                     )
                 }, state.mode, onMode, enabled = !state.busy)
                 state.error?.let {
@@ -127,7 +126,7 @@ fun ResultsScreen(
                 if (batch?.context?.journey?.destinationOnly == true) Text(
                     if ((batch.context.journey.navigation?.waypoints?.size
                             ?: 0) >= 1
-                    ) "기존 경유지가 있으면 경유지로 추가할 수 없어요. 거리·시간·비용은 주유소까지 기준이에요." else "거리·시간·비용은 주유소까지 기준이에요. 왕복은 준비 중이에요.",
+                    ) "기존 경유지가 있으면 경유지로 추가할 수 없어요. 거리·시간·비용은 주유소까지 기준이에요." else "거리·시간·비용은 주유소까지 기준이에요.",
                     style = type.labelSmall
                 )
                 if (batch == null) {

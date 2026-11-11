@@ -141,7 +141,7 @@ PreferencesSettingsRepositoryTest는 주유량 override가 같은 실행에서�
 위치 변경 시 비교 캐시 만료·재조회 차단과 경로 제출 허용, 미지원 모드 거부, 중복 제출 차단, 결과 불명 재확인, 화면 대기 취소 후 SDK 작업 보존을 검증한다.
 `LiveNavigationFlowTest`는 실제 UI 세션 구현과 Fake NavigationRepository로 변경 확인 취소·완료·내비 열기,
 결과 불명 후 재제출 없는 성공 확인을 검증한다. PrototypeFlowTest도 내비/후보 저장소를 Fake로 주입해 실제 경로를 바꾸지 않는다.
-PrototypeLayoutTest는 기존 mock 모드와 실제 주유소 8곳 이름·nullable 경로·통행료 제외·검색 시점·비활성 탭을
+PrototypeLayoutTest는 기존 mock 모드와 실제 주유소 8곳 이름·nullable 경로·통행료 제외·검색 시점·이동 방식 탭을
 1700/840 × 라이트/다크의 8가지 조합으로 검사하고 `results-<너비>-<테마>-live.png`를 저장한다.
 
 실제 SDK 검증은 정차·목적지/경유지 없는 초기 상태에서만 명시적으로 실행한다. 각 목적지 설정 후 초기 상태로 복원한다.
