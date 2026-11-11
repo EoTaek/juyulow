@@ -27,6 +27,8 @@ interface NaviClient {
     fun getWaypointInfo()
     fun getRouteStateInfo()
     fun requestTrip(request: TripRequest)
+    fun requestRouteWithWaypoints(request: ai.pleos.playground.navi.data.RouteWithWaypointsRequest)
+    fun cancelRoute()
     fun requestRoute(route: RouteInfo)
     fun addWaypoint(waypoint: RequestWaypointInfo)
     fun requestNavigationScreen(screen: NavigationScreenRequest)

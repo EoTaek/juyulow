@@ -39,7 +39,9 @@ fun CompletionScreen(
     selection: NavigationSelection?,
     onCompare: () -> Unit,
     onHome: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onOpenNavigation: (() -> Unit)? = null,
+    error: String? = null,
 ) {
     val colors = JUYULOWTheme.colors
     val type = JUYULOWTheme.typography
@@ -95,7 +97,9 @@ fun CompletionScreen(
                         ) {
                             PleosLabelValue(
                                 if (selection.waypoint != null) "경유지" else "목적지",
-                                selection.stationName,
+                                if (selection.routeWaypoints.isNotEmpty()) selection.routeWaypoints.joinToString(
+                                    " → "
+                                ) else selection.stationName,
                                 valueStyle = type.titleSmallBold
                             )
                             if (selection.waypoint != null) {
@@ -103,13 +107,19 @@ fun CompletionScreen(
                                 PleosLabelValue("최종 목적지", selection.destination, valueStyle = type.titleSmallBold)
                             }
                             PleosLabelValue(
-                                "${kilometers(selection.distanceMeters)} km · 주유 포함",
+                                "${if (selection.outboundOnly) "검색 시점 기준 · 주유소까지 " else ""}${
+                                    kilometers(
+                                        selection.distanceMeters
+                                    )
+                                } km · 주유 포함",
                                 "${minutes(selection.durationSeconds)}분",
                                 valueStyle = type.titleSmallBold
                             )
                         }
                     }
                     RefuelConditionsSummary(selection.conditions)
+                    error?.let { Text(it, style = type.labelSmall) }
+                    onOpenNavigation?.let { PleosButton("내비게이션 열기", it) }
                     if (narrow) Column(
                         Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(16.dp)

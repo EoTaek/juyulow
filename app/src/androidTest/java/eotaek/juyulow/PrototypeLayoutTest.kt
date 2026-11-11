@@ -46,18 +46,26 @@ import org.junit.runners.Parameterized
 import java.io.File
 
 @RunWith(Parameterized::class)
-class PrototypeLayoutTest(private val widthDp: Int, private val dark: Boolean) {
+class PrototypeLayoutTest(
+    private val widthDp: Int,
+    private val dark: Boolean,
+    private val live: Boolean
+) {
     @get:Rule
     val compose = createAndroidComposeRule<PrototypeTestActivity>()
 
     companion object {
         @JvmStatic
-        @Parameterized.Parameters(name = "{0}dp dark={1}")
+        @Parameterized.Parameters(name = "{0}dp dark={1} live={2}")
         fun sizes() = listOf(
-            arrayOf<Any>(1700, false),
-            arrayOf<Any>(840, false),
-            arrayOf<Any>(1700, true),
-            arrayOf<Any>(840, true)
+            arrayOf<Any>(1700, false, false),
+            arrayOf<Any>(840, false, false),
+            arrayOf<Any>(1700, true, false),
+            arrayOf<Any>(840, true, false),
+            arrayOf<Any>(1700, false, true),
+            arrayOf<Any>(840, false, true),
+            arrayOf<Any>(1700, true, true),
+            arrayOf<Any>(840, true, true)
         )
     }
 
@@ -78,12 +86,23 @@ class PrototypeLayoutTest(private val widthDp: Int, private val dark: Boolean) {
                 30200,
                 2760,
                 500
-            )
+            ).let { station ->
+                if (live) station.copy(
+                    name = eotaek.juyulow.navigation.verifiedStations[index].candidate.point.name,
+                    returnMeters = null, returnSeconds = null, viaMeters = null, viaSeconds = null,
+                    tollWon = null, observedAtMillis = 1_000
+                ) else station
+            }
         }
         val session = ComparisonSession(
             "layout",
             ComparisonContext(
-                JourneyContext(),
+                if (live) JourneyContext(
+                    "기존 목적지",
+                    null,
+                    null,
+                    destinationOnly = true
+                ) else JourneyContext(),
                 resolveRefuelConditions(RefuelSettings(includeTimeCost = true)).copy(
                     liters = 37.655,
                     efficiencyKmPerL = 100.0 / 8.5,
@@ -111,11 +130,24 @@ class PrototypeLayoutTest(private val widthDp: Int, private val dark: Boolean) {
                         ResultsScreen(
                             ResultsUiState(
                                 session,
-                                JourneyMode.WAYPOINT,
+                                if (live) JourneyMode.DESTINATION else JourneyMode.WAYPOINT,
                                 selectedId = "station-0"
-                            ), {}, {}, {}, {}, {}, {})
+                            ), {}, {}, {}, {}, {})
                     }
                 }
+            }
+        }
+        // Pleos can reposition the host window immediately after Activity launch.
+        compose.waitUntil(10_000) {
+            try {
+                compose.onNodeWithTag("confirm-route").assertIsDisplayed()
+                val left =
+                    compose.onNodeWithTag("station-list-pane").fetchSemanticsNode().boundsInRoot
+                val right =
+                    compose.onNodeWithTag("station-detail-pane").fetchSemanticsNode().boundsInRoot
+                right.left >= left.right && kotlin.math.abs(right.width - left.width) <= 1f
+            } catch (_: AssertionError) {
+                false
             }
         }
         val list = compose.onNodeWithTag("station-list-pane").fetchSemanticsNode().boundsInRoot
@@ -123,7 +155,16 @@ class PrototypeLayoutTest(private val widthDp: Int, private val dark: Boolean) {
         assertTrue(detail.left >= list.right)
         assertEquals(list.width, detail.width, 1f)
         compose.onNodeWithTag("station-list-scroll").performScrollToNode(hasTestTag("station-7"))
-        compose.onNodeWithTag("station-7").assertIsDisplayed()
+        compose.waitUntil(10_000) {
+            try {
+                compose.onNodeWithTag("station-list-scroll")
+                    .performScrollToNode(hasTestTag("station-7"))
+                compose.onNodeWithTag("station-7").assertIsDisplayed()
+                true
+            } catch (_: AssertionError) {
+                false
+            }
+        }
         compose.onNodeWithTag("confirm-route").assertIsDisplayed()
         val last = compose.onNodeWithTag("station-7").fetchSemanticsNode().boundsInRoot
         val action = compose.onNodeWithTag("confirm-route").fetchSemanticsNode().boundsInRoot
@@ -132,7 +173,10 @@ class PrototypeLayoutTest(private val widthDp: Int, private val dark: Boolean) {
             InstrumentationRegistry.getInstrumentation().targetContext.filesDir,
             "prototype-screenshots"
         ).apply { mkdirs() }
-        File(directory, "results-$widthDp-${if (dark) "dark" else "light"}.png").outputStream()
+        File(
+            directory,
+            "results-$widthDp-${if (dark) "dark" else "light"}${if (live) "-live" else ""}.png"
+        ).outputStream()
             .use { stream ->
                 compose.onNodeWithTag("viewport").captureToImage().asAndroidBitmap()
                     .compress(Bitmap.CompressFormat.PNG, 100, stream)

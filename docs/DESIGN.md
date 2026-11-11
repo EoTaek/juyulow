@@ -11,6 +11,8 @@
 
 결과 화면은 1700 × 1184dp와 840 × 1184dp 모두 동일 너비의 좌우 2열이다. 좁은 창에서는 카드 항목과 상세 텍스트를 여러 줄로 배치하며 글자와 화면 전체를
 일괄 축소하지 않는다. 두 열은 독립 스크롤하고 경로 설정 버튼은 목록과 분리된 하단 영역에 둔다. 독립된 주유소 상세 페이지나 지도는 제공하지 않는다.
+이동 방식 탭은 제공하지 않는다. 목록 하단의 같은 너비 버튼 행에서 사용 가능한 동작을 바로 실행한다. 두 동작이 가능하면 왼쪽은 `경유지로 추가`, 오른쪽은 `목적지로 설정`
+이며, 경유 추가가 불가능하면 목적지 버튼만 전체 너비로 표시한다. 왕복은 버튼에서 제외한다. 정렬 탭은 유지한다.
 
 색상 기준은 [`pleos_sdk_guide/앱 기획·설계 가이드/디자인 가이드/Foundations/Colors.md`](../pleos_sdk_guide/앱%20기획·설계%20가이드/디자인%20가이드/Foundations/Colors.md)다. `Color.kt`에 기본·알파·고정 색상과 모든 시스템 색상 149개를 제공한다.
 
@@ -57,6 +59,18 @@ Pleos 원문에는 Material 역할과의 대응표가 없어 다음과 같이 �
 `PleosOutlinedCard`는 배경·테두리·모서리를 공유하고, 내부 여백과 선택·클릭 동작은 호출부가 관리한다.
 `PleosInlineError`는 오류 색상과 `LiveRegionMode.Polite`를 적용해 동적으로 나타난 오류를 접근성 서비스에 알린다.
 주유소 행·선택 상세·비용 행은 비교 기능에 특화되어 `feature:main/results/component`에 둔다.
+
+## 목적지 대체 확인 팝업
+
+`core:design/component/PleosConfirmationDialog`는 제목·설명·확인/취소 문구와 콜백을 받는 공통 확인 팝업이다.
+목적지 대체 화면에서
+사용하며, [System Popup](../pleos_sdk_guide/앱%20기획·설계%20가이드/디자인%20가이드/Components/Popups/System%20Popup.md)
+의
+Medium 폭 760dp와 가운데 정렬, 왼쪽 확인·오른쪽 취소 구성을 따른다. 좁은 창에서는 바깥 여백 40dp 안에서 폭을 제한하고 긴 내용은 세로 스크롤한다.
+`backgroundPopup`, `textDarkPrimary/Secondary`, `buttonFilled*`, `buttonBasic*`, `textLightPrimary`와
+`titleLargeBold`·`bodyLarge`·`bodyLargeStrong`, `shadows.level3`를 적용한다.
+모서리 48dp·내부 여백 48dp·요소 간격 32dp·버튼 간격 24dp·버튼 최소 높이 100dp는 도해 비례를 해석한 앱 규격이며 별도의 공식 토큰은 아니다.
+화면 밖 터치와 뒤로가기는 취소로 처리한다. 경로 변경 확인 동작은 기존 ViewModel이 소유한다.
 
 ## Typography
 

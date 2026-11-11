@@ -4,8 +4,8 @@ import eotaek.juyulow.core.data.ComparisonSessionRepository
 import eotaek.juyulow.core.data.InMemoryComparisonSessionRepository
 import eotaek.juyulow.core.data.InMemoryVehicleInfoRepository
 import eotaek.juyulow.core.data.JourneyRepository
-import eotaek.juyulow.core.data.MockJourneyRepository
-import eotaek.juyulow.core.data.MockStationRepository
+import eotaek.juyulow.core.data.LiveJourneyRepository
+import eotaek.juyulow.core.data.NavigationRepository
 import eotaek.juyulow.core.data.PreferencesSettingsRepository
 import eotaek.juyulow.core.data.PreferencesVehicleDefaultsRepository
 import eotaek.juyulow.core.data.SettingsRepository
@@ -21,6 +21,7 @@ import eotaek.juyulow.location.FusedLocationClient
 import eotaek.juyulow.location.PleosFusedLocationClient
 import eotaek.juyulow.navigation.NaviClient
 import eotaek.juyulow.navigation.PleosNaviClient
+import eotaek.juyulow.navigation.verifiedStations
 import eotaek.juyulow.vehicle.PleosVehicleFuelClient
 import eotaek.juyulow.vehicle.VehicleFuelClient
 import eotaek.juyulow.vehicle.VehicleRuntime
@@ -30,6 +31,8 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 val appModule = module {
+    single { eotaek.juyulow.navigation.NaviTripLedger() }
+    factory<NavigationRepository> { eotaek.juyulow.navigation.PleosNavigationRepository(get(), get()) }
     factory<NaviClient> { PleosNaviClient(androidContext()) }
     factory<FusedLocationClient> { PleosFusedLocationClient(androidContext()) }
     factory<VehicleFuelClient> { PleosVehicleFuelClient(androidContext()) }
@@ -39,9 +42,14 @@ val appModule = module {
     single { InMemoryVehicleInfoRepository() }
     single<VehicleInfoRepository> { get<InMemoryVehicleInfoRepository>() }
     single { VehicleRuntime(androidContext(), get(), get()) }
-    singleOf<StationRepository>(::MockStationRepository)
+    single {
+        LiveJourneyRepository(
+            { get<NavigationRepository>() }, verifiedStations,
+            canInteract = { eotaek.juyulow.navigation.canInteractWithNavigation(androidContext()) })
+    }
+    single<StationRepository> { get<LiveJourneyRepository>() }
     singleOf<ComparisonSessionRepository>(::InMemoryComparisonSessionRepository)
-    singleOf<JourneyRepository>(::MockJourneyRepository)
+    single<JourneyRepository> { get<LiveJourneyRepository>() }
     viewModelOf(::AppNavigationViewModel)
     viewModelOf(::HomeViewModel)
     viewModelOf(::ResultsViewModel)

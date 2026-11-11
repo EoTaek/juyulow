@@ -53,14 +53,18 @@ fun VehicleEnergy.displayLabel(): String {
 }
 
 @Composable
-fun VehicleEnergySummary(energy: VehicleEnergy, modifier: Modifier = Modifier) {
+fun VehicleEnergySummary(
+    energy: VehicleEnergy,
+    modifier: Modifier = Modifier,
+    showElectricNotice: Boolean = true,
+) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             "차량 에너지원: ${energy.displayLabel()} · 휘발유 기준 비교",
             style = JUYULOWTheme.typography.labelSmall,
             color = JUYULOWTheme.colors.textDarkSecondary,
         )
-        if (energy.includesElectric) Text(
+        if (showElectricNotice && energy.includesElectric) Text(
             "전기차 계산은 준비 중이며, 현재 비교는 휘발유 기준이에요.",
             style = JUYULOWTheme.typography.labelSmall,
             color = JUYULOWTheme.colors.textDarkTertiary,

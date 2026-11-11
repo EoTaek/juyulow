@@ -30,7 +30,7 @@ import eotaek.juyulow.core.design.component.PleosIconButton
 import eotaek.juyulow.core.design.component.PleosInlineError
 import eotaek.juyulow.core.design.component.PleosTab
 import eotaek.juyulow.core.design.component.PleosTabs
-import eotaek.juyulow.core.design.component.RefuelConditionsSummary
+import eotaek.juyulow.core.design.component.VehicleEnergySummary
 import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.ComparisonContext
@@ -43,7 +43,6 @@ import eotaek.juyulow.core.model.StationSort
 import eotaek.juyulow.core.model.resolveRefuelConditions
 import eotaek.juyulow.feature.main.common.actionLabel
 import eotaek.juyulow.feature.main.common.kilometers
-import eotaek.juyulow.feature.main.common.label
 import eotaek.juyulow.feature.main.common.minutes
 import eotaek.juyulow.feature.main.results.component.SelectionPanel
 import eotaek.juyulow.feature.main.results.component.StationRow
@@ -51,8 +50,9 @@ import eotaek.juyulow.feature.main.results.component.StationRow
 @Composable
 fun ResultsScreen(
     state: ResultsUiState, onBack: () -> Unit, onRefresh: () -> Unit, onSelect: (String) -> Unit,
-    onMode: (JourneyMode) -> Unit, onSort: (StationSort) -> Unit, onConfirm: () -> Unit,
+    onSort: (StationSort) -> Unit, onConfirm: (JourneyMode) -> Unit,
     modifier: Modifier = Modifier,
+    onReconcile: () -> Unit = {},
 ) {
     val colors = JUYULOWTheme.colors
     val type = JUYULOWTheme.typography
@@ -79,28 +79,37 @@ fun ResultsScreen(
                         if (batch != null) {
                             val route = batch.context.journey
                             Text(
-                                if (route.hasDestination) "${route.destination}까지 ${minutes(route.baselineSeconds)}분 · ${
+                                if (route.hasDestination && route.baselineSeconds != null && route.baselineMeters != null) "${route.destination}까지 ${
+                                    minutes(
+                                        route.baselineSeconds!!
+                                    )
+                                }분 · ${
                                     kilometers(
-                                        route.baselineMeters
+                                        route.baselineMeters!!
                                     )
                                 } km / ${vehicleNumber(batch.context.conditions.liters)} L 주유 기준"
-                                else "현재 위치 · 광운대학교 인근 / ${vehicleNumber(batch.context.conditions.liters)} L 주유 기준",
+                                else "${route.destination ?: "현재 위치"} / ${vehicleNumber(batch.context.conditions.liters)} L 주유 기준",
                                 style = type.labelMedium, color = colors.textDarkSecondary,
                             )
-                            RefuelConditionsSummary(batch.context.conditions)
+                            VehicleEnergySummary(
+                                batch.context.conditions.energy,
+                                showElectricNotice = false
+                            )
                         }
                     }
                 }
-                if (batch != null) PleosTabs(batch.context.journey.availableModes.map {
-                    PleosTab(
-                        it,
-                        it.label,
-                        modeIcon(it)
-                    )
-                }, state.mode, onMode, enabled = !state.busy)
                 state.error?.let {
                     PleosInlineError(it)
                 }
+                if (state.routeUncertain) PleosButton(
+                    "상태 다시 확인",
+                    onReconcile,
+                    enabled = !state.busy
+                )
+                if (state.comparisonExpired) Text(
+                    "거리·시간·절약액은 이전 검색 기준이에요. 목적지 설정은 가능해요.",
+                    style = type.labelSmall
+                )
                 if (batch == null) {
                     PleosButton("홈으로", onBack)
                 } else {
@@ -173,16 +182,30 @@ fun ResultsScreen(
                                     )
                                 }
                             }
-                            PleosButton(
-                                state.mode.actionLabel,
-                                onConfirm,
-                                Modifier
-                                    .fillMaxWidth()
-                                    .testTag("confirm-route"),
-                                icon = PleosIcon.Navigation,
-                                enabled = state.selected != null && !state.busy,
-                                loading = state.settingRoute
-                            )
+                            val actions = listOf(JourneyMode.WAYPOINT, JourneyMode.DESTINATION)
+                                .filter { it in batch.context.journey.availableModes }
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.Bottom,
+                            ) {
+                                actions.forEach { mode ->
+                                    PleosButton(
+                                        mode.actionLabel,
+                                        { onConfirm(mode) },
+                                        Modifier
+                                            .weight(1f)
+                                            .testTag(
+                                                if (mode == JourneyMode.DESTINATION) "confirm-route" else "add-waypoint"
+                                            ),
+                                        icon = if (narrow && actions.size > 1) null else modeIcon(
+                                            mode
+                                        ),
+                                        enabled = state.selected != null && !state.busy && !state.routeUncertain,
+                                        loading = state.settingRoute && state.mode == mode,
+                                    )
+                                }
+                            }
                         }
                         VerticalDivider(color = colors.basic200)
                         Box(
@@ -278,7 +301,7 @@ private fun ResultsPreview() {
                 previewSession(),
                 JourneyMode.WAYPOINT,
                 selectedId = "station-0"
-            ), {}, {}, {}, {}, {}, {})
+            ), {}, {}, {}, {}, {})
     }
 }
 
@@ -292,6 +315,6 @@ private fun ResultsDarkPreview() {
                 previewSession(),
                 JourneyMode.WAYPOINT,
                 selectedId = "station-0"
-            ), {}, {}, {}, {}, {}, {})
+            ), {}, {}, {}, {}, {})
     }
 }

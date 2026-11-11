@@ -15,7 +15,10 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import eotaek.juyulow.core.data.JourneyRepository
+import eotaek.juyulow.core.data.MockJourneyRepository
+import eotaek.juyulow.core.data.MockStationRepository
 import eotaek.juyulow.core.data.SettingsRepository
+import eotaek.juyulow.core.data.StationRepository
 import eotaek.juyulow.core.model.RefuelSettings
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -24,13 +27,41 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.ExternalResource
+import org.junit.rules.RuleChain
 import org.junit.runner.RunWith
 import org.koin.core.context.GlobalContext
+import org.koin.core.context.loadKoinModules
+import org.koin.core.context.unloadKoinModules
+import org.koin.dsl.module
 
 @RunWith(AndroidJUnit4::class)
 class PrototypeFlowTest {
-    @get:Rule
     val compose = createAndroidComposeRule<MainActivity>()
+    private val repositories = object : ExternalResource() {
+        private lateinit var oldJourney: JourneyRepository
+        private lateinit var oldStations: StationRepository
+        private lateinit var fake: org.koin.core.module.Module
+        override fun before() {
+            oldJourney = GlobalContext.get().get()
+            oldStations = GlobalContext.get().get()
+            fake = module {
+                single<JourneyRepository> { MockJourneyRepository() }
+                single<StationRepository> { MockStationRepository() }
+            }
+            loadKoinModules(fake)
+        }
+
+        override fun after() {
+            unloadKoinModules(fake)
+            loadKoinModules(module {
+                single<JourneyRepository> { oldJourney }
+                single<StationRepository> { oldStations }
+            })
+        }
+    }
+    @get:Rule
+    val rules: RuleChain = RuleChain.outerRule(repositories).around(compose)
     private lateinit var settings: SettingsRepository
     private lateinit var original: RefuelSettings
 
@@ -63,26 +94,25 @@ class PrototypeFlowTest {
         compose.onNodeWithTag("station-list-scroll").performScrollToNode(hasTestTag("station-0"))
         compose.onNodeWithTag("station-0").performClick()
         compose.activityRule.scenario.recreate()
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithTag("confirm-route").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("station-list-scroll").performScrollToNode(hasTestTag("station-0"))
         compose.onNodeWithTag("station-0").assertIsSelected()
-        compose.onNodeWithTag("tab-DESTINATION").performClick()
         compose.onNodeWithTag("confirm-route").performClick()
         compose.onNodeWithText("목적지를 설정했어요.").assertIsDisplayed()
         pressBack()
         compose.onNodeWithTag("station-list-scroll").performScrollToNode(hasTestTag("station-0"))
         compose.onNodeWithTag("station-0").assertIsSelected()
-        compose.onNodeWithTag("tab-ROUND_TRIP").performClick()
-        compose.onNodeWithTag("confirm-route").performClick()
-        compose.onNodeWithText("왕복 경로를 준비했어요.").assertIsDisplayed()
-        compose.onNodeWithText("다른 주유소 비교").performClick()
-        compose.onNodeWithTag("tab-WAYPOINT").performClick()
-        compose.onNodeWithTag("confirm-route").performClick()
+        compose.onNodeWithTag("tab-ROUND_TRIP").assertDoesNotExist()
+        compose.onNodeWithTag("add-waypoint").performClick()
         compose.onNodeWithText("경유지를 추가했어요.").assertIsDisplayed()
         compose.onNodeWithText("홈으로").performClick()
         compose.onNodeWithText("유효 목적지 있음").performClick()
         search()
-        compose.onNodeWithTag("tab-WAYPOINT").assertDoesNotExist()
-        compose.onNodeWithTag("tab-DESTINATION").assertIsSelected()
-        compose.onNodeWithTag("tab-ROUND_TRIP").assertExists()
+        compose.onNodeWithTag("add-waypoint").assertDoesNotExist()
+        compose.onNodeWithTag("confirm-route").assertIsDisplayed()
+        compose.onNodeWithTag("tab-ROUND_TRIP").assertDoesNotExist()
     }
 
     @Test

@@ -31,6 +31,12 @@ interface ComparisonSessionRepository {
 
 interface JourneyRepository {
     val context: StateFlow<JourneyContext>
+    val navigationState: StateFlow<eotaek.juyulow.core.model.NaviState>? get() = null
+    suspend fun initialize() {}
+    suspend fun refresh() {}
+    suspend fun release() {}
+    suspend fun reconcile(): NavigationSelection? = null
+    suspend fun openNavigation() {}
     fun setHasDestination(hasDestination: Boolean)
     suspend fun select(
         session: ComparisonSession,
