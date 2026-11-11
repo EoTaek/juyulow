@@ -126,8 +126,8 @@ fun ResultsScreen(
                 }
                 if (batch?.context?.journey?.destinationOnly == true) Text(
                     if ((batch.context.journey.navigation?.waypoints?.size
-                            ?: 0) >= 2
-                    ) "경유지는 최대 2개까지 설정할 수 있어요. 거리·시간·비용은 주유소까지 기준이에요." else "거리·시간·비용은 주유소까지 기준이에요. 왕복은 준비 중이에요.",
+                            ?: 0) >= 1
+                    ) "기존 경유지가 있으면 경유지로 추가할 수 없어요. 거리·시간·비용은 주유소까지 기준이에요." else "거리·시간·비용은 주유소까지 기준이에요. 왕복은 준비 중이에요.",
                     style = type.labelSmall
                 )
                 if (batch == null) {

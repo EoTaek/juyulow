@@ -75,12 +75,12 @@ class PleosNavigationRepositoryTest {
         repo.release()
     }
     @Test fun opaqueDestinationIsPreservedWithoutInventingSubId() = runTest {
-        val fake=Fake(); fake.destinationSubId=null; fake.waypointIds=listOf("existing")
+        val fake = Fake(); fake.destinationSubId = null
         val repo=PleosNavigationRepository(fake,NaviTripLedger(),StandardTestDispatcher(testScheduler))
         val snapshot=(repo.initialize() as NaviResult.Success).value
         assertTrue(repo.setRoute(snapshot,candidate,true) is NaviResult.Success)
         assertEquals("original",fake.destinationId); assertNull(fake.destinationSubId)
-        assertEquals(listOf("station","existing"),fake.waypointIds)
+        assertEquals(listOf("station"), fake.waypointIds)
         repo.release()
     }
     @Test fun tripAndRouteCoordinatesCanDifferWithoutWeakeningMatching() = runTest {
@@ -149,15 +149,27 @@ class PleosNavigationRepositoryTest {
         assertEquals("station",repo.state.value.snapshot!!.destination!!.poiId)
         repo.release(); repo.release(); assertEquals(1,fake.released)
     }
-    @Test fun preservesOrderAndRejectsFullWaypoints() = runTest {
-        val fake=Fake(); fake.waypointIds=listOf("existing")
-        val repo=PleosNavigationRepository(fake,NaviTripLedger(),StandardTestDispatcher(testScheduler))
-        val snapshot=(repo.initialize() as NaviResult.Success).value
-        assertTrue(repo.setRoute(snapshot,candidate,true) is NaviResult.Success)
-        assertEquals(listOf("station","existing"),fake.waypointIds)
-        val other=candidate.copy(point=candidate.point.copy(poiId="other"))
-        assertTrue(repo.setRoute(repo.state.value.snapshot!!,other,true) is NaviResult.Failure)
-        assertEquals(1,fake.routeCalls); repo.release()
+    @Test
+    fun existingWaypointsBlockAdditionButAllowDestinationReplacement() = runTest {
+        for (count in 1..2) {
+            val fake = Fake(); fake.waypointIds = List(count) { "existing-$it" }
+            val repo = PleosNavigationRepository(
+                fake,
+                NaviTripLedger(),
+                StandardTestDispatcher(testScheduler)
+            )
+            val snapshot = (repo.initialize() as NaviResult.Success).value
+            assertEquals(
+                NaviResult.Failure("WAYPOINT_UNAVAILABLE"),
+                repo.setRoute(snapshot, candidate, true)
+            )
+            assertEquals(0, fake.routeCalls)
+            assertEquals(snapshot.waypoints.map { it.poiId }, fake.waypointIds)
+            assertTrue(repo.setRoute(snapshot, candidate, false) is NaviResult.Success)
+            assertEquals(emptyList<String>(), fake.waypointIds)
+            assertEquals(1, fake.routeCalls)
+            repo.release()
+        }
     }
     @Test fun changedContextDoesNotSubmit() = runTest {
         val fake=Fake(); val repo=PleosNavigationRepository(fake,NaviTripLedger(),StandardTestDispatcher(testScheduler))

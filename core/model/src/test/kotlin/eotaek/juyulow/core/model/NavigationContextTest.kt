@@ -99,7 +99,7 @@ class NavigationContextTest {
                 navigation = expected.copy(waypoints = List(count) { old }),
                 destinationOnly = true
             )
-            assertTrue((JourneyMode.WAYPOINT in journey.availableModes) == (count < 2))
+            assertTrue((JourneyMode.WAYPOINT in journey.availableModes) == (count == 0))
             assertTrue(journey.defaultMode == JourneyMode.DESTINATION)
         }
     }

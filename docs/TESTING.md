@@ -21,7 +21,7 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
 ## 로컬 단위 테스트 구성
 
 `PleosNavigationRepositoryTest`는 실제 저장소의 조회·미수신 잠금·목적지 없음 구분·확정 전 문맥 변경·목적지 대체·
-경유 순서·2개 제한·중복/미검증 후보 차단·Trip 타임아웃 잠금·동시 요청 거부·해제를 Fake로 검증한다.
+경유지 1개 이상 추가 차단·목적지 대체·중복/미검증 후보 차단·Trip 타임아웃 잠금·동시 요청 거부·해제를 Fake로 검증한다.
 `PleosNaviClientTest`는 requestRouteWithWaypoints/cancelRoute의 연결 게이트와 인자 보존도 검증한다.
 
 `NavigationRepositoryIntegrationTest`는 기본 실행에서 건너뛴다. Pleos 기기 연결 후 아래처럼 상태 조회를 활성화한다.
@@ -35,7 +35,7 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
 `responseLatitude`, `responseLongitude`, `routeResponseLatitude`, `routeResponseLongitude`, `routeMode=destination` 또는 `waypoint`가 모두 필요하다. 각각
 `-Pandroid.testInstrumentationRunnerArguments.<이름>=<값>`으로 전달한다. 검증된 내비 POI와 실측한 도로 스냅 좌표를 사용하며
 일반 주유소 좌표나 null sub-ID의 자동 변환을 가정하지 않는다. 두 routeMode를 각각 실행한다.
-주행 규제 비활성 상태·기존 경유지 1개 이하·원경로 복원 가능 여부를 확인한 후 Trip과 경로 변경을 실행하고 finally에서
+주행 규제 비활성 상태·경유 추가 시 기존 경유지 없음·원경로 복원 가능 여부를 확인한 후 Trip과 경로 변경을 실행하고 finally에서
 기존 경로를 복원·재조회한다. 복원이 실패하면 테스트도 실패하며 NavigationProbe 로그로 잔여 상태를 확인한다.
 앱 데이터 삭제나 uninstall은 수행하지 않는다.
 
@@ -169,9 +169,10 @@ LiveJourneyRepositoryTest는 이 순서에서 Trip 배치가 한 번만 호출�
 
 ## 경유 추가 정책 검증
 
-경유지 0/1/2개 활성화, 목적지 보존과 첫 번째 삽입, (0,0) 좌표 예외와 정상 좌표 불일치 거부, 편도 비교 및 불확실 상태 재확인을 단위 테스트한다. 실제 내비의 순서
+경유지 0개에서만 활성화 및 1/2개에서 SDK 제출 전 차단, 목적지 보존과 첫 번째 추가, (0,0) 좌표 예외와 정상 좌표 불일치 거부, 편도 비교 및 불확실 상태 재확인을
+단위 테스트한다. 실제 내비의 순서
 보존은 VerifiedStationsIntegrationTest에 verifiedStationsProbe=true 및 waypointPolicyProbe=true를 전달해
-검사한다. 초기 경로 없음·정차를 전제로 목적지 설정 → 경유 1개 → 경유 2개 → 추가 차단 → 목적지 대체를 실행하고 finally에서 초기 상태를 복원한다.
+검사한다. 초기 경로 없음·정차를 전제로 목적지 설정 → 경유 1개 → 두 번째 추가 차단 → 목적지 대체를 실행하고 finally에서 초기 상태를 복원한다.
 
 2026-11-10 정책 변경 검증: 빌드·단위 테스트·lint 통과, LiveNavigationFlowTest 3개 통과. 실제 경유 변경 테스트는 기존 루다와인상점 오포본점
 목적지로 인해 초기 경로 없음 전제에서 중단됐다. NavigationRepositoryIntegrationTest 상태 조회로 해당 목적지·경유지 없음·ROUTE_GUIDING을

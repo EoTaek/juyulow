@@ -199,11 +199,10 @@ class PleosNavigationRepository(
         val current = read()
         check(same(expected, current, false)) { "CONTEXT_CHANGED" }
         val point = candidate.point
-        val requested = if (asWaypoint) {
-            check(current.destination != null && current.waypoints.size < 2) { "WAYPOINT_UNAVAILABLE" }
+        if (asWaypoint) {
+            check(current.destination != null && current.waypoints.isEmpty()) { "WAYPOINT_UNAVAILABLE" }
             check((current.waypoints + current.destination!!).none { it.poiId == point.poiId }) { "DUPLICATE_POINT" }
-            listOf(point) + current.waypoints
-        } else emptyList()
+        }
         val destination = if (asWaypoint) current.destination!! else point
         pendingRoute = { actual -> actual.confirmsRoute(current, candidate, asWaypoint) }
         routeUncertain = true

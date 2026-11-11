@@ -145,10 +145,7 @@ class LiveJourneyRepositoryTest {
             assertNotNull(repo.reconcile())
             assertEquals(destination, n.current.destination)
             n.ambiguous = false
-            repo.select(batch(repo, stations), stations[1], JourneyMode.WAYPOINT)
-            assertEquals(
-                listOf(stations[1].id, stations[0].id),
-                n.current.waypoints.map { it.poiId })
+            assertEquals(listOf(stations[0].id), n.current.waypoints.map { it.poiId })
             assertEquals(listOf(JourneyMode.DESTINATION), repo.context.value.availableModes)
             expectFailure("UNSUPPORTED_SELECTION") {
                 repo.select(
@@ -157,7 +154,7 @@ class LiveJourneyRepositoryTest {
                     JourneyMode.WAYPOINT
                 )
             }
-            assertEquals(2, n.routeCalls)
+            assertEquals(1, n.routeCalls)
         } finally {
             repo.release()
         }

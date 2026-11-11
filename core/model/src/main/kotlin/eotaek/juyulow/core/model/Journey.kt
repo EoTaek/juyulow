@@ -35,7 +35,7 @@ data class JourneyContext(
     val hasDestination: Boolean get() = destination != null
     val defaultMode: JourneyMode get() = if (hasDestination && !destinationOnly) JourneyMode.WAYPOINT else JourneyMode.DESTINATION
     val availableModes: List<JourneyMode>
-        get() = if (destinationOnly) (if (hasDestination && navigation != null && navigation.waypoints.size < 2) listOf(
+        get() = if (destinationOnly) (if (hasDestination && navigation != null && navigation.waypoints.isEmpty()) listOf(
             JourneyMode.WAYPOINT,
             JourneyMode.DESTINATION
         ) else listOf(JourneyMode.DESTINATION)) else if (hasDestination) JourneyMode.entries else listOf(
