@@ -169,6 +169,11 @@ LiveJourneyRepositoryTest는 이 순서에서 Trip 배치가 한 번만 호출�
 
 ## 경유 추가 정책 검증
 
+2026-11-11 목적지 대체 팝업을 공통 `PleosConfirmationDialog`로 교체한 뒤 빌드·단위 테스트·lint를 통과했다.
+Pleos Connect v2.1.0 / Android 14에서 Fake 내비 저장소를 사용하는 `LiveNavigationFlowTest` 3개가 통과했으며,
+팝업 취소·확인·완료 및 불확실 상태 재확인을 검증했다. 실제 시스템 경로는 변경하지 않는다.
+1700/840 × 라이트/다크 프리뷰를 제공하지만 네 조합의 렌더링을 모두 육안 검증한 결과는 아니다.
+
 경유지 0개에서만 활성화 및 1/2개에서 SDK 제출 전 차단, 목적지 보존과 첫 번째 추가, (0,0) 좌표 예외와 정상 좌표 불일치 거부, 편도 비교 및 불확실 상태 재확인을
 단위 테스트한다. 실제 내비의 순서
 보존은 VerifiedStationsIntegrationTest에 verifiedStationsProbe=true 및 waypointPolicyProbe=true를 전달해

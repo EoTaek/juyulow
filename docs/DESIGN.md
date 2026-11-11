@@ -58,6 +58,18 @@ Pleos 원문에는 Material 역할과의 대응표가 없어 다음과 같이 �
 `PleosInlineError`는 오류 색상과 `LiveRegionMode.Polite`를 적용해 동적으로 나타난 오류를 접근성 서비스에 알린다.
 주유소 행·선택 상세·비용 행은 비교 기능에 특화되어 `feature:main/results/component`에 둔다.
 
+## 목적지 대체 확인 팝업
+
+`core:design/component/PleosConfirmationDialog`는 제목·설명·확인/취소 문구와 콜백을 받는 공통 확인 팝업이다.
+목적지 대체 화면에서
+사용하며, [System Popup](../pleos_sdk_guide/앱%20기획·설계%20가이드/디자인%20가이드/Components/Popups/System%20Popup.md)
+의
+Medium 폭 760dp와 가운데 정렬, 왼쪽 확인·오른쪽 취소 구성을 따른다. 좁은 창에서는 바깥 여백 40dp 안에서 폭을 제한하고 긴 내용은 세로 스크롤한다.
+`backgroundPopup`, `textDarkPrimary/Secondary`, `buttonFilled*`, `buttonBasic*`, `textLightPrimary`와
+`titleLargeBold`·`bodyLarge`·`bodyLargeStrong`, `shadows.level3`를 적용한다.
+모서리 48dp·내부 여백 48dp·요소 간격 32dp·버튼 간격 24dp·버튼 최소 높이 100dp는 도해 비례를 해석한 앱 규격이며 별도의 공식 토큰은 아니다.
+화면 밖 터치와 뒤로가기는 취소로 처리한다. 경로 변경 확인 동작은 기존 ViewModel이 소유한다.
+
 ## Typography
 
 기준은 [Pleos Typography](../pleos_sdk_guide/앱%20기획·설계%20가이드/디자인%20가이드/Foundations/Typography.md)다. `Type.kt`의 `PleosTypography`를 `JUYULOWTheme.typography`로 제공한다. 글자 크기와 행간은 `sp`로 표현한다.
