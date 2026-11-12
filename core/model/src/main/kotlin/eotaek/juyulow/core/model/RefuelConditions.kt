@@ -1,7 +1,11 @@
 package eotaek.juyulow.core.model
 
 enum class RefuelValueSource { MANUAL, TANK_LEVEL, FUEL_PERCENT, CUMULATIVE_ECONOMY, CURRENT_ECONOMY }
-enum class ComparisonFuel { GASOLINE }
+enum class ComparisonFuel(val label: String, val opinetCode: String) {
+    GASOLINE("휘발유", "B027"),
+    PREMIUM_GASOLINE("고급휘발유", "B034"),
+    DIESEL("경유", "D047"),
+}
 
 /** Frozen calculation inputs; manual settings and SDK raw units remain separate. */
 data class RefuelConditions(
@@ -13,6 +17,7 @@ data class RefuelConditions(
     val efficiencySource: RefuelValueSource = RefuelValueSource.MANUAL,
     val energy: VehicleEnergy = VehicleEnergy(),
     val comparisonFuel: ComparisonFuel = ComparisonFuel.GASOLINE,
+    val searchRadiusKm: Int = 3,
 ) {
     init {
         require(liters.isFinite() && liters >= 0)
@@ -58,6 +63,8 @@ fun resolveRefuelConditions(
     val current = fetchedNumber(VehicleProperty.CURRENT_ECONOMY)
     val fuelTypes = fields[VehicleProperty.FUEL_TYPES]
     return RefuelConditions(
+        comparisonFuel = manual.comparisonFuel,
+        searchRadiusKm = manual.searchRadiusKm,
         liters = manual.litersOverride ?: liters ?: manual.liters.toDouble(),
         efficiencyKmPerL = (cumulative ?: current)?.let { 100.0 / it }
             ?: manual.efficiencyKmPerL.toDouble(),

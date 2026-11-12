@@ -26,7 +26,10 @@ class PreferencesSettingsRepositoryTest {
             )
         )
         assertEquals(RefuelSettings(), first.settings.first())
-        val next = RefuelSettings(70, 18, 9, true, litersOverride = 20.5)
+        val next = RefuelSettings(
+            70, 18, 9, true, litersOverride = 20.5, searchRadiusKm = 5,
+            comparisonFuel = eotaek.juyulow.core.model.ComparisonFuel.DIESEL
+        )
         first.save(next)
         assertEquals(next, first.settings.first())
         firstJob.cancelAndJoin()

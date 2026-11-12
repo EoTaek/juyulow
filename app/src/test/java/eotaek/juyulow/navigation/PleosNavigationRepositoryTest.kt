@@ -232,4 +232,42 @@ class PleosNavigationRepositoryTest {
         assertNull((repo.initialize() as NaviResult.Success).value.destination)
         repo.release()
     }
+
+    @Test
+    fun coordinateTripCorrelatesNamesAndAllowsFreshRepeat() = runTest {
+        val fake = Fake()
+        val names = mutableListOf<String>()
+        fake.tripReply = { request ->
+            names += request.poiName
+            TripInfo(
+                1200, 300, 0, 0.0, TripSummary(
+                    emptyList(), listOf(
+                        RoutePointInfo(
+                            37.0001,
+                            127.0001,
+                            request.poiName,
+                            "",
+                            1.0,
+                            RoutePointPoiType.entries.first(),
+                            RoutePointType.DESTINATION,
+                            RoutePointSettingType.entries.first()
+                        )
+                    )
+                )
+            )
+        }
+        val repo =
+            PleosNavigationRepository(fake, NaviTripLedger(), StandardTestDispatcher(testScheduler))
+        repo.initialize()
+        val coordinate = NaviCandidate(
+            NaviPoint(37.0, 127.0, "station", "", null),
+            37.0,
+            127.0,
+            coordinateOnly = true
+        )
+        assertTrue(repo.trips(listOf(coordinate)) is NaviResult.Success)
+        assertTrue(repo.trips(listOf(coordinate)) is NaviResult.Success)
+        assertEquals(2, names.distinct().size)
+        repo.release()
+    }
 }

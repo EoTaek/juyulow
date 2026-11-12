@@ -122,6 +122,10 @@ fun HomeScreen(
                         )
                         state.conditions?.let { conditions ->
                             VehicleEnergySummary(conditions.energy)
+                            Text(
+                                "반경 ${conditions.searchRadiusKm} km · 검색 유종: ${conditions.comparisonFuel.label}",
+                                style = type.labelSmall
+                            )
                             if (conditions.automaticLiters && conditions.liters == 0.0) Text(
                                 "연료가 가득 찬 상태예요. 예상 가득 주유량은 0 L예요.",
                                 style = type.labelSmall, color = colors.textDarkTertiary,

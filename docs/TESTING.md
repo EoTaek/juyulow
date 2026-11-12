@@ -1,5 +1,41 @@
 # 검증
 
+2026-11-12 무료 API PDF (2026.10판) 12쪽 대조로 인증 쿼리를 `certkey`에서 `code`로 수정했다. 같은 키로 전국 평균 5건, 반경 3km
+34건의 정상 응답을 확인했다. 아래의 이전 빈 배열 기록은 잘못된 인증 쿼리를 사용한 결과이며 서비스/키 장애의 근거가 아니다.
+`OpinetClientTest.retrofitSendsAuthenticationAsCodeOnTheWire`는 실제 Retrofit/OkHttp 요청 경계에서 `code`
+·반경·유종과 `certkey` 부재를 검증한다.
+
+수정 후 `:app:assembleDebug`, `:core:data:test`, `:app:testDebugUnitTest`,
+`:feature:main:testDebugUnitTest`, `lintDebug`가 통과했다.
+
+2026-11-12 좌표 연결 후 필수 빌드·단위 테스트·lint와 AndroidTest APK 빌드가 통과했다. `KatecCoordinatesTest`는 독립 PROJ 기준값
+3곳과 왕복 오차를 검증한다. 동적 검색 테스트는 유종·반경 스냅샷, 가격 재조회/Trip 재사용, 출발 위치 변경 시 재조회, 경로 실패 후보 보존을 확인한다.
+
+실제 Pleos 2.1.0의 `CoordinateRepositoryIntegrationTest`에서 KATEC로부터 변환한 좌표로 빈 ID의 Trip 2회·목적지 반영·목적지 없음
+복원은 통과했다. 추가 경유 실험은 `ROUTE_NOT_CONFIRMED`로 실패했으나 finally의 원복은 확인했다. 오피넷 좌표 후보의 경유 기능은 사전 차단하며 기존 식별
+POI 기능은 유지한다. mobile-mcp로 실제 홈 검색에서 빈 결과 화면 진입을 확인했다. 초기 실API 빈 배열은 아래 인증 파라미터 수정으로 해소했다. 실제 가격 후보
+선택의 E2E 검증은 남아 있다.
+
+재현: 앱과 AndroidTest APK를 활성 사용자 10에 설치하고
+`am instrument --user 10 -w -e class eotaek.juyulow.CoordinateRepositoryIntegrationTest -e coordinateRepositoryProbe true -e coordinateWaypointProbe true eotaek.juyulow.test/androidx.test.runner.AndroidJUnitRunner`
+를 실행한다. 기존 목적지나 경유지가 있으면 변경하지 않고 건너뛴다.
+
+최종 구현으로 위 명령을 재실행해 `OK (1 test)`를 확인했다. 좌표 ETA 2회·목적지 설정·경유 사전 거부·원복을 검증했으며, 최종 앱 홈에서 `목적지 없음`,
+`반경 3 km · 검색 유종: 휘발유` 표시도 확인했다.
+
+2026-11-12 좌표 전용 NaviHelper PoC: `CoordinateOnlyNavigationPocTest`는 `coordinateOnlyProbe=true`일 때만
+목적지를 변경하고 finally에서 복원한다. 빈 POI ID로 실제 거리·ETA 조회와 목적지 반영·원상복원 단언을
+통과했다. [입력·재현 방법과 한계](poc/COORDINATE_ONLY_NAVI_POC.md)를 참조한다. KATEC 변환과 여러 후보의 응답 귀속은 별도 검증이다.
+
+오피넷 추가 검증: `OpinetClientTest`는 빈 응답, 숫자/문자 필드, 상표 별칭, 중복, 0원 제외 및 API 오류 본문 비노출을 검증한다. 설정 저장소 재생성
+테스트는 반경·경유 설정의 영속성도 확인한다. 2026-11-12 실제 반경 API는 공식 예시 좌표·3km·휘발유 요청에서 HTTP 200과 빈 OIL 배열을 반환했다. 비어
+있지 않은 실제 JSON은 미검증이다. 좌표 변환과 저장소의 좌표 전용 내비 반영은 아래 후속 검증으로 확인했다. 현재는 API 클라이언트를 실제 검색에 연결했다. 비어 있지 않은
+실API 전체 흐름은 여전히 미검증이다.
+
+2026-11-12 추가 변경 후 `assembleDebug`, app/core:model/core:data/feature:main/feature:settings 단위 테스트 및
+`lintDebug`가 통과했다. `core:data:test`는 세 유종 코드와 km→m 요청 인자 검증 추가 후 다시 통과했다. 공식 예시 좌표의 5km 요청도 빈 배열이었다.
+설정 화면의 두 앱 창 크기 실기기/UI 검증은 수행하지 않았다.
+
 프로젝트 루트의 PowerShell에서 호스트 Gradle 캐시·데몬을 사용한다.
 
 ```powershell

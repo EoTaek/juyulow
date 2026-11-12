@@ -1,5 +1,11 @@
 # NaviHelper 어댑터
 
+## 2026-11-12 좌표 전용 후보 지원
+
+오피넷 후보는 POI 매칭 없이 WGS84 좌표로 Trip·목적지 설정을 요청한다. 빈 ID의 기존 목적지 조회와 이름·좌표 기반 대상 구분을 지원한다. Trip 이름의 요청별
+토큰과 150m 스냅 한도로 응답을 검사하며, 고정 식별 POI fixture의 기존 ID·실측 좌표 검증은 유지한다. 아래의 고정 후보·재조회 제한 설명은 식별 POI 경로의
+기존 계약이다. 동적 검색·변환·좌표 전용 재조회와 남은 가정은 [OPINET.md](OPINET.md)를 따른다.
+
 `app`의 `navigation` 패키지는 NaviHelper 3.0.5의 저수준 어댑터를 제공한다. `NaviClient` 계약을 `PleosNaviClient`가 구현하며,
 `AndroidNaviHelperApi`만 실제 SDK 객체를 생성한다. 순수 JVM인 `core:data`에는 SDK 타입이나 Android 의존성을 추가하지 않는다.
 

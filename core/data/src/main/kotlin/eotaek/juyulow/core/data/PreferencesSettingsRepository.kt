@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import eotaek.juyulow.core.model.ComparisonFuel
 import eotaek.juyulow.core.model.RefuelSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,6 +43,9 @@ class PreferencesSettingsRepository(storage: SettingsStorage) : SettingsReposito
             efficiencyKmPerL = (values[Efficiency] ?: 12).takeIf { it in 1..30 } ?: 12,
             refuelMinutes = (values[Minutes] ?: 5).takeIf { it in 1..20 } ?: 5,
             includeTimeCost = values[TimeCost] ?: false,
+            searchRadiusKm = (values[Radius] ?: 3).takeIf { it in 1..5 } ?: 3,
+            comparisonFuel = ComparisonFuel.entries.firstOrNull { it.name == values[Fuel] }
+                ?: ComparisonFuel.GASOLINE,
         )
     }.combine(litersOverride) { settings, override -> settings.copy(litersOverride = override) }
         .distinctUntilChanged()
@@ -51,11 +56,15 @@ class PreferencesSettingsRepository(storage: SettingsStorage) : SettingsReposito
             values[Efficiency] = settings.efficiencyKmPerL
             values[Minutes] = settings.refuelMinutes
             values[TimeCost] = settings.includeTimeCost
+            values[Radius] = settings.searchRadiusKm
+            values[Fuel] = settings.comparisonFuel.name
         }
         litersOverride.value = settings.litersOverride
     }
 
     private companion object {
+        val Radius = intPreferencesKey("search_radius_km")
+        val Fuel = stringPreferencesKey("comparison_fuel")
         val Liters = intPreferencesKey("liters")
         val Efficiency = intPreferencesKey("efficiency_km_per_l")
         val Minutes = intPreferencesKey("refuel_minutes")

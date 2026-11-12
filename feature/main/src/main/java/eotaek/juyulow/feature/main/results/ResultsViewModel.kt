@@ -91,7 +91,8 @@ class ResultsViewModel(
         searchJob = viewModelScope.launch {
             try {
                 // Keep the search snapshot, even after a mock route is configured.
-                val found = stations.search(oldSession.context.journey)
+                val found =
+                    stations.search(oldSession.context.journey, oldSession.context.conditions)
                 if (request != generation) return@launch
                 val next =
                     sessions.create(

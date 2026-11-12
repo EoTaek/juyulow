@@ -327,4 +327,68 @@ class LiveJourneyRepositoryTest {
             repo.release()
         }
     }
+
+    @Test
+    fun dynamicSearchUsesSnapshotConditionsAndReusesOnlyValidTrips() = runTest {
+        val n = Navi()
+        val requested = mutableListOf<eotaek.juyulow.core.model.RefuelConditions>()
+        var price = 1600
+        val coordinate = fixtures.first().candidate.let {
+            it.copy(point = it.point.copy(poiId = "", subId = null), coordinateOnly = true)
+        }
+        val repo = LiveJourneyRepository(
+            { n }, dispatcher = StandardTestDispatcher(testScheduler),
+            candidateSource = { _, conditions ->
+                requested += conditions
+                listOf(VerifiedStation(coordinate, "brand", price, "opinet-unique"))
+            })
+        try {
+            repo.initialize()
+            val conditions = resolveRefuelConditions(
+                RefuelSettings(
+                    searchRadiusKm = 5,
+                    comparisonFuel = eotaek.juyulow.core.model.ComparisonFuel.DIESEL
+                )
+            )
+            val first = repo.search(repo.context.value, conditions)
+            assertEquals("opinet-unique", first.single().id)
+            assertEquals("오피넷", first.single().source)
+            assertEquals(conditions, requested.single())
+            price = 1800
+            val second = repo.search(repo.context.value, conditions)
+            assertEquals(1800, second.single().priceWonPerL)
+            assertEquals(1, n.tripCalls)
+            n.current = n.current.copy(location = n.current.location.copy(latitude = 37.415))
+            repo.refresh()
+            repo.search(repo.context.value, conditions)
+            assertEquals(2, n.tripCalls)
+        } finally {
+            repo.release()
+        }
+    }
+
+    @Test
+    fun dynamicSearchRetainsPricesWhenRoutesFail() = runTest {
+        val base = Navi()
+        val failing = object : NavigationRepository by base {
+            override suspend fun trips(candidates: List<NaviCandidate>): NaviResult<List<NaviTrip>> =
+                NaviResult.Failure("UNAVAILABLE")
+        }
+        val repo = LiveJourneyRepository(
+            { failing }, dispatcher = StandardTestDispatcher(testScheduler),
+            candidateSource = { _, _ -> fixtures.take(2) })
+        try {
+            repo.initialize()
+            val conditions = resolveRefuelConditions(RefuelSettings())
+            val found = repo.search(repo.context.value, conditions)
+            assertEquals(2, found.size)
+            assertNull(found.first().outboundMeters)
+            assertNotNull(found.first().routeError)
+            val session =
+                InMemoryComparisonSessionRepository().create(repo.context.value, conditions, found)
+            assertEquals(0, session.context.referencePriceWonPerL)
+        } finally {
+            repo.release()
+        }
+    }
 }

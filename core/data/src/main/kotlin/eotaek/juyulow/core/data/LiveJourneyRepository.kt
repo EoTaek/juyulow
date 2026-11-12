@@ -8,7 +8,9 @@ import eotaek.juyulow.core.model.NaviResult
 import eotaek.juyulow.core.model.NaviSnapshot
 import eotaek.juyulow.core.model.NaviState
 import eotaek.juyulow.core.model.NaviStatus
+import eotaek.juyulow.core.model.NaviTrip
 import eotaek.juyulow.core.model.NavigationSelection
+import eotaek.juyulow.core.model.RefuelConditions
 import eotaek.juyulow.core.model.Station
 import eotaek.juyulow.core.model.confirmsRoute
 import eotaek.juyulow.core.model.sameRouteTargetsAs
@@ -27,14 +29,20 @@ import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 
 /** Only candidates whose Trip and route response coordinates were measured belong here. */
-data class VerifiedStation(val candidate: NaviCandidate, val brand: String, val priceWonPerL: Int)
+data class VerifiedStation(
+    val candidate: NaviCandidate,
+    val brand: String,
+    val priceWonPerL: Int,
+    val stationId: String = candidate.key
+)
 
 /** One root-owned session; screen cancellation never cancels an SDK request already submitted. */
 class LiveJourneyRepository(
     private val navigationFactory: () -> NavigationRepository,
-    private val catalog: List<VerifiedStation>,
+    private val catalog: List<VerifiedStation> = emptyList(),
     private val dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     private val canInteract: suspend () -> Boolean = { true },
+    private val candidateSource: (suspend (NaviSnapshot, RefuelConditions) -> List<VerifiedStation>)? = null,
 ) : JourneyRepository, StationRepository {
     private var scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var navigation = navigationFactory()
@@ -50,6 +58,8 @@ class LiveJourneyRepository(
     private var pending: NavigationSelection? = null
     private var pendingExpected: NaviSnapshot? = null
     private var lastSelection: NavigationSelection? = null
+    private var activeCandidates = catalog.associate { it.stationId to it.candidate }
+    private val tripCache = mutableMapOf<String, Pair<NaviSnapshot, NaviTrip>>()
 
     private fun <T> NaviResult<T>.value(): T = when (this) {
         is NaviResult.Success -> value
@@ -64,7 +74,9 @@ class LiveJourneyRepository(
             snapshot.waypoints.joinToString(" → ") { it.name }.ifEmpty { null },
             snapshot,
             true,
-            cached?.first
+            cached?.first,
+            stationSource = if (candidateSource != null) "오피넷" else null,
+            waypointSupported = candidateSource == null,
         )
     }
 
@@ -128,6 +140,66 @@ class LiveJourneyRepository(
         }
     }.await()
 
+    override suspend fun search(
+        journey: JourneyContext,
+        conditions: RefuelConditions
+    ): List<Station> {
+        val source = candidateSource ?: return search(journey)
+        // Network work belongs to the caller; no orphan request survives a cancelled screen.
+        check(initialized) { "NAVIGATION_NOT_READY" }
+        check(canInteract()) { "PARKING_REQUIRED" }
+        val origin = mutex.withLock { navigation.refresh().value().also(::publish) }
+        check(requireNotNull(journey.navigation).sameTripOriginAs(origin)) { "CONTEXT_CHANGED" }
+        val entries = source(origin, conditions)
+        val fetchedAt = System.currentTimeMillis()
+        return mutex.withLock {
+            check(pending == null) { "ROUTE_UNCERTAIN" }
+            val current = navigation.refresh().value()
+            check(origin.sameTripOriginAs(current)) { "CONTEXT_CHANGED" }
+            val candidates = entries.associate { it.stationId to it.candidate }
+            val stations = entries.mapIndexed { index, entry ->
+                check(canInteract()) { "PARKING_REQUIRED" }
+                val candidate = entry.candidate
+                val cachedTrip =
+                    tripCache[candidate.key]?.takeIf { it.first.sameTripOriginAs(current) }?.second
+                val trip = cachedTrip ?: when (val result = navigation.trips(listOf(candidate))) {
+                    is NaviResult.Success -> result.value.single().also {
+                        tripCache[candidate.key] = current to it
+                    }
+
+                    is NaviResult.Failure -> null
+                }
+                mutableNavigationState.value = mutableNavigationState.value.copy(
+                    tripCompleted = index + 1, tripTotal = entries.size
+                )
+                Station(
+                    entry.stationId,
+                    candidate.point.name,
+                    entry.brand,
+                    entry.priceWonPerL,
+                    candidate.point.latitude,
+                    candidate.point.longitude,
+                    trip?.meters,
+                    trip?.seconds,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    fetchedAt,
+                    routeError = if (trip == null) "경로를 확인하지 못했어요. 다시 검색해 주세요." else null,
+                    source = "오피넷"
+                )
+            }
+            val after = navigation.refresh().value()
+            check(current.sameTripOriginAs(after)) { "CONTEXT_CHANGED" }
+            activeCandidates = candidates
+            cached = current to stations
+            publish(after)
+            stations
+        }
+    }
+
     override suspend fun select(
         session: ComparisonSession,
         station: Station,
@@ -137,19 +209,20 @@ class LiveJourneyRepository(
             check(pending == null) { "ROUTE_UNCERTAIN" }
             check(mode in session.context.journey.availableModes && station in session.stations) { "UNSUPPORTED_SELECTION" }
             check(cached?.second?.contains(station) == true) { "SEARCH_EXPIRED" }
+            check(station.outboundMeters != null && station.outboundSeconds != null) { "ROUTE_UNAVAILABLE" }
             val expected = requireNotNull(session.context.journey.navigation)
             val current = navigation.refresh().value()
             publish(current)
             check(same(expected, current)) { "CONTEXT_CHANGED" }
-            val candidate = catalog.single { it.candidate.point.poiId == station.id }.candidate
+            val candidate = activeCandidates[station.id] ?: error("UNKNOWN_STATION")
             check(canInteract()) { "PARKING_REQUIRED" }
             val selection = NavigationSelection(
                 UUID.randomUUID().toString(), station.id, station.name,
                 mode,
                 if (mode == JourneyMode.WAYPOINT) requireNotNull(expected.destination).name else station.name,
                 if (mode == JourneyMode.WAYPOINT) station.name else null,
-                station.outboundMeters,
-                station.outboundSeconds + session.context.conditions.refuelSeconds,
+                requireNotNull(station.outboundMeters),
+                requireNotNull(station.outboundSeconds) + session.context.conditions.refuelSeconds,
                 session.context.conditions.refuelSeconds,
                 session.context.conditions,
                 outboundOnly = true,
@@ -177,7 +250,7 @@ class LiveJourneyRepository(
             val snapshot = navigation.refresh().value()
             publish(snapshot)
             pending?.let { selection ->
-                val c = catalog.single { it.candidate.point.poiId == selection.stationId }.candidate
+                val c = activeCandidates[selection.stationId] ?: error("UNKNOWN_STATION")
                 if (snapshot.confirmsRoute(
                         requireNotNull(pendingExpected),
                         c,

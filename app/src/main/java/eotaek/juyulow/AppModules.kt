@@ -21,7 +21,6 @@ import eotaek.juyulow.location.FusedLocationClient
 import eotaek.juyulow.location.PleosFusedLocationClient
 import eotaek.juyulow.navigation.NaviClient
 import eotaek.juyulow.navigation.PleosNaviClient
-import eotaek.juyulow.navigation.verifiedStations
 import eotaek.juyulow.vehicle.PleosVehicleFuelClient
 import eotaek.juyulow.vehicle.VehicleFuelClient
 import eotaek.juyulow.vehicle.VehicleRuntime
@@ -31,6 +30,8 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 val appModule = module {
+    single { eotaek.juyulow.core.data.OpinetClient.create(BuildConfig.OPINET_API_KEY) }
+    single { eotaek.juyulow.core.data.OpinetCandidates(get()) }
     single { eotaek.juyulow.navigation.NaviTripLedger() }
     factory<NavigationRepository> { eotaek.juyulow.navigation.PleosNavigationRepository(get(), get()) }
     factory<NaviClient> { PleosNaviClient(androidContext()) }
@@ -44,7 +45,13 @@ val appModule = module {
     single { VehicleRuntime(androidContext(), get(), get()) }
     single {
         LiveJourneyRepository(
-            { get<NavigationRepository>() }, verifiedStations,
+            { get<NavigationRepository>() },
+            candidateSource = { origin, conditions ->
+                get<eotaek.juyulow.core.data.OpinetCandidates>().search(
+                    origin,
+                    conditions
+                )
+            },
             canInteract = { eotaek.juyulow.navigation.canInteractWithNavigation(androidContext()) })
     }
     single<StationRepository> { get<LiveJourneyRepository>() }
