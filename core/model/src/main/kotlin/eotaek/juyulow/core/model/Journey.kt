@@ -10,8 +10,11 @@ data class RefuelSettings(
     val includeTimeCost: Boolean = false,
     // User override for this process; a new startup begins with vehicle data again.
     val litersOverride: Double? = null,
+    val searchRadiusKm: Int = 3,
+    val comparisonFuel: ComparisonFuel = ComparisonFuel.GASOLINE,
 ) {
     init {
+        require(searchRadiusKm in 1..5)
         require(liters in 10..100 && liters % 10 == 0)
         require(efficiencyKmPerL in 1..30)
         require(refuelMinutes in 1..20)
@@ -31,11 +34,13 @@ data class JourneyContext(
     // Live comparison uses outbound metrics; route application may still insert a waypoint.
     val destinationOnly: Boolean = false,
     val tripOrigin: NaviSnapshot? = null,
+    val stationSource: String? = null,
+    val waypointSupported: Boolean = true,
 ) {
     val hasDestination: Boolean get() = destination != null
     val defaultMode: JourneyMode get() = if (hasDestination && !destinationOnly) JourneyMode.WAYPOINT else JourneyMode.DESTINATION
     val availableModes: List<JourneyMode>
-        get() = if (destinationOnly) (if (hasDestination && navigation != null && navigation.waypoints.isEmpty()) listOf(
+        get() = if (destinationOnly) (if (waypointSupported && hasDestination && navigation != null && navigation.waypoints.isEmpty()) listOf(
             JourneyMode.WAYPOINT,
             JourneyMode.DESTINATION
         ) else listOf(JourneyMode.DESTINATION)) else if (hasDestination) JourneyMode.entries else listOf(
@@ -51,8 +56,8 @@ data class Station(
     val priceWonPerL: Int,
     val latitude: Double,
     val longitude: Double,
-    val outboundMeters: Int,
-    val outboundSeconds: Int,
+    val outboundMeters: Int?,
+    val outboundSeconds: Int?,
     val returnMeters: Int?,
     val returnSeconds: Int?,
     val viaMeters: Int?,
@@ -60,6 +65,8 @@ data class Station(
     // Incremental toll for WAYPOINT; total toll for DESTINATION / ROUND_TRIP.
     val tollWon: Int?,
     val observedAtMillis: Long? = null,
+    val routeError: String? = null,
+    val source: String? = null,
 )
 
 data class ComparisonContext(
@@ -71,7 +78,8 @@ data class ComparisonContext(
 data class ComparisonSession(
     val id: String,
     val context: ComparisonContext,
-    val stations: List<Station>
+    val stations: List<Station>,
+    val createdAtMillis: Long = System.currentTimeMillis(),
 )
 
 data class StationComparison(
@@ -115,13 +123,13 @@ fun compareStation(
     val calculationMode = if (context.journey.destinationOnly) JourneyMode.DESTINATION else mode
     val distance = when (calculationMode) {
         JourneyMode.WAYPOINT -> requireNotNull(station.viaMeters)
-        JourneyMode.DESTINATION -> station.outboundMeters
-        JourneyMode.ROUND_TRIP -> station.outboundMeters + requireNotNull(station.returnMeters)
+        JourneyMode.DESTINATION -> requireNotNull(station.outboundMeters)
+        JourneyMode.ROUND_TRIP -> requireNotNull(station.outboundMeters) + requireNotNull(station.returnMeters)
     }
     val drive = when (calculationMode) {
         JourneyMode.WAYPOINT -> requireNotNull(station.viaSeconds)
-        JourneyMode.DESTINATION -> station.outboundSeconds
-        JourneyMode.ROUND_TRIP -> station.outboundSeconds + requireNotNull(station.returnSeconds)
+        JourneyMode.DESTINATION -> requireNotNull(station.outboundSeconds)
+        JourneyMode.ROUND_TRIP -> requireNotNull(station.outboundSeconds) + requireNotNull(station.returnSeconds)
     }
     val extraDistance =
         distance - if (calculationMode == JourneyMode.WAYPOINT) requireNotNull(context.journey.baselineMeters) else 0

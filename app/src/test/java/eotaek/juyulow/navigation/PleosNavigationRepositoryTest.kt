@@ -39,6 +39,7 @@ class PleosNavigationRepositoryTest {
         var destinationId = "original"
         var destinationSubId: String? = "0"
         var waypointIds = emptyList<String>()
+        var waypointName: String? = null
         var routeCalls = 0
         var released = 0
         var tripReply: ((TripRequest) -> TripInfo)? = null
@@ -49,7 +50,20 @@ class PleosNavigationRepositoryTest {
         override fun initialize(listener: NaviClientListener) { this.listener = listener; listener.onConnected() }
         override fun getCurrentLocationInfo() { listener.onCurrentLocationInfo(CurrentLocationInfo(37.0,127.0,address="",routeId="r",currentRouteIndex=0)) }
         override fun getDestinationInfo() { if (!missing) listener.onDestinationInfo(DestinationInfo(37.0,127.0,name=destinationId,address="",remainDistance=10,remainTime=5,tollFare=0,poiId=destinationId,poiSubId=destinationSubId)) }
-        override fun getWaypointInfo() { listener.onWayPointInfo(waypointIds.map { WaypointInfo(name=it,address="",latitude=waypointCoordinates.first,longitude=waypointCoordinates.second,remainDistance=1,remainTime=1,poiId=it,poiSubId="0") }) }
+        override fun getWaypointInfo() {
+            listener.onWayPointInfo(waypointIds.map {
+                WaypointInfo(
+                    name = waypointName ?: it,
+                    address = "",
+                    latitude = waypointCoordinates.first,
+                    longitude = waypointCoordinates.second,
+                    remainDistance = 1,
+                    remainTime = 1,
+                    poiId = it,
+                    poiSubId = "0"
+                )
+            })
+        }
         override fun getRouteStateInfo() {
             val observedMode = if (routeCalls > 0 && delayedRouteReads-- > 0) NaviMode.SAFE_GUIDING else mode
             listener.onRouteStateInfo(RouteStateInfo(true,observedMode,false,RouteOption.RECOMMENDED,0,emptyList(),null))
@@ -58,7 +72,10 @@ class PleosNavigationRepositoryTest {
         override fun requestRoute(route: RouteInfo) { routeCalls++; destinationId=route.poiId; waypointIds=emptyList(); if (completeRoute) listener.onRoutingCompleted() }
         override fun requestRouteWithWaypoints(request: RouteWithWaypointsRequest) { routeCalls++; destinationId=request.destination.poiId; waypointIds=request.waypoints.map { it.poiId }; listener.onRoutingCompleted() }
         override fun cancelRoute() = Unit
-        override fun addWaypoint(waypoint: RequestWaypointInfo) { routeCalls++; waypointIds=listOf(waypoint.poiId)+waypointIds; listener.onRoutingCompleted() }
+        override fun addWaypoint(waypoint: RequestWaypointInfo) {
+            routeCalls++; waypointName = waypoint.poiName; waypointIds =
+                listOf(waypoint.poiId) + waypointIds; listener.onRoutingCompleted()
+        }
         override fun requestNavigationScreen(screen: NavigationScreenRequest) = Unit
         override fun release() { released++ }
     }
@@ -87,6 +104,29 @@ class PleosNavigationRepositoryTest {
         assertEquals(listOf("station"),fake.waypointIds)
         assertEquals("original",fake.destinationId)
         repo.release()
+    }
+    @Test
+    fun coordinateWaypointAcceptsMissingSdkCoordinatesAndKeepsDestination() = runTest {
+        val fake = Fake().apply { waypointCoordinates = 0.0 to 0.0 }
+        val repo =
+            PleosNavigationRepository(fake, NaviTripLedger(), StandardTestDispatcher(testScheduler))
+        try {
+            val snapshot = (repo.initialize() as NaviResult.Success).value
+            val stop = candidate.copy(
+                point = candidate.point.copy(
+                    latitude = 37.1,
+                    poiId = "",
+                    subId = null
+                ), coordinateOnly = true
+            )
+            assertTrue(repo.setRoute(snapshot, stop, true) is NaviResult.Success)
+            assertEquals("original", fake.destinationId)
+            assertEquals(listOf(""), fake.waypointIds)
+            assertEquals("station", fake.waypointName)
+            assertEquals(NaviStatus.READY, repo.state.value.status)
+        } finally {
+            repo.release()
+        }
     }
     @Test fun opaqueDestinationIsPreservedWithoutInventingSubId() = runTest {
         val fake = Fake(); fake.destinationSubId = null
@@ -230,6 +270,44 @@ class PleosNavigationRepositoryTest {
         val fake=Fake(); fake.destinationId=""; fake.mode=NaviMode.SAFE_GUIDING
         val repo=PleosNavigationRepository(fake,NaviTripLedger(),StandardTestDispatcher(testScheduler))
         assertNull((repo.initialize() as NaviResult.Success).value.destination)
+        repo.release()
+    }
+
+    @Test
+    fun coordinateTripCorrelatesNamesAndAllowsFreshRepeat() = runTest {
+        val fake = Fake()
+        val names = mutableListOf<String>()
+        fake.tripReply = { request ->
+            names += request.poiName
+            TripInfo(
+                1200, 300, 0, 0.0, TripSummary(
+                    emptyList(), listOf(
+                        RoutePointInfo(
+                            37.0001,
+                            127.0001,
+                            request.poiName,
+                            "",
+                            1.0,
+                            RoutePointPoiType.entries.first(),
+                            RoutePointType.DESTINATION,
+                            RoutePointSettingType.entries.first()
+                        )
+                    )
+                )
+            )
+        }
+        val repo =
+            PleosNavigationRepository(fake, NaviTripLedger(), StandardTestDispatcher(testScheduler))
+        repo.initialize()
+        val coordinate = NaviCandidate(
+            NaviPoint(37.0, 127.0, "station", "", null),
+            37.0,
+            127.0,
+            coordinateOnly = true
+        )
+        assertTrue(repo.trips(listOf(coordinate)) is NaviResult.Success)
+        assertTrue(repo.trips(listOf(coordinate)) is NaviResult.Success)
+        assertEquals(2, names.distinct().size)
         repo.release()
     }
 }

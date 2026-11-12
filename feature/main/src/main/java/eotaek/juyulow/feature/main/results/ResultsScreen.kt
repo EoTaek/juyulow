@@ -154,6 +154,22 @@ fun ResultsScreen(
                                 style = type.labelMedium,
                                 color = colors.textDarkSecondary
                             )
+                            if (batch.context.journey.stationSource == "오피넷") {
+                                val fetchedAt = batch.stations.firstOrNull()?.observedAtMillis
+                                    ?: batch.createdAtMillis
+                                Text(
+                                    "오피넷 · 반경 ${batch.context.conditions.searchRadiusKm} km · ${batch.context.conditions.comparisonFuel.label}",
+                                    style = type.labelSmall
+                                )
+                                Text(
+                                    "조회: ${
+                                        java.text.SimpleDateFormat(
+                                            "MM-dd HH:mm",
+                                            java.util.Locale.KOREA
+                                        ).format(java.util.Date(fetchedAt))
+                                    } · 가격 기준시각 미제공", style = type.labelSmall
+                                )
+                            }
                             val listState = rememberLazyListState()
                             LaunchedEffect(batch.id) { listState.scrollToItem(0) }
                             LazyColumn(
@@ -174,6 +190,24 @@ fun ResultsScreen(
                                         !state.busy,
                                         narrow
                                     ) { onSelect(row.station.id) }
+                                }
+                                items(
+                                    batch.stations.filter { it.outboundMeters == null || it.outboundSeconds == null },
+                                    key = { it.id }) { station ->
+                                    Column(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(station.name, style = type.bodySmall)
+                                        Text("${station.priceWonPerL} 원/L", style = type.bodySmall)
+                                        Text(
+                                            station.routeError ?: "경로 미확보",
+                                            style = type.labelSmall
+                                        )
+                                        Text("거리·시간·절약액 미확보 · 내비 설정 불가", style = type.labelSmall)
+                                    }
                                 }
                                 if (batch.stations.isEmpty()) item {
                                     Text(

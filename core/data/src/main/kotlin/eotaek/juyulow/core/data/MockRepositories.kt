@@ -60,7 +60,11 @@ class InMemoryComparisonSessionRepository : ComparisonSessionRepository {
     ): ComparisonSession {
         val next = ComparisonSession(
             UUID.randomUUID().toString(),
-            ComparisonContext(journey, conditions, stations.maxOfOrNull { it.priceWonPerL } ?: 0),
+            ComparisonContext(
+                journey,
+                conditions,
+                stations.filter { it.outboundMeters != null && it.outboundSeconds != null }
+                    .maxOfOrNull { it.priceWonPerL } ?: 0),
             stations.toList(),
         )
         session = next

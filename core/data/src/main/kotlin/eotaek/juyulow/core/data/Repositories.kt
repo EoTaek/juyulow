@@ -17,6 +17,8 @@ interface SettingsRepository {
 
 interface StationRepository {
     suspend fun search(journey: JourneyContext): List<Station>
+    suspend fun search(journey: JourneyContext, conditions: RefuelConditions): List<Station> =
+        search(journey)
 }
 
 interface ComparisonSessionRepository {

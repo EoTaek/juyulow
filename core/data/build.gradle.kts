@@ -13,6 +13,7 @@ kotlin {
 }
 
 dependencies {
+    implementation(libs.proj4j)
     api(project(":core:model"))
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.datastore.preferences.core)

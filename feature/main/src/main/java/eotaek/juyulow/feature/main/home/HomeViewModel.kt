@@ -93,7 +93,7 @@ class HomeViewModel(
         mutableState.update { it.copy(searching = true, error = null) }
         searchJob = viewModelScope.launch {
             try {
-                val found = stations.search(snapshot.journey)
+                val found = stations.search(snapshot.journey, conditions)
                 if (generation != searchGeneration) return@launch
                 val journey =
                     if (snapshot.journey.destinationOnly) journeys.context.value else snapshot.journey

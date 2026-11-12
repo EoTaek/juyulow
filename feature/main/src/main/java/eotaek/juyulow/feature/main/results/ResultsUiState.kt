@@ -23,7 +23,8 @@ data class ResultsUiState(
         get() {
             val batch = session ?: return emptyList()
             val rows =
-                batch.stations.map { EvaluatedStation(it, compareStation(batch.context, it, mode)) }
+                batch.stations.filter { it.outboundMeters != null && it.outboundSeconds != null }
+                    .map { EvaluatedStation(it, compareStation(batch.context, it, mode)) }
             return when (sort) {
                 StationSort.SAVING -> rows.sortedByDescending { it.comparison.netSavingWon }
                 StationSort.TIME -> rows.sortedBy { it.comparison.costDurationSeconds }

@@ -160,30 +160,69 @@ class PleosNavigationRepository(
         check(r.naviMode != NaviMode.NOT_WORKING) { "NAVIGATION_UNAVAILABLE" }
         check(valid(l.latitude, l.longitude)) { "INVALID_LOCATION" }
         val dest = if (r.naviMode == NaviMode.SAFE_GUIDING && d.poiId.isBlank() && d.name.isBlank()) null
-            else d.point().also { check(valid(it.latitude, it.longitude) && it.poiId.isNotBlank()) { "UNKNOWN_DESTINATION" } }
+        else d.point().also {
+            check(
+                valid(
+                    it.latitude,
+                    it.longitude
+                ) && it.name.isNotBlank()
+            ) { "UNKNOWN_DESTINATION" }
+        }
         val result = NaviSnapshot(NaviLocation(l.latitude, l.longitude, l.routeId, l.currentRouteIndex, clock()),
             dest, waypoints!!.map { it.point() }, r.naviMode.name, r.isRouting, r.routeOption.name, clock())
         if (pendingRoute?.invoke(result) == true) { routeUncertain = false; pendingRoute = null }
-        mutableState.value = NaviState(NaviStatus.READY, result, fields.toSet())
+        mutableState.value = NaviState(
+            if (routeUncertain || ledger.uncertain) NaviStatus.UNCERTAIN else NaviStatus.READY,
+            result,
+            fields.toSet()
+        )
         return result
     }
     override suspend fun trips(candidates: List<NaviCandidate>) = operation {
         check(!ledger.uncertain) { "TRIP_UNCERTAIN" }
-        check(candidates.isNotEmpty() && candidates.map { it.point.poiId }.distinct().size == candidates.size) { "INVALID_CANDIDATES" }
-        candidates.forEach { validate(it); check(it.point.poiId !in ledger.requested) { "REPEAT_CANDIDATE" } }
+        check(candidates.isNotEmpty() && candidates.map { it.key }
+            .distinct().size == candidates.size) { "INVALID_CANDIDATES" }
+        candidates.forEach { validate(it); check(it.coordinateOnly || it.key !in ledger.requested) { "REPEAT_CANDIDATE" } }
         val before = read()
         check(!ledger.uncertain) { "TRIP_UNCERTAIN" }
         mutableState.value = state.value.copy(tripCompleted = 0, tripTotal = candidates.size)
         try {
             val result = candidates.map { c ->
-                ledger.requested += c.point.poiId
-                client.requestTrip(TripRequest(c.point.latitude, c.point.longitude, c.point.poiId, c.point.name, c.point.subId))
+                ledger.requested += c.key
+                val requestName =
+                    if (c.coordinateOnly) c.point.name + " #" + java.util.UUID.randomUUID() else c.point.name
+                client.requestTrip(
+                    TripRequest(
+                        c.point.latitude,
+                        c.point.longitude,
+                        c.point.poiId,
+                        requestName,
+                        c.point.subId
+                    )
+                )
                 withTimeout(operationTimeout.milliseconds) {
                     var trip: TripInfo? = null
-                    while (trip == null) { val event = next(); if (event is TripInfo) trip = event }
+                    while (trip == null) {
+                        val event = next()
+                        if (event is TripInfo && (!c.coordinateOnly ||
+                                    event.summary.routePoints.singleOrNull()?.poiName == requestName)
+                        ) trip = event
+                    }
                     val points = trip.summary.routePoints
-                    check(points.size == 1 && points.single().pointType == RoutePointType.DESTINATION && points.single().poiId == c.point.poiId &&
-                        near(points.single().latitude, c.responseLatitude) && near(points.single().longitude, c.responseLongitude)) { "TRIP_MISMATCH" }
+                    check(
+                        points.size == 1 && points.single().pointType == RoutePointType.DESTINATION && (if (c.coordinateOnly)
+                            points.single().poiName == requestName && distanceMeters(
+                                points.single().latitude,
+                                points.single().longitude,
+                                c.point.latitude,
+                                c.point.longitude
+                            ) <= 150.0
+                        else points.single().poiId == c.point.poiId &&
+                                near(
+                                    points.single().latitude,
+                                    c.responseLatitude
+                                ) && near(points.single().longitude, c.responseLongitude))
+                    ) { "TRIP_MISMATCH" }
                     check(trip.distance >= 0 && trip.eta >= 0) { "INVALID_TRIP" }
                     mutableState.value =
                         state.value.copy(tripCompleted = state.value.tripCompleted + 1)
@@ -202,7 +241,14 @@ class PleosNavigationRepository(
         val point = candidate.point
         if (asWaypoint) {
             check(current.destination != null && current.waypoints.isEmpty()) { "WAYPOINT_UNAVAILABLE" }
-            check((current.waypoints + current.destination!!).none { it.poiId == point.poiId }) { "DUPLICATE_POINT" }
+            check((current.waypoints + current.destination!!).none {
+                if (candidate.coordinateOnly) distanceMeters(
+                    it.latitude,
+                    it.longitude,
+                    point.latitude,
+                    point.longitude
+                ) < 1.0 else it.poiId == point.poiId
+            }) { "DUPLICATE_POINT" }
         }
         val destination = if (asWaypoint) current.destination!! else point
         pendingRoute = { actual -> actual.confirmsRoute(current, candidate, asWaypoint) }
@@ -211,7 +257,10 @@ class PleosNavigationRepository(
             RequestWaypointInfo(
                 latitude = point.latitude,
                 longitude = point.longitude,
-            poiName=point.name, waypointIndex=WaypointIndex.FIRST, poiId=point.poiId, poiSubId=point.subId!!,
+                poiName = point.name,
+                waypointIndex = WaypointIndex.FIRST,
+                poiId = point.poiId,
+                poiSubId = point.subId ?: "",
             address=point.address, poiProvider=point.provider))
         else client.requestRoute(destination.route(current.routeOption))
         val deadline = clock() + operationTimeout
@@ -230,13 +279,38 @@ class PleosNavigationRepository(
             finally { mutableState.value = state.value.copy(status = NaviStatus.RELEASED) } }
     }
     private fun validate(c: NaviCandidate) {
-        check(c.point.poiId.isNotBlank() && c.point.subId != null && valid(c.point.latitude, c.point.longitude) &&
+        check(
+            (c.coordinateOnly && c.point.poiId.isBlank() || c.point.poiId.isNotBlank() && c.point.subId != null) && valid(
+                c.point.latitude,
+                c.point.longitude
+            ) &&
             valid(c.responseLatitude, c.responseLongitude) && valid(c.routeResponseLatitude, c.routeResponseLongitude)) { "UNVERIFIED_POINT" }
+    }
+
+    private fun distanceMeters(
+        lat: Double,
+        lon: Double,
+        targetLat: Double,
+        targetLon: Double
+    ): Double {
+        if (!valid(lat, lon)) return Double.POSITIVE_INFINITY
+        val a = Math.toRadians(lat)
+        val b = Math.toRadians(targetLat)
+        val dLat = b - a
+        val dLon = Math.toRadians(targetLon - lon)
+        val h = kotlin.math.sin(dLat / 2).let { it * it } +
+                kotlin.math.cos(a) * kotlin.math.cos(b) * kotlin.math.sin(dLon / 2).let { it * it }
+        return 6371000.0 * 2 * kotlin.math.asin(kotlin.math.sqrt(h.coerceIn(0.0, 1.0)))
     }
     private fun near(a: Double, b: Double) = abs(a - b) <= 0.000001
     private fun valid(lat: Double, lon: Double) = lat.isFinite() && lon.isFinite() && lat in -90.0..90.0 && lon in -180.0..180.0
     private fun DestinationInfo.point() = NaviPoint(latitude, longitude, name, poiId, poiSubId, address, poiProvider)
     private fun WaypointInfo.point() = NaviPoint(latitude, longitude, name, poiId, poiSubId, address, poiProvider)
     private fun NaviPoint.route(option: String) = RouteInfo(latitude = latitude, longitude = longitude, poiName = name,
-        poiId = poiId, poiSubId = subId ?: fail("MISSING_SUB_ID"), address = address, poiProvider = provider, routeOption = RouteOption.valueOf(option))
+        poiId = poiId,
+        poiSubId = subId ?: if (poiId.isBlank()) "" else fail("MISSING_SUB_ID"),
+        address = address,
+        poiProvider = provider,
+        routeOption = RouteOption.valueOf(option)
+    )
 }

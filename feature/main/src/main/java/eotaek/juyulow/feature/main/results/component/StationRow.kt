@@ -47,7 +47,7 @@ internal fun StationRow(
         val time: @Composable () -> Unit = {
             val seconds = when (displayMode) {
                 JourneyMode.WAYPOINT -> row.comparison.costDurationSeconds
-                JourneyMode.DESTINATION -> row.station.outboundSeconds
+                JourneyMode.DESTINATION -> requireNotNull(row.station.outboundSeconds)
                 JourneyMode.ROUND_TRIP -> row.comparison.totalSeconds
             }
             PleosLabelValue(

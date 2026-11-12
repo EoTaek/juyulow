@@ -18,7 +18,8 @@ fun NaviSnapshot.sameContextAs(other: NaviSnapshot): Boolean = destination == ot
 
 /** Confirmed route targets survive movement and rerouting; target changes require confirmation. */
 fun NaviSnapshot.sameRouteTargetsAs(other: NaviSnapshot): Boolean {
-    fun NaviPoint.key() = poiId to subId
+    fun NaviPoint.key() =
+        if (poiId.isBlank()) listOf(name, latitude, longitude) else listOf(poiId, subId)
     return destination?.key() == other.destination?.key() &&
             waypoints.map { it.key() } == other.waypoints.map { it.key() }
 }
@@ -42,7 +43,12 @@ data class NaviState(val status: NaviStatus = NaviStatus.IDLE, val snapshot: Nav
                      val tripCompleted: Int = 0, val tripTotal: Int = 0
 )
 data class NaviCandidate(val point: NaviPoint, val responseLatitude: Double, val responseLongitude: Double,
-    val routeResponseLatitude: Double = responseLatitude, val routeResponseLongitude: Double = responseLongitude)
+                         val routeResponseLatitude: Double = responseLatitude,
+                         val routeResponseLongitude: Double = responseLongitude,
+                         val coordinateOnly: Boolean = false
+) {
+    val key: String get() = if (coordinateOnly) "coordinate:${point.latitude}:${point.longitude}:${point.name}" else point.poiId
+}
 data class NaviTrip(val candidate: NaviCandidate, val meters: Int, val seconds: Int, val observedAtMillis: Long)
 sealed interface NaviResult<out T> {
     data class Success<T>(val value: T) : NaviResult<T>
@@ -57,20 +63,29 @@ fun NaviSnapshot.confirmsRoute(
 ): Boolean {
     val wanted = if (asWaypoint) listOf(candidate.point) + expected.waypoints else emptyList()
     fun near(a: Double, b: Double) = kotlin.math.abs(a - b) <= 0.000001
+    fun matches(actual: NaviPoint, target: NaviPoint, candidateTarget: Boolean): Boolean {
+        val identity = if (candidateTarget && candidate.coordinateOnly)
+            actual.poiId.isBlank() && target.name.isNotBlank() && actual.name == target.name
+        else actual.poiId == target.poiId
+        if (!identity) return false
+        // NaviHelper can omit waypoint coordinates; retain identity, count/order and destination checks.
+        if (asWaypoint && actual.latitude == 0.0 && actual.longitude == 0.0)
+            return target.poiId.isNotBlank() || (candidateTarget && candidate.coordinateOnly)
+        val lat = if (candidateTarget) candidate.routeResponseLatitude else target.latitude
+        val lon = if (candidateTarget) candidate.routeResponseLongitude else target.longitude
+        return near(actual.latitude, lat) && near(actual.longitude, lon)
+    }
     return destination != null &&
-            (if (asWaypoint) destination == expected.destination else
-                destination.poiId == candidate.point.poiId &&
-                        near(destination.latitude, candidate.routeResponseLatitude) &&
-                        near(destination.longitude, candidate.routeResponseLongitude)) &&
-            waypoints.map { it.poiId } == wanted.map { it.poiId } &&
-            waypoints.zip(wanted).all { (actual, point) ->
-                actual.latitude == 0.0 && actual.longitude == 0.0 || if (point.poiId == candidate.point.poiId)
-                    near(actual.latitude, candidate.routeResponseLatitude) && near(
-                        actual.longitude,
-                        candidate.routeResponseLongitude
-                    )
-                else actual == point
-            } && routeOption == expected.routeOption && mode in listOf(
+            (if (asWaypoint) destination == expected.destination else matches(
+                destination,
+                candidate.point,
+                true
+            )) &&
+            waypoints.size == wanted.size &&
+            waypoints.zip(wanted).withIndex().all { (index, pair) ->
+                matches(pair.first, pair.second, asWaypoint && index == 0)
+            } &&
+            routeOption == expected.routeOption && mode in listOf(
         "ROUTE_GUIDING",
         "SIMULATION_GUIDING"
     )

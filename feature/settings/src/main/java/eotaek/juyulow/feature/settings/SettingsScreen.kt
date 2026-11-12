@@ -39,6 +39,7 @@ import eotaek.juyulow.core.design.component.vehicleFieldDisplay
 import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.design.theme.pleosShadow
+import eotaek.juyulow.core.model.ComparisonFuel
 import eotaek.juyulow.core.model.RefuelSettings
 import eotaek.juyulow.core.model.VehicleProperty
 
@@ -104,6 +105,23 @@ fun SettingsScreen(
                     )
                 } else {
                     val conditions = requireNotNull(state.conditions)
+                    SettingRow("검색 반경", narrow) {
+                        PleosStepper(
+                            "검색 반경", draft.searchRadiusKm, "km", 1..5, 1,
+                            { onChange(draft.copy(searchRadiusKm = it)) }, enabled = !state.saving
+                        )
+                    }
+                    SettingRow("검색 유종", narrow) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ComparisonFuel.entries.forEach { fuel ->
+                                PleosButton(
+                                    (if (draft.comparisonFuel == fuel) "✓ " else "") + fuel.label,
+                                    { onChange(draft.copy(comparisonFuel = fuel)) },
+                                    Modifier.fillMaxWidth(), enabled = !state.saving
+                                )
+                            }
+                        }
+                    }
                     SettingRow("예상 주유량", narrow) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {

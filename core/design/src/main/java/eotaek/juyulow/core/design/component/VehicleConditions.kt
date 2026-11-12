@@ -60,12 +60,12 @@ fun VehicleEnergySummary(
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
-            "차량 에너지원: ${energy.displayLabel()} · 휘발유 기준 비교",
+            "차량 에너지원: ${energy.displayLabel()}",
             style = JUYULOWTheme.typography.labelSmall,
             color = JUYULOWTheme.colors.textDarkSecondary,
         )
         if (showElectricNotice && energy.includesElectric) Text(
-            "전기차 계산은 준비 중이며, 현재 비교는 휘발유 기준이에요.",
+            "전기차 전비·충전 비교는 지원하지 않아요. 검색 유종은 설정에서 선택해요.",
             style = JUYULOWTheme.typography.labelSmall,
             color = JUYULOWTheme.colors.textDarkTertiary,
         )
@@ -76,6 +76,10 @@ fun VehicleEnergySummary(
 fun RefuelConditionsSummary(conditions: RefuelConditions, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         VehicleEnergySummary(conditions.energy)
+        Text(
+            "검색 반경: ${conditions.searchRadiusKm} km · 검색 유종: ${conditions.comparisonFuel.label}",
+            style = JUYULOWTheme.typography.labelSmall
+        )
         Text(
             "${vehicleNumber(conditions.liters)} L (${conditions.litersSource.displayLabel()}) · " +
                     "연비 ${vehicleNumber(conditions.efficiencyKmPerL)} km/L (${conditions.efficiencySource.displayLabel()})",
