@@ -9,12 +9,49 @@ import eotaek.juyulow.core.model.Station
 import eotaek.juyulow.core.model.VehicleEnergy
 import eotaek.juyulow.core.model.resolveRefuelConditions
 import kotlinx.coroutines.test.runTest
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.fail
 import org.junit.Test
 
 class KakaoDetourEtaRepositoryTest {
+    @Test
+    fun retriesHttpFailuresAndPreservesBatchStopAfterExhaustion() = runTest {
+        for (failures in listOf(0, 1, 2, 3)) {
+            var calls = 0
+            val api = object : KakaoDirectionsApi {
+                override suspend fun directions(
+                    key: String,
+                    query: Map<String, String>
+                ): KakaoResponse {
+                    if (++calls <= failures) throw retrofit2.HttpException(
+                        retrofit2.Response.error<KakaoResponse>(429, "quota".toResponseBody())
+                    )
+                    return KakaoResponse(
+                        listOf(
+                            KakaoRoute(
+                                0,
+                                KakaoSummary(1200, 300, KakaoFare(100))
+                            )
+                        )
+                    )
+                }
+            }
+            try {
+                val result = KakaoDetourEtaRepository(api, "key").estimate(
+                    origin, resolveRefuelConditions(RefuelSettings())
+                )
+                assertEquals(1200, result.meters)
+                org.junit.Assert.assertTrue(failures < 3)
+            } catch (error: KakaoRequestFailure) {
+                assertEquals(3, failures)
+                org.junit.Assert.assertTrue(error.stopBatch)
+            }
+            assertEquals(minOf(failures + 1, 3), calls)
+        }
+    }
+
     private val origin = NaviSnapshot(
         NaviLocation(37.4, 127.1, "", null, 0),
         NaviPoint(37.5, 127.2, "B", "", null),

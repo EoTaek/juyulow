@@ -1,5 +1,14 @@
 # 검증
 
+## 2026-11-12 오피넷·카카오 HTTP 재시도
+
+`ApiRetryTest`는 0.5초·1초 대기 후 세 번째 시도 성공, 세 번째 실패 후 원래 오류 유지, 요청 중 취소와 대기 중 취소의 후속 호출 차단을 검증한다.
+`OpinetClientTest`는 타임아웃 0/1/2회 후 성공과 3회 실패 시 기존 TIMEOUT 분류를, `KakaoDetourEtaRepositoryTest`는
+HTTP 429의 동일 재시도 횟수와 최종 실패 시 배치 중단 플래그 유지를 검증한다. 빈 정상 응답은 재시도하지 않는다.
+호스트 Gradle 캐시를 사용해 앱 debug 빌드, app/core:model/core:data/feature:main/feature:settings 단위 테스트와
+lintDebug가 통과했다.
+실제 외부 API 장애를 발생시키는 테스트는 수행하지 않았으며 재시도·취소는 Fake API와 가상 시간으로 검증했다.
+
 2026-11-12 PR #13 P2 대응: 오피넷 검색의 이전 세션/검색 중 위치 비교에 따른 `CONTEXT_CHANGED` 중단을 제거했다.
 `dynamicSearchUsesSnapshotConditionsAndReusesOnlyValidTrips`는 50m 이상 이동 후 이전 세션으로 재검색하는 동작을 검증한다.
 `dynamicSearchCompletesAfterMovementDuringSourceAndTripsWithoutCachingMixedOrigins`는 API·Trip 대기 중 이동해도 결과를 반환하고,

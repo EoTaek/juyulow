@@ -61,28 +61,30 @@ class OpinetClient(private val api: OpinetApi, private val key: String) {
             throw OpinetException("KEY_MISSING")
         }
         try {
-            return api.around(key, x, y, radiusKm * 1000, fuel.opinetCode).use {
-                decode(it.string()).also { stations ->
-                    ApiLog.event(
-                        "Opinet",
-                        "around",
-                        "completed",
-                        "I"
-                    ) { mapOf("validCount" to stations.size) }
-                    stations.forEachIndexed { index, station ->
+            return retryApiRequest("Opinet") {
+                api.around(key, x, y, radiusKm * 1000, fuel.opinetCode).use {
+                    decode(it.string()).also { stations ->
                         ApiLog.event(
                             "Opinet",
                             "around",
-                            "item"
-                        ) {
-                            mapOf(
-                                "index" to index,
-                                "id" to station.id,
-                                "name" to station.name,
-                                "priceWonPerL" to station.priceWonPerL,
-                                "x" to station.x,
-                                "y" to station.y
-                            )
+                            "completed",
+                            "I"
+                        ) { mapOf("validCount" to stations.size) }
+                        stations.forEachIndexed { index, station ->
+                            ApiLog.event(
+                                "Opinet",
+                                "around",
+                                "item"
+                            ) {
+                                mapOf(
+                                    "index" to index,
+                                    "id" to station.id,
+                                    "name" to station.name,
+                                    "priceWonPerL" to station.priceWonPerL,
+                                    "x" to station.x,
+                                    "y" to station.y
+                                )
+                            }
                         }
                     }
                 }

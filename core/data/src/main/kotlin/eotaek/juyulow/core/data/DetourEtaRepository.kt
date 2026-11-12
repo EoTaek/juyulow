@@ -88,39 +88,41 @@ class KakaoDetourEtaRepository(private val api: KakaoDirectionsApi, private val 
         waypoint?.let { query["waypoints"] = point(it.latitude, it.longitude) }
         ApiLog.event("Kakao", "directions", "request") { query }
         try {
-            val route = api.directions("KakaoAK ${key}", query).routes.singleOrNull()
-                ?: throw KakaoRequestFailure(false)
-            ApiLog.event(
-                "Kakao",
-                "directions",
-                "result"
-            ) { mapOf("resultCode" to route.result_code) }
-            if (route.result_code != 0) throw KakaoRequestFailure(false)
-            val summary = route.summary ?: throw KakaoRequestFailure(false)
-            require(summary.distance >= 0 && summary.duration >= 0 && summary.fare.toll >= 0)
-            ApiLog.event(
-                "Kakao",
-                "directions",
-                "completed",
-                "I"
-            ) {
-                mapOf(
-                    "distanceMeters" to summary.distance,
-                    "durationSeconds" to summary.duration,
-                    "tollWon" to summary.fare.toll
+            return retryApiRequest("Kakao") {
+                val route = api.directions("KakaoAK ${key}", query).routes.singleOrNull()
+                    ?: throw KakaoRequestFailure(false)
+                ApiLog.event(
+                    "Kakao",
+                    "directions",
+                    "result"
+                ) { mapOf("resultCode" to route.result_code) }
+                if (route.result_code != 0) throw KakaoRequestFailure(false)
+                val summary = route.summary ?: throw KakaoRequestFailure(false)
+                require(summary.distance >= 0 && summary.duration >= 0 && summary.fare.toll >= 0)
+                ApiLog.event(
+                    "Kakao",
+                    "directions",
+                    "completed",
+                    "I"
+                ) {
+                    mapOf(
+                        "distanceMeters" to summary.distance,
+                        "durationSeconds" to summary.duration,
+                        "tollWon" to summary.fare.toll
+                    )
+                }
+                RouteEstimate(
+                    summary.distance, summary.duration, summary.fare.toll,
+                    "차종 1 · 하이패스 미장착 가정" + (if (fuels.size != 1) " · 유종 기본값" else "") +
+                            (if (origin.routeOption !in listOf(
+                                    "RECOMMENDED",
+                                    "SHORT_TIME",
+                                    "SHORT_DISTANCE",
+                                    "FREE"
+                                )
+                            ) " · 추천 경로 가정" else "")
                 )
             }
-            return RouteEstimate(
-                summary.distance, summary.duration, summary.fare.toll,
-                "차종 1 · 하이패스 미장착 가정" + (if (fuels.size != 1) " · 유종 기본값" else "") +
-                        (if (origin.routeOption !in listOf(
-                                "RECOMMENDED",
-                                "SHORT_TIME",
-                                "SHORT_DISTANCE",
-                                "FREE"
-                            )
-                        ) " · 추천 경로 가정" else "")
-            )
         } catch (e: CancellationException) {
             ApiLog.error("Kakao", "request", e)
             throw e
