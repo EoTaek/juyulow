@@ -65,12 +65,12 @@ fun NaviSnapshot.confirmsRoute(
     fun near(a: Double, b: Double) = kotlin.math.abs(a - b) <= 0.000001
     fun matches(actual: NaviPoint, target: NaviPoint, candidateTarget: Boolean): Boolean {
         val identity = if (candidateTarget && candidate.coordinateOnly)
-            actual.name == target.name
+            actual.poiId.isBlank() && target.name.isNotBlank() && actual.name == target.name
         else actual.poiId == target.poiId
         if (!identity) return false
-        // Missing coordinates are tolerated only for identified waypoints.
+        // NaviHelper can omit waypoint coordinates; retain identity, count/order and destination checks.
         if (asWaypoint && actual.latitude == 0.0 && actual.longitude == 0.0)
-            return target.poiId.isNotBlank()
+            return target.poiId.isNotBlank() || (candidateTarget && candidate.coordinateOnly)
         val lat = if (candidateTarget) candidate.routeResponseLatitude else target.latitude
         val lon = if (candidateTarget) candidate.routeResponseLongitude else target.longitude
         return near(actual.latitude, lat) && near(actual.longitude, lon)

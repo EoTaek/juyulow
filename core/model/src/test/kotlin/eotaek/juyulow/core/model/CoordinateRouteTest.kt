@@ -33,8 +33,28 @@ class CoordinateRouteTest {
     }
 
     @Test
-    fun coordinateWaypointWithMissingCoordinatesCannotBeConfirmed() {
+    fun coordinateWaypointWithMissingCoordinatesStillRequiresIdentityAndDestination() {
         val actual = snapshot.copy(waypoints = listOf(point.copy(latitude = 0.0, longitude = 0.0)))
-        assertFalse(actual.confirmsRoute(snapshot, candidate, true))
+        assertTrue(actual.confirmsRoute(snapshot, candidate, true))
+        assertFalse(
+            actual.copy(waypoints = listOf(actual.waypoints.single().copy(name = "other")))
+                .confirmsRoute(snapshot, candidate, true)
+        )
+        assertFalse(
+            actual.copy(waypoints = listOf(actual.waypoints.single().copy(poiId = "other")))
+                .confirmsRoute(snapshot, candidate, true)
+        )
+        assertFalse(
+            actual.copy(destination = point.copy(name = "other destination"))
+                .confirmsRoute(snapshot, candidate, true)
+        )
+        assertFalse(
+            actual.copy(waypoints = actual.waypoints + point)
+                .confirmsRoute(snapshot, candidate, true)
+        )
+        assertFalse(
+            actual.copy(waypoints = listOf(point.copy(latitude = 37.6)))
+                .confirmsRoute(snapshot, candidate, true)
+        )
     }
 }

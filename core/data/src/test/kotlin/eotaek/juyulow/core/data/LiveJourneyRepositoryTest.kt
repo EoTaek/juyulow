@@ -368,6 +368,32 @@ class LiveJourneyRepositoryTest {
     }
 
     @Test
+    fun opinetSourceOffersWaypointOnlyWithDestinationAndNoExistingWaypoints() = runTest {
+        val n = Navi()
+        val destination = fixtures.last().candidate.point
+        n.current = n.current.copy(destination = destination, mode = "ROUTE_GUIDING")
+        val repo = LiveJourneyRepository(
+            { n }, dispatcher = StandardTestDispatcher(testScheduler),
+            candidateSource = { _, _ -> fixtures })
+        try {
+            repo.initialize()
+            assertEquals(
+                listOf(JourneyMode.WAYPOINT, JourneyMode.DESTINATION),
+                repo.context.value.availableModes
+            )
+            n.current = n.current.copy(waypoints = listOf(fixtures.first().candidate.point))
+            repo.refresh()
+            assertEquals(listOf(JourneyMode.DESTINATION), repo.context.value.availableModes)
+            n.current =
+                n.current.copy(destination = null, waypoints = emptyList(), mode = "SAFE_GUIDING")
+            repo.refresh()
+            assertEquals(listOf(JourneyMode.DESTINATION), repo.context.value.availableModes)
+        } finally {
+            repo.release()
+        }
+    }
+
+    @Test
     fun dynamicSearchRetainsPricesWhenRoutesFail() = runTest {
         val base = Navi()
         val failing = object : NavigationRepository by base {

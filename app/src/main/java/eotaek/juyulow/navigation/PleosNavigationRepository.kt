@@ -234,7 +234,6 @@ class PleosNavigationRepository(
         } catch (e: Exception) { ledger.uncertain = true; throw e }
     }
     override suspend fun setRoute(expected: NaviSnapshot, candidate: NaviCandidate, asWaypoint: Boolean) = operation {
-        check(!asWaypoint || !candidate.coordinateOnly) { "COORDINATE_WAYPOINT_UNSUPPORTED" }
         check(!routeUncertain) { "ROUTE_UNCERTAIN" }
         validate(candidate)
         val current = read()

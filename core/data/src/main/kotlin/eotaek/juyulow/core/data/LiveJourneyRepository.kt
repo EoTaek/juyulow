@@ -76,7 +76,6 @@ class LiveJourneyRepository(
             true,
             cached?.first,
             stationSource = if (candidateSource != null) "오피넷" else null,
-            waypointSupported = candidateSource == null,
         )
     }
 

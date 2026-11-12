@@ -1,5 +1,16 @@
 # 검증
 
+2026-11-12 경유지 추가 표시 회귀 수정: 오피넷 소스의 `waypointSupported=false`와 좌표 전용 경유 사전 차단을 제거했다.
+SDK의 경유지 `(0,0)` 응답은 좌표 검사만 생략하며 이름·빈 ID·개수·순서·기존 목적지 유지·옵션·안내 상태를 검증한다.
+아래의 좌표 경유 비활성화 기록은 이 수정으로 대체한다.
+
+`CoordinateRepositoryIntegrationTest`를 활성 사용자 10에서 두 probe 인자로 실행해 `OK (1 test)`를 확인했다.
+기존 실제 목적지를 유지한 좌표 경유 추가, 좌표 목적지 대체와 finally의 원래 목적지/빈 경유 목록 복원이 통과했다.
+앱/AndroidTest APK 빌드, app/core:model/core:data/feature:main/feature:settings 단위 테스트와 `lintDebug`도
+통과했다.
+좌표 누락 시 다른 이름·ID·목적지·개수와 0이 아닌 잘못된 좌표를 거부하는 회귀 검증을 추가했다.
+mobile-mcp로 기존 목적지가 있는 홈에서 실제 오피넷 12건 검색 후 `경유지로 추가`와 `목적지로 설정` 두 버튼이 표시됨을 확인했다.
+
 2026-11-12 무료 API PDF (2026.10판) 12쪽 대조로 인증 쿼리를 `certkey`에서 `code`로 수정했다. 같은 키로 전국 평균 5건, 반경 3km
 34건의 정상 응답을 확인했다. 아래의 이전 빈 배열 기록은 잘못된 인증 쿼리를 사용한 결과이며 서비스/키 장애의 근거가 아니다.
 `OpinetClientTest.retrofitSendsAuthenticationAsCodeOnTheWire`는 실제 Retrofit/OkHttp 요청 경계에서 `code`
@@ -18,7 +29,7 @@ POI 기능은 유지한다. mobile-mcp로 실제 홈 검색에서 빈 결과 화
 
 재현: 앱과 AndroidTest APK를 활성 사용자 10에 설치하고
 `am instrument --user 10 -w -e class eotaek.juyulow.CoordinateRepositoryIntegrationTest -e coordinateRepositoryProbe true -e coordinateWaypointProbe true eotaek.juyulow.test/androidx.test.runner.AndroidJUnitRunner`
-를 실행한다. 기존 목적지나 경유지가 있으면 변경하지 않고 건너뛴다.
+를 실행한다. 기존 경유지가 있으면 변경하지 않고 건너뛴다. 기존 목적지는 보존해 finally에서 복원·재조회한다.
 
 최종 구현으로 위 명령을 재실행해 `OK (1 test)`를 확인했다. 좌표 ETA 2회·목적지 설정·경유 사전 거부·원복을 검증했으며, 최종 앱 홈에서 `목적지 없음`,
 `반경 3 km · 검색 유종: 휘발유` 표시도 확인했다.
