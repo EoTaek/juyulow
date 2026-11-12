@@ -1,5 +1,10 @@
 # 검증
 
+2026-11-12 PR #13 P1 대응: 오피넷 거리순 유효 후보를 최대 15곳으로 제한한다.
+`LiveJourneyRepositoryTest.opinetSearchRequestsTripsOnlyForNearestFifteenValidStations`는 실제 오피넷 파싱·좌표 변환 소스와 Fake 내비를 연결해
+0/3/15/34건 응답, 무효 가격·좌표 제외, 거리순 유지, 먼 저가 후보 제외 및 최대 15회 Trip 요청을 검증한다.
+`:core:data:test`와 `git diff --check`가 통과했다.
+
 2026-11-12 경유지 추가 표시 회귀 수정: 오피넷 소스의 `waypointSupported=false`와 좌표 전용 경유 사전 차단을 제거했다.
 SDK의 경유지 `(0,0)` 응답은 좌표 검사만 생략하며 이름·빈 ID·개수·순서·기존 목적지 유지·옵션·안내 상태를 검증한다.
 아래의 좌표 경유 비활성화 기록은 이 수정으로 대체한다.

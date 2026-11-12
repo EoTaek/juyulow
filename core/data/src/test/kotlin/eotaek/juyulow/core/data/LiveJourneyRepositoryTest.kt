@@ -22,6 +22,8 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import okhttp3.ResponseBody
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -48,6 +50,7 @@ class LiveJourneyRepositoryTest {
         var current = snapshot()
         override val state = MutableStateFlow(NaviState())
         var tripCalls = 0
+        val requestedCandidates = mutableListOf<NaviCandidate>()
         var routeCalls = 0
         var releases = 0
         var tripDelay = 0L
@@ -63,6 +66,7 @@ class LiveJourneyRepositoryTest {
         }
 
         override suspend fun trips(candidates: List<NaviCandidate>): NaviResult<List<NaviTrip>> {
+            requestedCandidates += candidates
             tripCalls++; delay(tripDelay)
             return NaviResult.Success(candidates.mapIndexed { i, c ->
                 NaviTrip(
@@ -325,6 +329,50 @@ class LiveJourneyRepositoryTest {
             assertEquals(1, n.tripCalls)
         } finally {
             repo.release()
+        }
+    }
+
+    @Test
+    fun opinetSearchRequestsTripsOnlyForNearestFifteenValidStations() = runTest {
+        for (count in listOf(0, 3, 15, 34)) {
+            val n = Navi()
+            val api = object : OpinetApi {
+                override suspend fun around(
+                    key: String, x: Double, y: Double, radiusMeters: Int,
+                    fuel: String, format: String, sort: Int
+                ): ResponseBody {
+                    assertEquals(2, sort)
+                    // Later (farther) stations are cheaper, but must not displace nearer ones.
+                    val rows = (1..count).joinToString(",") { i ->
+                        """{"UNI_ID":"id-$i","OS_NM":"station-$i","PRICE":${2000 - i},"GIS_X_COOR":312623.2596234215,"GIS_Y_COOR":548572.9766224765}"""
+                    }
+                    // Invalid price and out-of-Korea coordinates do not consume valid slots.
+                    val invalid = """{"UNI_ID":"invalid","OS_NM":"invalid","PRICE":0,"GIS_X_COOR":312623,"GIS_Y_COOR":548573}"""
+                    val invalidCoordinates = invalid.replace("\"invalid\"", "\"invalid-coordinates\"")
+                        .replace("\"PRICE\":0", "\"PRICE\":1800")
+                        .replace("548573", "1")
+                    val allRows = listOf(invalid, invalidCoordinates, rows).filter { it.isNotEmpty() }
+                    return """{"RESULT":{"OIL":[${allRows.joinToString(",")}]}}""".toResponseBody()
+                }
+            }
+            val source = OpinetCandidates(OpinetClient(api, "test-key"))
+            val repo = LiveJourneyRepository(
+                { n }, dispatcher = StandardTestDispatcher(testScheduler),
+                candidateSource = source::search
+            )
+            try {
+                repo.initialize()
+                val found = repo.search(repo.context.value, resolveRefuelConditions(RefuelSettings()))
+                val expectedCount = minOf(count, 15)
+                assertEquals((1..expectedCount).map { "id-$it" }, found.map { it.id })
+                assertEquals(expectedCount, n.tripCalls)
+                assertEquals(
+                    (1..expectedCount).map { "station-$it" },
+                    n.requestedCandidates.map { it.point.name }
+                )
+            } finally {
+                repo.release()
+            }
         }
     }
 

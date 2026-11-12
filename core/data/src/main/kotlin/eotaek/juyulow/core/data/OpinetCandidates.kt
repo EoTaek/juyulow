@@ -16,7 +16,7 @@ class OpinetCandidates(
             center.y,
             conditions.searchRadiusKm,
             conditions.comparisonFuel
-        ).mapNotNull { station ->
+        ).asSequence().mapNotNull { station ->
             val point = try {
                 coordinates.toWgs84(station.x, station.y)
             } catch (_: IllegalArgumentException) {
@@ -29,7 +29,12 @@ class OpinetCandidates(
                 ),
                 brands[station.brandCode] ?: "기타", station.priceWonPerL, station.id
             )
-        }
+        // aroundAll(sort=2) preserves nearest-first order; bound sequential Trip requests.
+        }.take(MAX_CANDIDATES).toList()
+    }
+
+    private companion object {
+        const val MAX_CANDIDATES = 15
     }
 
     private val brands = mapOf(
