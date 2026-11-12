@@ -22,6 +22,14 @@ class OpinetCandidates(
             } catch (_: IllegalArgumentException) {
                 return@mapNotNull null
             }
+            ApiLog.event("Opinet", "coordinates", "converted") {
+                mapOf(
+                    "stationId" to station.id,
+                    "latitude" to point.latitude,
+                    "longitude" to point.longitude,
+                    "coordinateSystem" to "WGS84"
+                )
+            }
             VerifiedStation(
                 NaviCandidate(
                     NaviPoint(point.latitude, point.longitude, station.name, "", null),
@@ -30,7 +38,14 @@ class OpinetCandidates(
                 brands[station.brandCode] ?: "기타", station.priceWonPerL, station.id
             )
         // aroundAll(sort=2) preserves nearest-first order; bound sequential Trip requests.
-        }.take(MAX_CANDIDATES).toList()
+        }.take(MAX_CANDIDATES).toList().also { selected ->
+            ApiLog.event(
+                "Journey",
+                "search",
+                "candidates_selected",
+                "I"
+            ) { mapOf("selectedCount" to selected.size, "limit" to MAX_CANDIDATES) }
+        }
     }
 
     private companion object {

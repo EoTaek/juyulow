@@ -11,7 +11,10 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
-import eotaek.juyulow.core.model.*
+import eotaek.juyulow.core.data.ApiLog
+import eotaek.juyulow.core.model.VehicleFailureReason
+import eotaek.juyulow.core.model.VehicleProperty
+import eotaek.juyulow.core.model.VehicleValue
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -23,12 +26,19 @@ internal class AndroidAaosVehicleApi(private val context: Context) : AaosVehicle
     private var closed = false
 
     override suspend fun connect(): Unit = suspendCancellableCoroutine { continuation ->
+        ApiLog.event("AAOS", "connect", "start", "I")
         try {
             car = Car.createCar(
                 context,
                 Handler(Looper.getMainLooper()),
                 Car.CAR_WAIT_TIMEOUT_DO_NOT_WAIT
             ) { connected, ready ->
+                ApiLog.event("AAOS", "connect", "callback") {
+                    mapOf(
+                        "ready" to ready,
+                        "closed" to closed
+                    )
+                }
                 if (closed) return@createCar
                 if (ready) {
                     manager = connected.getCarManager(Car.PROPERTY_SERVICE) as? CarPropertyManager
@@ -59,7 +69,8 @@ internal class AndroidAaosVehicleApi(private val context: Context) : AaosVehicle
     }
 
     @Suppress("DEPRECATION") // STATUS_* also covers older AAOS releases supported by minSdk 30.
-    override fun read(property: VehicleProperty): VehicleValue? {
+    override fun read(property: VehicleProperty): VehicleValue? =
+        ApiLog.call("AAOS", "read", { mapOf("property" to property.name) }) {
         val id = when (property) {
             VehicleProperty.FUEL_CAPACITY -> VehiclePropertyIds.INFO_FUEL_CAPACITY
             VehicleProperty.FUEL_LEVEL -> VehiclePropertyIds.FUEL_LEVEL
@@ -93,7 +104,16 @@ internal class AndroidAaosVehicleApi(private val context: Context) : AaosVehicle
             CarPropertyValue.STATUS_AVAILABLE -> Unit
             else -> throw VehicleReadException(VehicleFailureReason.ERROR, "status")
         }
-        return when (val raw = result.value) {
+            ApiLog.event("AAOS", "read", "response") {
+                mapOf(
+                    "property" to property.name,
+                    "status" to result.status,
+                    "value" to when (val v = result.value) {
+                        is Number -> v; is IntArray -> v.toList(); is Array<*> -> v.filterIsInstance<Int>(); else -> null
+                    }
+                )
+            }
+            when (val raw = result.value) {
             is Number -> VehicleValue.Number(raw.toDouble())
             is Array<*> -> raw.map {
                 (it as? Int) ?: throw VehicleReadException(
@@ -111,10 +131,17 @@ internal class AndroidAaosVehicleApi(private val context: Context) : AaosVehicle
     override fun canRequestPermission(): Boolean {
         val restrictions =
             car?.getCarManager(Car.CAR_UX_RESTRICTION_SERVICE) as? CarUxRestrictionsManager
-        return restrictions?.currentCarUxRestrictions?.isRequiresDistractionOptimization == false
+        return (restrictions?.currentCarUxRestrictions?.isRequiresDistractionOptimization == false).also { allowed ->
+            ApiLog.event(
+                "AAOS",
+                "restrictions",
+                "response"
+            ) { mapOf("allowed" to allowed) }
+        }
     }
 
     override fun disconnect() {
+        ApiLog.event("AAOS", "disconnect", "start", "I")
         closed = true
         manager = null
         car?.disconnect()

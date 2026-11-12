@@ -26,8 +26,8 @@ data class ResultsUiState(
                 batch.stations.filter { it.outboundMeters != null && it.outboundSeconds != null }
                     .map { EvaluatedStation(it, compareStation(batch.context, it, mode)) }
             return when (sort) {
-                StationSort.SAVING -> rows.sortedByDescending { it.comparison.netSavingWon }
-                StationSort.TIME -> rows.sortedBy { it.comparison.costDurationSeconds }
+                StationSort.SAVING -> rows.sortedWith(compareByDescending<EvaluatedStation> { it.comparison.netSavingWon }.thenBy { it.station.sourceIndex })
+                StationSort.TIME -> rows.sortedWith(compareBy<EvaluatedStation> { it.comparison.costDurationSeconds }.thenBy { it.station.sourceIndex })
             }
         }
     val selected: EvaluatedStation? get() = evaluated.find { it.station.id == selectedId }

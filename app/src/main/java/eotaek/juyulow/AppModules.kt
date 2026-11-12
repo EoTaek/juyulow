@@ -46,6 +46,8 @@ val appModule = module {
     single {
         LiveJourneyRepository(
             { get<NavigationRepository>() },
+            detours = BuildConfig.KAKAO_REST_API_KEY.takeIf { it.isNotBlank() }
+                ?.let { eotaek.juyulow.core.data.KakaoDetourEtaRepository.create(it) },
             candidateSource = { origin, conditions ->
                 get<eotaek.juyulow.core.data.OpinetCandidates>().search(
                     origin,

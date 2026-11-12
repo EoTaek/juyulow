@@ -13,6 +13,32 @@ import org.junit.Test
 
 class OpinetClientTest {
     @Test
+    fun retriesFailedRequestsAndStopsOnSuccessOrThirdFailure() = runTest {
+        for (failures in listOf(0, 1, 2, 3)) {
+            var calls = 0
+            val api = object : OpinetApi {
+                override suspend fun around(
+                    key: String, x: Double, y: Double, radiusMeters: Int,
+                    fuel: String, format: String, sort: Int
+                ): ResponseBody {
+                    if (++calls <= failures) throw java.net.SocketTimeoutException()
+                    return """{"RESULT":{"OIL":[]}}""".toResponseBody()
+                }
+            }
+            try {
+                assertTrue(
+                    OpinetClient(api, "key").around(1.0, 1.0, 3, ComparisonFuel.GASOLINE).isEmpty()
+                )
+                assertTrue(failures < 3)
+            } catch (error: OpinetException) {
+                assertEquals(3, failures)
+                assertEquals("TIMEOUT", error.category)
+            }
+            assertEquals(minOf(failures + 1, 3), calls)
+        }
+    }
+
+    @Test
     fun retrofitSendsAuthenticationAsCodeOnTheWire() = runTest {
         val http = okhttp3.OkHttpClient.Builder().addInterceptor { chain ->
             val request = chain.request()

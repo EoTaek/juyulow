@@ -49,7 +49,13 @@ data class NaviCandidate(val point: NaviPoint, val responseLatitude: Double, val
 ) {
     val key: String get() = if (coordinateOnly) "coordinate:${point.latitude}:${point.longitude}:${point.name}" else point.poiId
 }
-data class NaviTrip(val candidate: NaviCandidate, val meters: Int, val seconds: Int, val observedAtMillis: Long)
+data class NaviTrip(
+    val candidate: NaviCandidate,
+    val meters: Int,
+    val seconds: Int,
+    val observedAtMillis: Long,
+    val origin: NaviSnapshot? = null
+)
 sealed interface NaviResult<out T> {
     data class Success<T>(val value: T) : NaviResult<T>
     data class Failure(val reason: String) : NaviResult<Nothing>

@@ -1,5 +1,27 @@
 # 검증
 
+## 2026-11-12 PR #14 확인 팝업 자동 종료 후 검색 재개
+
+`MainViewModelsTest.targetChangeDismissesReplacementAndResumesSearchOnlyWhenDialogWasOpen`은 목적지 대체 확인 중 위치 변화에는
+팝업·일시정지를 유지하고, 목적지가 변경되면 팝업 종료와 함께 검색을 재개하는지 검증한다. 팝업이 닫힌 뒤 추가 목적지 변경은 별도 일시정지를 해제하지 않는다.
+수정 전 재개 호출 누락을 재현했으며, 수정 후 앱 debug 빌드, app/core:model/core:data/feature:main/feature:settings 전체 단위 테스트,
+lintDebug와 git diff --check가 통과했다. 두 리뷰의 오류 분기는 Fake 내비·저장소와 가상 시간으로 검증했으며 에뮬레이터에서 새로 재현하지 않았다.
+
+## 2026-11-12 PR #14 재검색 초기 실패 복구
+
+`LiveJourneyRepositoryTest.refreshExceptionRestoresOldSelectionOnlyBeforeFirstReadyStation`은 새 후보 등록 후 첫 Trip 성공 전 예외 시
+이전 검색의 주유소를 실제 선택할 수 있는지 검증한다. 첫 성공 후 예외에서는 새 후보의 선택이 유지되는지도 함께 확인한다.
+수정 전 SEARCH_EXPIRED 실패를 재현했으며, 수정 후 core:data 전체 단위 테스트가 통과했다.
+
+## 2026-11-12 오피넷·카카오 HTTP 재시도
+
+`ApiRetryTest`는 0.5초·1초 대기 후 세 번째 시도 성공, 세 번째 실패 후 원래 오류 유지, 요청 중 취소와 대기 중 취소의 후속 호출 차단을 검증한다.
+`OpinetClientTest`는 타임아웃 0/1/2회 후 성공과 3회 실패 시 기존 TIMEOUT 분류를, `KakaoDetourEtaRepositoryTest`는
+HTTP 429의 동일 재시도 횟수와 최종 실패 시 배치 중단 플래그 유지를 검증한다. 빈 정상 응답은 재시도하지 않는다.
+호스트 Gradle 캐시를 사용해 앱 debug 빌드, app/core:model/core:data/feature:main/feature:settings 단위 테스트와
+lintDebug가 통과했다.
+실제 외부 API 장애를 발생시키는 테스트는 수행하지 않았으며 재시도·취소는 Fake API와 가상 시간으로 검증했다.
+
 2026-11-12 PR #13 P2 대응: 오피넷 검색의 이전 세션/검색 중 위치 비교에 따른 `CONTEXT_CHANGED` 중단을 제거했다.
 `dynamicSearchUsesSnapshotConditionsAndReusesOnlyValidTrips`는 50m 이상 이동 후 이전 세션으로 재검색하는 동작을 검증한다.
 `dynamicSearchCompletesAfterMovementDuringSourceAndTripsWithoutCachingMixedOrigins`는 API·Trip 대기 중 이동해도 결과를 반환하고,
@@ -267,3 +289,67 @@ PrototypeLayoutTest 8개가 모두 통과했다. 최초 실행에서 발견한 8
 행 높이 강제를 제거해 수정했으며 재실행에서 17개 모두 실패 없이 완료됐다. 레이아웃 검증은 테스트용 Density 0.5 기준이다.
 실제 검색 화면에서도 경유 추가·목적지 설정 버튼 순서와 이동 방식 탭 제거를 확인했다.
 경로 제출 흐름 테스트는 Fake 내비 저장소를 사용하며 시스템 내비 경로를 변경하지 않는다.
+
+## 2026-11-12 이슈 #12 점진적 검색·카카오 경유 추정
+
+- 점진적 검색 회귀는 첫 성공 직후 나머지 후보가 PENDING인 상태, 첫 후보 실패 후 선택, 취소한 generation의 in-flight 소비와 추가 Trip 차단,
+  불확실성 잠금, 조회 중 경로 확정, 카카오 기준 1회·동시성 2·음수 차이 및 기준 실패 시 Pleos 유지·목적지 없음 호출 0회를 검증한다.
+- KakaoDetourEtaRepositoryTest는 경도/위도 순서, 경유 좌표, 옵션·실제 차량 유종과 검색 유종 분리, 단위·키 누락·잘못된 좌표·실패 결과 처리를
+  검증한다. 실제 키는 공식 예시 좌표의 기준·경유 각 1회에서 HTTP 200/result_code 0을 확인했다.
+- ProgressiveResultsLayoutTest는 32개 후보와 두 앱 창 크기·두 테마에서 재정렬 후 선택·포커스·CTA·잠정값 표시를 검증한다. 후속 Pleos
+  2.1.0 실행에서 4개 조합이 통과했다. 테스트는 터치 모드에서 시작하므로 키보드 입력 모드를 명시한 뒤 실제 방향키 이동과 재정렬 전후 포커스를 검증한다. 실
+  API·SDK와 화면 검증 결과는 아래 후속 실측을 참조한다.
+- 전체 단위 테스트 138개가 실패 없이 통과했다. debug/release 빌드, lintDebug, AndroidTest APK 빌드와 git diff --check를
+  확인했다. release BuildConfig의 카카오 키는 빈 값이다. 기존 Lifecycle custom lint 제외 항목은 위 제약을 따른다.
+- 빌드는 호스트 GRADLE_USER_HOME을 C:\Users\ddddd\.gradle로 지정하고 :app:assembleDebug :app:testDebugUnitTest :
+  core:model:test :core:data:test :feature:main:testDebugUnitTest :feature:settings:
+  testDebugUnitTest lintDebug :app:assembleDebugAndroidTest :app:assembleRelease 태스크를 사용한다.
+
+### Pleos 2.1.0 후속 실측
+
+활성 사용자 10에서 데이터 삭제 없이 최신 앱·테스트 APK를 재설치해 실행했다. 서로 다른 테스트 22개가 최종 통과했다.
+
+| 테스트                           | 결과                                                                              |
+|----------------------------------|-----------------------------------------------------------------------------------|
+| ProgressiveResultsLayoutTest     | 두 크기·두 테마 4개 통과. 방향키 이동 시 선택 유지, 재정렬 후 동일 ID 포커스 유지 |
+| PrototypeLayoutTest              | 8개 통과. 두 패널 스크롤·하단 버튼·텍스트 배치                                    |
+| LiveNavigationFlowTest           | 6개 통과. 기존 목적지 대체 확인·취소·완료·경유 추가 흐름                          |
+| PrototypeFlowTest                | 3개 통과                                                                          |
+| ProgressiveSearchIntegrationTest | opt-in 실 API·SDK 테스트 1개 통과                                                 |
+
+최초 포커스 테스트 실패는 터치 모드인 테스트 환경에서 키보드 모드를 요청하지 않은 것이 원인이었다. 입력 모드와 실제 방향키 입력을 추가한 뒤 4개 모두 통과했다. 기존 화면
+흐름 테스트의 과거 문구 단언 (8곳 찾았어요)도 새 진행률 문구에 맞춰 갱신하고 6개를 재실행해 모두 통과했다.
+
+실 API·SDK 테스트는 첫 ETA에서 READY 1개/PENDING 11개, 최종 Pleos ETA 12/12·카카오 경유 추정 12/12 성공을 확인했다. 조회 중 실제 경유
+추가·목적지 설정의 반영과 남은 배치 중단을 검증하고 finally에서 원래 목적지 없음 상태를 복원·재조회했다. 기존 경유지가 있으면 경로를 변경하지 않고 건너뛴다.
+
+재현 명령 (debug 앱과 AndroidTest APK를 활성 사용자 10에 설치한 뒤 실행):
+
+~~~powershell
+adb -s emulator-5554 shell am instrument --user 10 -w -e class eotaek.juyulow.ProgressiveResultsLayoutTest,eotaek.juyulow.PrototypeLayoutTest,eotaek.juyulow.LiveNavigationFlowTest,eotaek.juyulow.PrototypeFlowTest eotaek.juyulow.test/androidx.test.runner.AndroidJUnitRunner
+adb -s emulator-5554 shell am instrument --user 10 -w -e class eotaek.juyulow.ProgressiveSearchIntegrationTest -e progressiveSearchProbe true -e progressiveMutationProbe true eotaek.juyulow.test/androidx.test.runner.AndroidJUnitRunner
+~~~
+
+두 번째 명령은 실제 오피넷·카카오 요청과 내비 경로 변경을 수행한다. 로컬 API 키, 정차 상태, 기존 경유지 없음 및 원경로 복원이 가능한 환경에서만 활성화한다. 두 인자가
+없으면 기본 테스트에서는 건너뛴다.
+
+mobile-mcp로 실제 홈 검색, 12개 결과 표시, 선택 후 시간순 전환·목록 스크롤에서도 상세 선택 유지, 목적지 설정 완료, 시스템 내비 열기·안내 종료를 확인했다. 검증
+후 실제 목적지 없음 상태로 복원했다. 테스트 APK 빌드와 app lintDebug, git diff --check도 통과했다. 실차·다른 Navigation 버전 및 공개 배포
+정책은 별도 검증 대상이다.
+
+## API 로그 검증 (2026-11-12)
+
+`ApiLogTest`는 release 기본 no-op의 필드 미평가, 출력기 실패 격리, 인증 쿼리·헤더·오류 메시지 비노출, HTTP 응답 본문 보존, 취소 전파를 검증한다.
+`SdkLogFieldsTest`는 좌표·null 보존, 알려진 Vehicle 오류 코드 허용 목록, 알 수 없는 SDK 객체의 toString 미사용을 확인한다.
+
+Pleos 2.1.0 에뮬레이터에 debug APK를 데이터 유지 재설치하고 mobile-mcp로 앱을 실행했다. ADB의 JY.Api 태그에서 내비
+초기화·위치·목적지·경유지·경로 상태 콜백과 Vehicle capability 타임아웃 로그를 확인했다. 최초 검색 클릭은 자동 승인 검토로 차단됐으나 사용자의 명시적 승인 후
+실행했다. 실제 오피넷 12건 후보 검색, 카카오 경유 추정 12건 (HTTP 200/resultCode=0), Pleos Trip 거리·ETA 콜백과 작업 완료 로그를 확인했다.
+목적지는 변경하지 않았다. FusedLocation 실서비스 구독도 실행하지 않았다. 필터·단위·제약은 [API_LOGGING.md](API_LOGGING.md)를 참조한다.
+
+최종 debug/release assemble, app/core:model/core:data/feature:main/feature:settings 단위 테스트, lintDebug가
+통과했다.
+
+API 로그 요약 모드: 요청·콜백·refresh·항목 로그의 필드 미평가, 완료·초기화 결과·경고·타임아웃 유지, 정상 취소 생략을
+`ApiLogTest.summaryKeepsResultsAndErrorsWithoutEvaluatingSuppressedFields`로 검증한다. 상세 모드는 디버거의
+`ApiLog.detailed`로 활성화한다.

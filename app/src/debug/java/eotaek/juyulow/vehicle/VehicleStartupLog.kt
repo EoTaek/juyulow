@@ -1,7 +1,12 @@
 package eotaek.juyulow.vehicle
 
-import android.util.Log
-
+import eotaek.juyulow.core.data.ApiLog
 internal fun logVehicleStartup(message: String, error: Throwable?) {
-    Log.w("VehicleStartup", message, error)
+    ApiLog.event(
+        "Vehicle",
+        "startup",
+        "diagnostic",
+        "W"
+    ) { mapOf("stage" to message.substringBefore(" detail=")) }
+    if (error != null) ApiLog.error("Vehicle", "startup", error)
 }

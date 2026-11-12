@@ -46,17 +46,57 @@ class OpinetClient(private val api: OpinetApi, private val key: String) {
         radiusKm: Int,
         fuel: ComparisonFuel
     ): List<OpinetStation> {
+        ApiLog.event("Opinet", "around", "request") {
+            mapOf(
+                "x" to x,
+                "y" to y,
+                "coordinateSystem" to "KATEC",
+                "radiusKm" to radiusKm,
+                "fuel" to fuel.opinetCode
+            )
+        }
         require(x.isFinite() && y.isFinite() && radiusKm in 1..5)
-        if (key.isBlank()) throw OpinetException("KEY_MISSING")
+        if (key.isBlank()) {
+            ApiLog.event("Opinet", "around", "blocked", "W") { mapOf("reason" to "KEY_MISSING") }
+            throw OpinetException("KEY_MISSING")
+        }
         try {
-            return api.around(key, x, y, radiusKm * 1000, fuel.opinetCode).use {
-                decode(it.string())
+            return retryApiRequest("Opinet") {
+                api.around(key, x, y, radiusKm * 1000, fuel.opinetCode).use {
+                    decode(it.string()).also { stations ->
+                        ApiLog.event(
+                            "Opinet",
+                            "around",
+                            "completed",
+                            "I"
+                        ) { mapOf("validCount" to stations.size) }
+                        stations.forEachIndexed { index, station ->
+                            ApiLog.event(
+                                "Opinet",
+                                "around",
+                                "item"
+                            ) {
+                                mapOf(
+                                    "index" to index,
+                                    "id" to station.id,
+                                    "name" to station.name,
+                                    "priceWonPerL" to station.priceWonPerL,
+                                    "x" to station.x,
+                                    "y" to station.y
+                                )
+                            }
+                        }
+                    }
+                }
             }
         } catch (error: CancellationException) {
+            ApiLog.error("Opinet", "request", error)
             throw error
         } catch (error: OpinetException) {
+            ApiLog.error("Opinet", "request", error)
             throw error
         } catch (error: HttpException) {
+            ApiLog.error("Opinet", "request", error)
             throw OpinetException(
                 when (error.code()) {
                     401, 403 -> "AUTH"
@@ -64,9 +104,11 @@ class OpinetClient(private val api: OpinetApi, private val key: String) {
                     else -> "HTTP"
                 }
             )
-        } catch (_: SocketTimeoutException) {
+        } catch (error: SocketTimeoutException) {
+            ApiLog.error("Opinet", "around", error)
             throw OpinetException("TIMEOUT")
-        } catch (_: IOException) {
+        } catch (error: IOException) {
+            ApiLog.error("Opinet", "around", error)
             // Do not propagate a request URL or authentication code in a nested exception.
             throw OpinetException("NETWORK")
         }
@@ -74,8 +116,9 @@ class OpinetClient(private val api: OpinetApi, private val key: String) {
 
     companion object {
         fun create(key: String): OpinetClient {
-            // Deliberately no HTTP logger: code is an authentication query parameter.
-            val http = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS)
+            // Metadata only: authentication query and bodies are excluded.
+            val http = OkHttpClient.Builder().addInterceptor(ApiHttpInterceptor("Opinet"))
+                .connectTimeout(10, TimeUnit.SECONDS)
                 .callTimeout(30, TimeUnit.SECONDS).retryOnConnectionFailure(false).build()
             val api = Retrofit.Builder().baseUrl("https://www.opinet.co.kr/api/")
                 .client(http).build().create(OpinetApi::class.java)
@@ -90,7 +133,7 @@ class OpinetClient(private val api: OpinetApi, private val key: String) {
             }
             val result = root["RESULT"] as? JsonObject ?: throw OpinetException("INVALID_RESPONSE")
             val oil = result["OIL"] as? JsonArray ?: throw OpinetException("API_ERROR")
-            return oil.mapNotNull { element ->
+            val valid = oil.mapNotNull { element ->
                 val row = element as? JsonObject ?: return@mapNotNull null
                 fun value(name: String) = (row[name] as? JsonPrimitive)?.contentOrNull
                 val id = value("UNI_ID")?.takeIf(String::isNotBlank) ?: return@mapNotNull null
@@ -109,7 +152,16 @@ class OpinetClient(private val api: OpinetApi, private val key: String) {
                     x,
                     y
                 )
-            }.distinctBy { it.id }
+            }
+            return valid.distinctBy { it.id }.also { unique ->
+                ApiLog.event("Opinet", "decode", "summary") {
+                    mapOf(
+                        "receivedCount" to oil.size,
+                        "invalidCount" to oil.size - valid.size,
+                        "duplicateCount" to valid.size - unique.size
+                    )
+                }
+            }
         }
     }
 }

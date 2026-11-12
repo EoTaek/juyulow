@@ -82,6 +82,8 @@ class MainViewModelsTest {
     }
 
     private class Stations : StationRepository {
+        val pauses = mutableListOf<Boolean>()
+        override fun pauseSearch(paused: Boolean) { pauses += paused }
         var calls = 0
         var fail = false
         var ignoreCancellation = false
@@ -93,6 +95,47 @@ class MainViewModelsTest {
             if (fail) throw IOException("offline")
             return generateStations(journey, Random(calls))
         }
+    }
+
+    @Test
+    fun targetChangeDismissesReplacementAndResumesSearchOnlyWhenDialogWasOpen() = runTest(dispatcher) {
+        val point = eotaek.juyulow.core.model.NaviPoint(37.4, 127.0, "기존 목적지", "old", "0")
+        val original = eotaek.juyulow.core.model.NaviSnapshot(
+            eotaek.juyulow.core.model.NaviLocation(37.4, 127.0, "r", 0, 1),
+            point, emptyList(), "ROUTE_GUIDING", false, "RECOMMENDED", 1
+        )
+        val context = MutableStateFlow(JourneyContext(
+            point.name, navigation = original, destinationOnly = true, tripOrigin = original
+        ))
+        val journeys = object : JourneyRepository by MockJourneyRepository() {
+            override val context = context
+        }
+        val stations = Stations()
+        val sessions = InMemoryComparisonSessionRepository()
+        val batch = sessions.create(context.value, resolveRefuelConditions(RefuelSettings()), previewSession().stations)
+        val results = keep(ResultsViewModel(batch.id, stations, sessions, journeys))
+        runCurrent()
+        assertTrue(stations.pauses.isEmpty())
+        results.confirm()
+        assertTrue(results.state.value.confirmReplacement)
+        assertEquals(listOf(true), stations.pauses)
+        // Movement alone must keep the confirmation and the search paused.
+        context.value = context.value.copy(navigation = original.copy(
+            location = original.location.copy(latitude = 37.5)
+        ))
+        runCurrent()
+        assertTrue(results.state.value.confirmReplacement)
+        assertEquals(listOf(true), stations.pauses)
+        context.value = context.value.copy(navigation = original.copy(
+            destination = point.copy(name = "새 목적지", poiId = "new")
+        ))
+        runCurrent()
+        assertFalse(results.state.value.confirmReplacement)
+        assertEquals(listOf(true, false), stations.pauses)
+        // Further target updates without an open dialog must not release another pause.
+        context.value = context.value.copy(navigation = original.copy(destination = null))
+        runCurrent()
+        assertEquals(listOf(true, false), stations.pauses)
     }
 
     @Test

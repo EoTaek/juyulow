@@ -13,6 +13,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -37,6 +38,14 @@ class ResultsViewModel(
     private var generation = 0
 
     init {
+        viewModelScope.launch {
+            sessions.observe(sessionId).collect { next ->
+                if (next != null && !state.value.settingRoute && state.value.completedSelectionId == null) mutableState.update {
+                    it.copy(session = next, selectedId = it.selectedId ?: next.firstReadyId)
+                }
+            }
+        }
+
         if (initial?.context?.journey?.destinationOnly == true) viewModelScope.launch {
             journeys.context.collect { context ->
                 val session = state.value.session ?: return@collect
@@ -45,25 +54,28 @@ class ResultsViewModel(
                 if (a != null && b != null) {
                     val origin = session.context.journey.tripOrigin ?: a
                     val reusable = origin.sameTripOriginAs(b)
+                    val sameTargets = a.sameRouteTargetsAs(b)
+                    val resumeSearch = !sameTargets && state.value.confirmReplacement
                     mutableState.update {
                         it.copy(
-                            comparisonExpired = !reusable,
+                            comparisonExpired = !reusable || !sameTargets,
                             mode = if (it.mode in context.availableModes) it.mode else JourneyMode.DESTINATION,
                             session = session.copy(
                                 context = session.context.copy(
-                                    journey = context
+                                    journey = session.context.journey.copy(waypointSupported = context.waypointSupported)
                                 )
                             ),
-                            confirmReplacement = a.sameRouteTargetsAs(b) && it.confirmReplacement,
+                            confirmReplacement = sameTargets && it.confirmReplacement,
                         )
                     }
+                    if (resumeSearch) stations.pauseSearch(false)
                 }
             }
         }
     }
 
     fun select(id: String) {
-        if (!state.value.busy && state.value.session?.stations?.any { it.id == id } == true) mutableState.update {
+        if (!state.value.busy && state.value.session?.stations?.any { it.id == id && it.outboundMeters != null && it.outboundSeconds != null } == true) mutableState.update {
             it.copy(
                 selectedId = id,
                 error = null
@@ -88,9 +100,41 @@ class ResultsViewModel(
         if (snapshot.busy) return
         val request = ++generation
         mutableState.update { it.copy(searching = true, error = null) }
+        searchJob?.cancel()
         searchJob = viewModelScope.launch {
             try {
                 // Keep the search snapshot, even after a mock route is configured.
+                val handle = stations.startSearch(
+                    oldSession.context.journey,
+                    oldSession.context.conditions,
+                    sessions
+                )
+                if (handle != null) {
+                    val ready =
+                        handle.state.first { it.session?.firstReadyId != null || it.complete }
+                    if (request != generation) return@launch
+                    val next = ready.session?.takeIf { it.firstReadyId != null }
+                    if (next == null) mutableState.update {
+                        it.copy(
+                            searching = false,
+                            error = ready.error
+                        )
+                    }
+                    else {
+                        mutableState.update {
+                            it.copy(
+                                searching = false,
+                                session = next,
+                                selectedId = next.firstReadyId
+                            )
+                        }
+                        sessions.observe(next.id).collect { update ->
+                            if (update != null && !state.value.settingRoute && state.value.completedSelectionId == null)
+                                mutableState.update { it.copy(session = update) }
+                        }
+                    }
+                    return@launch
+                }
                 val found =
                     stations.search(oldSession.context.journey, oldSession.context.conditions)
                 if (request != generation) return@launch
@@ -127,6 +171,7 @@ class ResultsViewModel(
     }
 
     fun dismissReplacement() {
+        stations.pauseSearch(false)
         mutableState.update { it.copy(confirmReplacement = false) }
     }
 
@@ -145,6 +190,7 @@ class ResultsViewModel(
         val selected = snapshot.selected ?: return
         if (snapshot.busy || snapshot.completedSelectionId != null || snapshot.routeUncertain) return
         if (session.context.journey.destinationOnly && session.context.journey.hasDestination && snapshot.mode == JourneyMode.DESTINATION && !confirmed) {
+            stations.pauseSearch(true)
             mutableState.update { it.copy(confirmReplacement = true) }
             return
         }
@@ -167,6 +213,7 @@ class ResultsViewModel(
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
+                stations.pauseSearch(false)
                 mutableState.update {
                     it.copy(
                         settingRoute = false,
@@ -213,6 +260,7 @@ class ResultsViewModel(
     }
 
     fun cancelSearch() {
+        stations.cancelActiveSearch()
         generation++
         searchJob?.cancel()
         mutableState.update { it.copy(searching = false) }
@@ -223,5 +271,7 @@ class ResultsViewModel(
     }
 
     private fun withFirstSelection(state: ResultsUiState): ResultsUiState =
-        state.copy(selectedId = state.evaluated.firstOrNull()?.station?.id)
+        state.copy(
+            selectedId = state.session?.firstReadyId ?: state.evaluated.firstOrNull()?.station?.id
+        )
 }

@@ -8,6 +8,7 @@ import org.koin.core.context.startKoin
 class JuyulowApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        initializeApiLogging()
         val koin = startKoin {
             androidContext(this@JuyulowApplication)
             modules(appModule)

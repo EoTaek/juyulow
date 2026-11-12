@@ -15,17 +15,26 @@ import eotaek.juyulow.core.model.Station
 import eotaek.juyulow.core.model.confirmsRoute
 import eotaek.juyulow.core.model.sameRouteTargetsAs
 import eotaek.juyulow.core.model.sameTripOriginAs
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.yield
 import java.util.UUID
 
 /** Only candidates whose Trip and route response coordinates were measured belong here. */
@@ -43,7 +52,21 @@ class LiveJourneyRepository(
     private val dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     private val canInteract: suspend () -> Boolean = { true },
     private val candidateSource: (suspend (NaviSnapshot, RefuelConditions) -> List<VerifiedStation>)? = null,
+    private val detours: DetourEtaRepository? = null,
 ) : JourneyRepository, StationRepository {
+    private var searchToken = 0
+    private var paused = false
+    private var sourceRequest: Deferred<List<VerifiedStation>>? = null
+    private var httpJob: Job? = null
+    private var stopSearch: (() -> Unit)? = null
+    override fun pauseSearch(paused: Boolean) {
+        this.paused = paused
+    }
+
+    override fun cancelActiveSearch() {
+        stopSearch?.invoke(); stopSearch = null; searchToken++; sourceRequest?.cancel(); paused =
+            false; httpJob?.cancel()
+    }
     private var scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var navigation = navigationFactory()
     private var closed = false
@@ -143,63 +166,273 @@ class LiveJourneyRepository(
         journey: JourneyContext,
         conditions: RefuelConditions
     ): List<Station> {
-        val source = candidateSource ?: return search(journey)
-        // Network work belongs to the caller; no orphan request survives a cancelled screen.
-        check(initialized) { "NAVIGATION_NOT_READY" }
-        check(canInteract()) { "PARKING_REQUIRED" }
-        val origin = mutex.withLock { navigation.refresh().value().also(::publish) }
-        // Every search uses the latest location, regardless of the displayed session's origin.
-        val entries = source(origin, conditions)
-        val fetchedAt = System.currentTimeMillis()
-        return mutex.withLock {
-            check(pending == null) { "ROUTE_UNCERTAIN" }
-            val current = navigation.refresh().value()
-            val candidates = entries.associate { it.stationId to it.candidate }
-            val stations = entries.mapIndexed { index, entry ->
-                check(canInteract()) { "PARKING_REQUIRED" }
-                val candidate = entry.candidate
-                val cachedTrip =
-                    tripCache[candidate.key]?.takeIf { it.first.sameTripOriginAs(current) }?.second
-                val trip = cachedTrip ?: when (val result = navigation.trips(listOf(candidate))) {
-                    is NaviResult.Success -> result.value.single().also {
-                        tripCache[candidate.key] = current to it
-                    }
+        if (candidateSource == null) return search(journey)
+        val handle =
+            requireNotNull(startSearch(journey, conditions, InMemoryComparisonSessionRepository()))
+        val result = handle.state.first { it.complete }
+        return result.session?.stations ?: if (result.empty) emptyList() else error(
+            result.error ?: "SEARCH_FAILED"
+        )
+    }
 
-                    is NaviResult.Failure -> null
+    override fun startSearch(
+        journey: JourneyContext,
+        conditions: RefuelConditions,
+        sessions: ComparisonSessionRepository
+    ): SearchHandle? {
+        val source = candidateSource ?: return null
+        cancelActiveSearch()
+        val previousCache = cached
+        val previousCandidates = activeCandidates
+        val token = searchToken
+        val progress = MutableStateFlow(SearchProgress())
+        fun active() = token == searchToken && !closed
+        stopSearch = { progress.value = progress.value.copy(complete = true, error = "검색 취소") }
+        scope.launch {
+            var batch: ComparisonSession? = null
+            fun emit(next: ComparisonSession) {
+                if (!active()) return
+                val price =
+                    next.stations.filter { it.outboundMeters != null && it.outboundSeconds != null }
+                        .maxOfOrNull { it.priceWonPerL } ?: 0
+                batch = next.copy(context = next.context.copy(referencePriceWonPerL = price))
+                sessions.update(batch)
+                progress.value = progress.value.copy(session = batch)
+            }
+
+            fun replace(station: Station) {
+                batch?.let { emit(it.copy(stations = it.stations.map { old -> if (old.id == station.id) station else old })) }
+            }
+            try {
+                if (!active()) return@launch
+                check(initialized) { "NAVIGATION_NOT_READY" }
+                check(canInteract()) { "PARKING_REQUIRED" }
+                val origin = mutex.withLock { navigation.refresh().value().also(::publish) }
+                if (!active()) return@launch
+                val entries =
+                    scope.async { source(origin, conditions).take(15) }.also { sourceRequest = it }
+                        .await()
+                if (!active()) return@launch
+                if (entries.isEmpty()) {
+                    progress.value = SearchProgress(
+                        complete = true,
+                        error = "주변 주유소가 없어요. 검색 반경을 바꿔 다시 찾아 주세요.",
+                        empty = true
+                    )
+                    return@launch
                 }
-                mutableNavigationState.value = mutableNavigationState.value.copy(
-                    tripCompleted = index + 1, tripTotal = entries.size
-                )
-                Station(
-                    entry.stationId,
-                    candidate.point.name,
-                    entry.brand,
-                    entry.priceWonPerL,
-                    candidate.point.latitude,
-                    candidate.point.longitude,
-                    trip?.meters,
-                    trip?.seconds,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    fetchedAt,
-                    routeError = if (trip == null) "경로를 확인하지 못했어요. 다시 검색해 주세요." else null,
-                    source = "오피넷"
-                )
+                val at = System.currentTimeMillis()
+                val eligible =
+                    detours != null && origin.destination != null && origin.waypoints.isEmpty()
+                val initial = entries.mapIndexed { index, e ->
+                    Station(
+                        e.stationId,
+                        e.candidate.point.name,
+                        e.brand,
+                        e.priceWonPerL,
+                        e.candidate.point.latitude,
+                        e.candidate.point.longitude,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        at,
+                        source = "오피넷",
+                        sourceIndex = index,
+                        routePending = true,
+                        detour = if (eligible) eotaek.juyulow.core.model.DetourEstimate() else null
+                    )
+                }
+                val frozen = journey.copy(
+                    destination = origin.destination?.name,
+                    navigation = origin,
+                    tripOrigin = origin,
+                    destinationOnly = true,
+                    stationSource = "오피넷",
+                    waypoint = origin.waypoints.joinToString { it.name }.ifEmpty { null })
+                emit(sessions.create(frozen, conditions, initial).copy(searchComplete = false))
+                stopSearch = {
+                    progress.value = progress.value.copy(complete = true, error = "검색 취소")
+                    batch?.let { b ->
+                        emit(b.copy(searchComplete = true, stations = b.stations.map {
+                            it.copy(
+                                routePending = false,
+                                routeError = if (it.routePending) "미조회 · 검색 중단" else it.routeError,
+                                detour = if (it.detour?.pending == true) eotaek.juyulow.core.model.DetourEstimate(
+                                    false,
+                                    error = "경로 확인 불가"
+                                ) else it.detour
+                            )
+                        }))
+                    }
+                }
+                activeCandidates = entries.associate { it.stationId to it.candidate }
+                cached = origin to initial
+                if (eligible) httpJob = scope.launch {
+                    try {
+                        val baseline = detours.estimate(origin, conditions)
+                        val semaphore = Semaphore(2)
+                        var stopped = false
+                        coroutineScope {
+                            initial.forEach { station ->
+                                launch {
+                                    semaphore.withPermit {
+                                        if (!active() || stopped) return@withPermit
+                                        try {
+                                            val via = detours.estimate(origin, conditions, station)
+                                            val latest =
+                                                batch?.stations?.find { it.id == station.id }
+                                                    ?: return@withPermit
+                                            replace(
+                                                latest.copy(
+                                                    detour = eotaek.juyulow.core.model.DetourEstimate(
+                                                        false,
+                                                        via.meters - baseline.meters,
+                                                        via.seconds - baseline.seconds,
+                                                        via.tollWon - baseline.tollWon,
+                                                        assumptions = via.assumptions
+                                                    )
+                                                )
+                                            )
+                                        } catch (e: CancellationException) {
+                                            throw e
+                                        } catch (e: Exception) {
+                                            ApiLog.event(
+                                                "Journey",
+                                                "detour",
+                                                "failed",
+                                                "W"
+                                            ) {
+                                                mapOf(
+                                                    "stationId" to station.id,
+                                                    "stopBatch" to (e is KakaoRequestFailure && e.stopBatch)
+                                                )
+                                            }
+                                            if (e is KakaoRequestFailure && e.stopBatch) stopped =
+                                                true
+                                            batch?.stations?.find { it.id == station.id }?.let {
+                                                replace(
+                                                    it.copy(
+                                                        detour = eotaek.juyulow.core.model.DetourEstimate(
+                                                            false,
+                                                            error = "경유 비용 확인 불가"
+                                                        )
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) { /* Finalize all outstanding estimates below. */
+                    } finally {
+                        batch?.let { b ->
+                            emit(b.copy(stations = b.stations.map {
+                                if (it.detour?.pending == true) it.copy(
+                                    detour = eotaek.juyulow.core.model.DetourEstimate(
+                                        false,
+                                        error = "경유 비용 확인 불가"
+                                    )
+                                ) else it
+                            }))
+                        }
+                    }
+                }
+                for (entry in entries) {
+                    while (active() && paused) delay(25)
+                    if (!active()) break
+                    val trip = mutex.withLock {
+                        if (!active()) return@withLock null
+                        check(navigation.state.value.status != NaviStatus.UNCERTAIN) { "TRIP_UNCERTAIN" }
+                        check(pending == null) { "ROUTE_UNCERTAIN" }
+                        check(canInteract()) { "PARKING_REQUIRED" }
+                        val before = navigation.refresh().value().also(::publish)
+                        val hit = tripCache[entry.candidate.key]?.takeIf {
+                            it.first.sameTripOriginAs(before)
+                        }?.second
+                        ApiLog.event(
+                            "Journey",
+                            "trip",
+                            if (hit != null) "cache_hit" else "cache_miss"
+                        ) {
+                            mapOf(
+                                "stationId" to entry.stationId,
+                                "reason" to if (hit != null) "SAME_ORIGIN_AND_OPTION" else "MISSING_OR_ORIGIN_CHANGED"
+                            )
+                        }
+                        hit ?: when (val result = navigation.trips(listOf(entry.candidate))) {
+                            is NaviResult.Success -> result.value.single().also {
+                                val after =
+                                    it.origin ?: navigation.refresh().value().also(::publish)
+                                if (before.sameTripOriginAs(after)) tripCache[entry.candidate.key] =
+                                    (it.origin ?: before) to it
+                                else tripCache.remove(entry.candidate.key)
+                            }
+
+                            is NaviResult.Failure -> null
+                        }
+                    }
+                    if (!active()) break
+                    val old = batch!!.stations.first { it.id == entry.stationId }
+                    replace(
+                        old.copy(
+                            outboundMeters = trip?.meters,
+                            outboundSeconds = trip?.seconds,
+                            routePending = false,
+                            routeError = if (trip == null) "경로 확인 불가" else null
+                        )
+                    )
+                    if (trip != null && batch.firstReadyId == null) emit(batch.copy(firstReadyId = entry.stationId))
+                    cached = origin to batch.stations
+                    if (navigation.state.value.status == NaviStatus.UNCERTAIN) break
+                    yield()
+                }
+                if (active()) {
+                    emit(batch!!.copy(searchComplete = true, stations = batch.stations.map {
+                        if (it.routePending) it.copy(
+                            routePending = false,
+                            routeError = "미조회 · 내비 상태 불확실, 앱을 다시 시작해 주세요"
+                        ) else it
+                    }))
+                    if (batch.firstReadyId == null) {
+                        cached = previousCache; activeCandidates = previousCandidates
+                    }
+                    progress.value = progress.value.copy(
+                        complete = true,
+                        error = if (batch.firstReadyId == null) "경로를 확인하지 못했어요. 내비 상태를 확인해 주세요." else null
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                batch?.let {
+                    emit(
+                        it.copy(
+                            searchComplete = true,
+                            stations = it.stations.map { s ->
+                                if (s.routePending) s.copy(
+                                    routePending = false,
+                                    routeError = "검색 중단"
+                                ) else s
+                            })
+                    )
+                }
+                if (active()) {
+                    if (batch?.firstReadyId == null) {
+                        cached = previousCache
+                        activeCandidates = previousCandidates
+                    }
+                    progress.value = progress.value.copy(complete = true, error = e.message ?: "검색 중단")
+                }
             }
-            val after = navigation.refresh().value()
-            // Movement during sequential requests must not discard the results or cache
-            // trips from different origins as if they all started at the batch origin.
-            if (!current.sameTripOriginAs(after)) {
-                entries.forEach { tripCache.remove(it.candidate.key) }
-            }
-            activeCandidates = candidates
-            cached = current to stations
-            publish(after)
-            stations
         }
+        return SearchHandle(progress.asStateFlow()) { if (active()) cancelActiveSearch() }
     }
 
     override suspend fun select(
@@ -207,10 +440,12 @@ class LiveJourneyRepository(
         station: Station,
         mode: JourneyMode
     ): NavigationSelection = scope.async {
-        mutex.withLock {
-            check(pending == null) { "ROUTE_UNCERTAIN" }
+        paused = true
+        try {
+            mutex.withLock {
+                check(pending == null && navigation.state.value.status != NaviStatus.UNCERTAIN) { "ROUTE_UNCERTAIN" }
             check(mode in session.context.journey.availableModes && station in session.stations) { "UNSUPPORTED_SELECTION" }
-            check(cached?.second?.contains(station) == true) { "SEARCH_EXPIRED" }
+                check(cached?.second?.any { it.id == station.id && it.outboundMeters == station.outboundMeters && it.outboundSeconds == station.outboundSeconds } == true) { "SEARCH_EXPIRED" }
             check(station.outboundMeters != null && station.outboundSeconds != null) { "ROUTE_UNAVAILABLE" }
             val expected = requireNotNull(session.context.journey.navigation)
             val current = navigation.refresh().value()
@@ -228,6 +463,12 @@ class LiveJourneyRepository(
                 session.context.conditions.refuelSeconds,
                 session.context.conditions,
                 outboundOnly = true,
+                referencePriceWonPerL = session.context.referencePriceWonPerL,
+                comparison = eotaek.juyulow.core.model.compareStation(
+                    session.context,
+                    station,
+                    JourneyMode.DESTINATION
+                ),
                 routeWaypoints = if (mode == JourneyMode.WAYPOINT) listOf(station.name) + expected.waypoints.map { it.name } else emptyList()
             )
             pending = selection
@@ -238,12 +479,17 @@ class LiveJourneyRepository(
                 publish(result)
                 lastSelection = selection
                 pending = null
+                cancelActiveSearch()
                 selection
             } catch (error: Exception) {
                 // Pre-submission failures remain retryable; ambiguous mutations never do.
                 if (navigation.state.value.status != NaviStatus.UNCERTAIN) pending = null
+                paused = false
                 throw error
             }
+            }
+        } finally {
+            paused = false
         }
     }.await()
 
@@ -273,7 +519,7 @@ class LiveJourneyRepository(
     }
 
     override suspend fun release() {
-        closed = true; scope.cancel(); navigation.release()
+        cancelActiveSearch(); closed = true; scope.cancel(); navigation.release()
     }
 
     private fun same(a: NaviSnapshot, b: NaviSnapshot) = a.sameRouteTargetsAs(b)

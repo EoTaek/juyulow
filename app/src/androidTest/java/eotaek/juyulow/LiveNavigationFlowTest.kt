@@ -85,7 +85,7 @@ class LiveNavigationFlowTest {
     @Test
     fun replacementConfirmationCancellationAndCompletion() {
         search()
-        compose.onNodeWithText("8곳 찾았어요").assertIsDisplayed()
+        compose.onNodeWithText("8곳 · Pleos 8/8 · 실패 0").assertIsDisplayed()
         compose.onNodeWithText("시연용 가격").assertDoesNotExist()
         compose.onNodeWithTag("confirm-route").performClick()
         compose.onNodeWithText("취소").performClick()

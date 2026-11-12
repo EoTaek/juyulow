@@ -12,6 +12,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -93,6 +94,21 @@ class HomeViewModel(
         mutableState.update { it.copy(searching = true, error = null) }
         searchJob = viewModelScope.launch {
             try {
+                val handle = stations.startSearch(snapshot.journey, conditions, sessions)
+                if (handle != null) {
+                    val ready =
+                        handle.state.first { it.session?.firstReadyId != null || it.complete }
+                    if (generation != searchGeneration) return@launch
+                    val id = ready.session?.takeIf { it.firstReadyId != null }?.id
+                    mutableState.update {
+                        it.copy(
+                            searching = false,
+                            readySessionId = id,
+                            error = if (id == null) ready.error else null
+                        )
+                    }
+                    return@launch
+                }
                 val found = stations.search(snapshot.journey, conditions)
                 if (generation != searchGeneration) return@launch
                 val journey =
@@ -120,6 +136,7 @@ class HomeViewModel(
     }
 
     fun cancelSearch() {
+        stations.cancelActiveSearch()
         searchGeneration++
         searchJob?.cancel()
         mutableState.update { it.copy(searching = false, readySessionId = null) }
