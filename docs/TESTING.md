@@ -314,3 +314,20 @@ adb -s emulator-5554 shell am instrument --user 10 -w -e class eotaek.juyulow.Pr
 mobile-mcp로 실제 홈 검색, 12개 결과 표시, 선택 후 시간순 전환·목록 스크롤에서도 상세 선택 유지, 목적지 설정 완료, 시스템 내비 열기·안내 종료를 확인했다. 검증
 후 실제 목적지 없음 상태로 복원했다. 테스트 APK 빌드와 app lintDebug, git diff --check도 통과했다. 실차·다른 Navigation 버전 및 공개 배포
 정책은 별도 검증 대상이다.
+
+## API 로그 검증 (2026-11-12)
+
+`ApiLogTest`는 release 기본 no-op의 필드 미평가, 출력기 실패 격리, 인증 쿼리·헤더·오류 메시지 비노출, HTTP 응답 본문 보존, 취소 전파를 검증한다.
+`SdkLogFieldsTest`는 좌표·null 보존, 알려진 Vehicle 오류 코드 허용 목록, 알 수 없는 SDK 객체의 toString 미사용을 확인한다.
+
+Pleos 2.1.0 에뮬레이터에 debug APK를 데이터 유지 재설치하고 mobile-mcp로 앱을 실행했다. ADB의 JY.Api 태그에서 내비
+초기화·위치·목적지·경유지·경로 상태 콜백과 Vehicle capability 타임아웃 로그를 확인했다. 최초 검색 클릭은 자동 승인 검토로 차단됐으나 사용자의 명시적 승인 후
+실행했다. 실제 오피넷 12건 후보 검색, 카카오 경유 추정 12건 (HTTP 200/resultCode=0), Pleos Trip 거리·ETA 콜백과 작업 완료 로그를 확인했다.
+목적지는 변경하지 않았다. FusedLocation 실서비스 구독도 실행하지 않았다. 필터·단위·제약은 [API_LOGGING.md](API_LOGGING.md)를 참조한다.
+
+최종 debug/release assemble, app/core:model/core:data/feature:main/feature:settings 단위 테스트, lintDebug가
+통과했다.
+
+API 로그 요약 모드: 요청·콜백·refresh·항목 로그의 필드 미평가, 완료·초기화 결과·경고·타임아웃 유지, 정상 취소 생략을
+`ApiLogTest.summaryKeepsResultsAndErrorsWithoutEvaluatingSuppressedFields`로 검증한다. 상세 모드는 디버거의
+`ApiLog.detailed`로 활성화한다.

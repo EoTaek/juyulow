@@ -63,6 +63,7 @@ android {
 }
 
 dependencies {
+    debugImplementation(libs.timber)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     testImplementation(libs.kotlinx.coroutines.test)

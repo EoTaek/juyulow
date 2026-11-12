@@ -86,12 +86,30 @@ class KakaoDetourEtaRepository(private val api: KakaoDirectionsApi, private val 
         }.distinct()
         if (fuels.size == 1) query["car_fuel"] = fuels.single()
         waypoint?.let { query["waypoints"] = point(it.latitude, it.longitude) }
+        ApiLog.event("Kakao", "directions", "request") { query }
         try {
             val route = api.directions("KakaoAK ${key}", query).routes.singleOrNull()
                 ?: throw KakaoRequestFailure(false)
+            ApiLog.event(
+                "Kakao",
+                "directions",
+                "result"
+            ) { mapOf("resultCode" to route.result_code) }
             if (route.result_code != 0) throw KakaoRequestFailure(false)
             val summary = route.summary ?: throw KakaoRequestFailure(false)
             require(summary.distance >= 0 && summary.duration >= 0 && summary.fare.toll >= 0)
+            ApiLog.event(
+                "Kakao",
+                "directions",
+                "completed",
+                "I"
+            ) {
+                mapOf(
+                    "distanceMeters" to summary.distance,
+                    "durationSeconds" to summary.duration,
+                    "tollWon" to summary.fare.toll
+                )
+            }
             return RouteEstimate(
                 summary.distance, summary.duration, summary.fare.toll,
                 "차종 1 · 하이패스 미장착 가정" + (if (fuels.size != 1) " · 유종 기본값" else "") +
@@ -104,19 +122,24 @@ class KakaoDetourEtaRepository(private val api: KakaoDirectionsApi, private val 
                         ) " · 추천 경로 가정" else "")
             )
         } catch (e: CancellationException) {
+            ApiLog.error("Kakao", "request", e)
             throw e
         } catch (e: HttpException) {
+            ApiLog.error("Kakao", "request", e)
             throw KakaoRequestFailure(e.code() in listOf(401, 403, 429))
         } catch (e: KakaoRequestFailure) {
+            ApiLog.error("Kakao", "request", e)
             throw e
         } catch (e: Exception) {
+            ApiLog.error("Kakao", "request", e)
             throw KakaoRequestFailure(false)
         }
     }
 
     companion object {
         fun create(key: String): KakaoDetourEtaRepository {
-            val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS)
+            val client = OkHttpClient.Builder().addInterceptor(ApiHttpInterceptor("Kakao"))
+                .connectTimeout(10, TimeUnit.SECONDS)
                 .callTimeout(30, TimeUnit.SECONDS)
                 .retryOnConnectionFailure(false).build()
             val api =

@@ -3,6 +3,7 @@ package eotaek.juyulow.navigation
 import android.car.Car
 import android.car.drivingstate.CarUxRestrictionsManager
 import android.content.Context
+import eotaek.juyulow.core.data.ApiLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,10 +16,17 @@ internal suspend fun canInteractWithNavigation(context: Context): Boolean =
             car = Car.createCar(context)
             val manager =
                 car?.getCarManager(Car.CAR_UX_RESTRICTION_SERVICE) as? CarUxRestrictionsManager
-            manager?.currentCarUxRestrictions?.isRequiresDistractionOptimization == false
+            (manager?.currentCarUxRestrictions?.isRequiresDistractionOptimization == false).also { allowed ->
+                ApiLog.event(
+                    "AAOS",
+                    "navigationRestrictions",
+                    "response"
+                ) { mapOf("allowed" to allowed) }
+            }
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            ApiLog.error("AAOS", "navigationRestrictions", error)
             false
         } finally {
             car?.disconnect()

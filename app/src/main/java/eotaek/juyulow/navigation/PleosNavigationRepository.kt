@@ -16,6 +16,7 @@ import ai.pleos.playground.navi.data.TripInfo
 import ai.pleos.playground.navi.data.TripRequest
 import ai.pleos.playground.navi.data.WaypointChangedInfo
 import ai.pleos.playground.navi.data.WaypointInfo
+import eotaek.juyulow.core.data.ApiLog
 import eotaek.juyulow.core.data.NavigationRepository
 import eotaek.juyulow.core.model.NaviCandidate
 import eotaek.juyulow.core.model.NaviLocation
@@ -100,15 +101,36 @@ class PleosNavigationRepository(
     }
     private fun fail(reason: String): Nothing = throw IllegalStateException(reason)
     private suspend fun next(): Any = events.receive().also { if (it is Failed) fail(it.reason) }
-    private suspend fun <T> operation(block: suspend () -> T): NaviResult<T> = withContext(dispatcher) {
-        if (!mutex.tryLock()) return@withContext NaviResult.Failure("BUSY")
+    private suspend fun <T> operation(name: String, block: suspend () -> T): NaviResult<T> =
+        withContext(dispatcher) {
+            val operationId = ApiLog.id()
+            val start = clock()
+            ApiLog.event("Navi", name, "start") { mapOf("operationId" to operationId) }
+            if (!mutex.tryLock()) {
+                ApiLog.event("Navi", name, "blocked", "W") {
+                    mapOf(
+                        "operationId" to operationId,
+                        "reason" to "BUSY"
+                    )
+                }
+                return@withContext NaviResult.Failure("BUSY")
+            }
         try {
             check(!closed) { "RELEASED" }
-            NaviResult.Success(block())
+            NaviResult.Success(block()).also {
+                ApiLog.event(
+                    "Navi",
+                    name,
+                    "completed",
+                    "I"
+                ) { mapOf("operationId" to operationId, "elapsedMs" to clock() - start) }
+            }
         } catch (e: CancellationException) {
+            ApiLog.error("Navi", name, e)
             mutableState.value = state.value.copy(status = if (closed) NaviStatus.RELEASED else NaviStatus.UNCERTAIN, error = "CANCELLED")
             if (e is TimeoutCancellationException) NaviResult.Failure("TIMEOUT") else throw e
         } catch (e: Exception) {
+            ApiLog.error("Navi", name, e)
             mutableState.value = state.value.copy(status = when {
                 closed -> NaviStatus.RELEASED
                 readUncertain || routeUncertain || ledger.uncertain -> NaviStatus.UNCERTAIN
@@ -117,7 +139,8 @@ class PleosNavigationRepository(
             NaviResult.Failure(e.message ?: "FAILED")
         } finally { mutex.unlock() }
     }
-    override suspend fun initialize() = operation {
+
+    override suspend fun initialize() = operation("initialize") {
         check(state.value.status == NaviStatus.IDLE) { "ALREADY_INITIALIZED" }
         mutableState.value = NaviState(NaviStatus.CONNECTING)
         withTimeout(readTimeout.milliseconds) {
@@ -127,7 +150,8 @@ class PleosNavigationRepository(
         }
         read()
     }
-    override suspend fun refresh() = operation { read() }
+
+    override suspend fun refresh() = operation("refresh") { read() }
     private suspend fun read(): NaviSnapshot {
         check(connected && !readUncertain) { "READ_UNAVAILABLE" }
         mutableState.value = state.value.copy(status = NaviStatus.READING, receivedFields = emptySet(), error = null)
@@ -178,7 +202,7 @@ class PleosNavigationRepository(
         )
         return result
     }
-    override suspend fun trips(candidates: List<NaviCandidate>) = operation {
+    override suspend fun trips(candidates: List<NaviCandidate>) = operation("trips") {
         check(!ledger.uncertain) { "TRIP_UNCERTAIN" }
         check(candidates.isNotEmpty() && candidates.map { it.key }
             .distinct().size == candidates.size) { "INVALID_CANDIDATES" }
@@ -233,7 +257,12 @@ class PleosNavigationRepository(
             result
         } catch (e: Exception) { ledger.uncertain = true; throw e }
     }
-    override suspend fun setRoute(expected: NaviSnapshot, candidate: NaviCandidate, asWaypoint: Boolean) = operation {
+
+    override suspend fun setRoute(
+        expected: NaviSnapshot,
+        candidate: NaviCandidate,
+        asWaypoint: Boolean
+    ) = operation("setRoute") {
         check(!routeUncertain) { "ROUTE_UNCERTAIN" }
         validate(candidate)
         val current = read()
@@ -273,7 +302,10 @@ class PleosNavigationRepository(
         }
         actual
     }
-    override suspend fun openNavigation() = operation { check(connected); client.requestNavigationScreen(NavigationScreenRequest.Foreground) }
+
+    override suspend fun openNavigation() = operation("openNavigation") {
+        check(connected); client.requestNavigationScreen(NavigationScreenRequest.Foreground)
+    }
     override suspend fun release() = withContext(dispatcher) {
         if (!closed) { closed = true; connected = false; scope.cancel(); events.close(); try { client.release() }
             finally { mutableState.value = state.value.copy(status = NaviStatus.RELEASED) } }

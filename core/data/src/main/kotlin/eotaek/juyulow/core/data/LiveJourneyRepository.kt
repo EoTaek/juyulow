@@ -300,6 +300,17 @@ class LiveJourneyRepository(
                                         } catch (e: CancellationException) {
                                             throw e
                                         } catch (e: Exception) {
+                                            ApiLog.event(
+                                                "Journey",
+                                                "detour",
+                                                "failed",
+                                                "W"
+                                            ) {
+                                                mapOf(
+                                                    "stationId" to station.id,
+                                                    "stopBatch" to (e is KakaoRequestFailure && e.stopBatch)
+                                                )
+                                            }
                                             if (e is KakaoRequestFailure && e.stopBatch) stopped =
                                                 true
                                             batch?.stations?.find { it.id == station.id }?.let {
@@ -345,6 +356,16 @@ class LiveJourneyRepository(
                         val hit = tripCache[entry.candidate.key]?.takeIf {
                             it.first.sameTripOriginAs(before)
                         }?.second
+                        ApiLog.event(
+                            "Journey",
+                            "trip",
+                            if (hit != null) "cache_hit" else "cache_miss"
+                        ) {
+                            mapOf(
+                                "stationId" to entry.stationId,
+                                "reason" to if (hit != null) "SAME_ORIGIN_AND_OPTION" else "MISSING_OR_ORIGIN_CHANGED"
+                            )
+                        }
                         hit ?: when (val result = navigation.trips(listOf(entry.candidate))) {
                             is NaviResult.Success -> result.value.single().also {
                                 val after =

@@ -26,7 +26,9 @@ UNI_ID는 앱 ID로만 사용하고 내비에는 빈 POI ID를 전달한다.
 
 개발 키는 Git에서 제외된 `local.properties`의 `OPINET_API_KEY`로 공급하고 `app`의 BuildConfig를 통해 Koin 클라이언트에 전달한다.
 인증 쿼리는 2026.10판 무료 API PDF 기준 `code`를 사용한다 (웹 문서의 `certkey`는 실제 호출에서 빈 배열을 반환). 키는 APK에서 추출될 수 있으며
-HTTP 로깅은 추가하지 않는다. API 클라이언트는 KATEC 좌표를 명시적으로 받으며 빈 키는 호출 전에 거부한다. 연결 10초·전체 30초, 자동 재시도 없음, 상세
+debug에서만 Timber 기반 API 결과 요약·오류 로그를 출력한다. 요청·콜백·좌표 등 상세 필드는 진단 모드에서만 출력한다. 인증키·인증
+쿼리·Authorization·HTTP 원문은 출력하지 않는다. 상세 정책은 [API_LOGGING.md](API_LOGGING.md)를 참조한다. API 클라이언트는 KATEC
+좌표를 명시적으로 받으며 빈 키는 호출 전에 거부한다. 연결 10초·전체 30초, 자동 재시도 없음, 상세
 API·가격 캐시 없음이다.
 
 `NavigationRepository` 실제 API 구현체를 별도로 제공한다. 내비 상태·검증된 POI의 편도 Trip·목적지 대체·경유지 삽입을 담당하며
