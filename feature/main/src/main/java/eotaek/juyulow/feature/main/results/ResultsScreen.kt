@@ -1,5 +1,7 @@
 package eotaek.juyulow.feature.main.results
 
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -19,8 +21,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -46,6 +56,7 @@ import eotaek.juyulow.feature.main.common.kilometers
 import eotaek.juyulow.feature.main.common.minutes
 import eotaek.juyulow.feature.main.results.component.SelectionPanel
 import eotaek.juyulow.feature.main.results.component.StationRow
+import kotlinx.coroutines.flow.first
 
 @Composable
 fun ResultsScreen(
@@ -150,7 +161,7 @@ fun ResultsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) { refresh(); sort() }
                             Text(
-                                "${batch.stations.size}곳 찾았어요",
+                                "${batch.stations.size}곳 · Pleos ${batch.stations.count { !it.routePending }}/${batch.stations.size} · 실패 ${batch.stations.count { it.routeError != null }}",
                                 style = type.labelMedium,
                                 color = colors.textDarkSecondary
                             )
@@ -170,7 +181,30 @@ fun ResultsScreen(
                                     } · 가격 기준시각 미제공", style = type.labelSmall
                                 )
                             }
+                            var focusedId by remember { mutableStateOf<String?>(null) }
+                            val requesters =
+                                remember(batch.id) { mutableMapOf<String, FocusRequester>() }
+                            if (!batch.searchComplete) Text(
+                                "잠정 절약액 · 기준 유가 갱신 중",
+                                style = type.labelSmall
+                            )
+                            val detourCount = batch.stations.count { it.detour != null }
+                            if (detourCount > 0) Text(
+                                "카카오 경유 " + batch.stations.count { it.detour?.pending == false } + "/" + detourCount,
+                                style = type.labelSmall
+                            )
                             val listState = rememberLazyListState()
+                            val orderedIds = state.evaluated.map { it.station.id }
+                            LaunchedEffect(orderedIds, focusedId) {
+                                val id = focusedId ?: return@LaunchedEffect
+                                snapshotFlow { listState.isScrollInProgress }.first { !it }
+                                val index = orderedIds.indexOf(id)
+                                if (index >= 0 && listState.layoutInfo.visibleItemsInfo.none { it.key == id }) {
+                                    listState.scrollToItem(index)
+                                    androidx.compose.runtime.withFrameNanos { }
+                                    requesters[id]?.requestFocus()
+                                }
+                            }
                             LaunchedEffect(batch.id) { listState.scrollToItem(0) }
                             LazyColumn(
                                 Modifier
@@ -183,27 +217,55 @@ fun ResultsScreen(
                                 contentPadding = PaddingValues(bottom = 8.dp)
                             ) {
                                 items(state.evaluated, key = { it.station.id }) { row ->
+                                    val requester =
+                                        remember(row.station.id) { requesters.getOrPut(row.station.id) { FocusRequester() } }
+                                    Box(
+                                        Modifier.animateItem(
+                                            fadeInSpec = null, fadeOutSpec = null,
+                                            placementSpec = tween(
+                                                250,
+                                                easing = LinearOutSlowInEasing
+                                            )
+                                        )
+                                    ) {
                                     StationRow(
                                         row,
                                         state.mode,
                                         row.station.id == state.selectedId,
                                         !state.busy,
-                                        narrow
+                                        narrow,
+                                        Modifier
+                                            .focusRequester(requester)
+                                            .onFocusChanged {
+                                                if (it.isFocused) focusedId = row.station.id
+                                            }
                                     ) { onSelect(row.station.id) }
+                                    }
                                 }
                                 items(
-                                    batch.stations.filter { it.outboundMeters == null || it.outboundSeconds == null },
+                                    batch.stations.filter { it.outboundMeters == null || it.outboundSeconds == null }
+                                        .sortedWith(compareByDescending<Station> { it.routePending }.thenBy { it.sourceIndex }),
                                     key = { it.id }) { station ->
                                     Column(
                                         Modifier
                                             .fillMaxWidth()
+                                            .animateItem(
+                                                fadeInSpec = null,
+                                                fadeOutSpec = null,
+                                                placementSpec = tween(
+                                                    250,
+                                                    easing = LinearOutSlowInEasing
+                                                )
+                                            )
                                             .padding(16.dp),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         Text(station.name, style = type.bodySmall)
+                                        Text(station.brand, style = type.labelSmall)
                                         Text("${station.priceWonPerL} 원/L", style = type.bodySmall)
                                         Text(
-                                            station.routeError ?: "경로 미확보",
+                                            if (station.routePending) "ETA 확인 중" else station.routeError
+                                                ?: "경로 확인 불가",
                                             style = type.labelSmall
                                         )
                                         Text("거리·시간·절약액 미확보 · 내비 설정 불가", style = type.labelSmall)
@@ -229,6 +291,7 @@ fun ResultsScreen(
                                         { onConfirm(mode) },
                                         Modifier
                                             .weight(1f)
+                                            .onFocusChanged { if (it.isFocused) focusedId = null }
                                             .testTag(
                                                 if (mode == JourneyMode.DESTINATION) "confirm-route" else "add-waypoint"
                                             ),
@@ -253,7 +316,8 @@ fun ResultsScreen(
                                     it,
                                     batch.context,
                                     state.mode,
-                                    narrow
+                                    narrow,
+                                    state.comparisonExpired
                                 )
                             }
                         }

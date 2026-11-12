@@ -11,6 +11,7 @@ import eotaek.juyulow.core.model.compareStation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import java.util.UUID
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
@@ -53,6 +54,13 @@ class MockStationRepository : StationRepository {
 /** One active batch: starting a new home search replaces the old, already-popped flow. */
 class InMemoryComparisonSessionRepository : ComparisonSessionRepository {
     private var session: ComparisonSession? = null
+    private val updates = MutableStateFlow<ComparisonSession?>(null)
+    override fun observe(id: String) = updates.map { it?.takeIf { it.id == id } }
+    override fun update(session: ComparisonSession) {
+        if (this.session?.id == session.id) {
+            this.session = session; updates.value = session
+        }
+    }
     override fun create(
         journey: JourneyContext,
         conditions: RefuelConditions,

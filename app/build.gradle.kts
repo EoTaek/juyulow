@@ -10,6 +10,10 @@ val opinetKey = Properties().apply {
     rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }.getProperty("OPINET_API_KEY", "").trim().removeSurrounding("\"")
 
+val kakaoKey = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}.getProperty("KAKAO_REST_API_KEY", "").trim().removeSurrounding("\"")
+
 android {
     useLibrary("android.car", false)
     namespace = "eotaek.juyulow"
@@ -33,7 +37,15 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField(
+                "String",
+                "KAKAO_REST_API_KEY",
+                "\"" + kakaoKey.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+            )
+        }
         release {
+            buildConfigField("String", "KAKAO_REST_API_KEY", "\"\"")
             optimization {
                 enable = true
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")

@@ -63,3 +63,8 @@ SDK는 실제 추가 후에도 경유지 좌표를 `(0,0)`으로 반환할 수 �
 - 다른 내비 버전·실차에서의 이름 토큰 보존, 150m 스냅 허용 범위와 KATEC datum은 추가 확인이 필요하다.
 
 [반경 API 공식 명세](https://www.opinet.co.kr/user/custapi/openApiInfoDtl.do?apiId=3) · [Proj4J](https://github.com/locationtech/proj4j)
+
+## 점진적 결과
+
+전체 유효 후보 (기존 최대 15곳 제한)에 sourceIndex와 로딩 상태를 부여한다. 첫 Pleos 성공부터 동일 세션을 관측하며 가격·조건·조회 시각은 고정한다.
+READY는 편도 절약액/시간순, 동점 및 미확보 후보는 원본 순번을 사용한다. 로딩과 최종 경로 실패는 구분한다.

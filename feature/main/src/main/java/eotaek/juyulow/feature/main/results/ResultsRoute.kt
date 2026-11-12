@@ -14,7 +14,11 @@ fun ResultsRoute(
     onDismissGuard: (((() -> Boolean)?) -> Unit) = {}
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    BackHandler(state.settingRoute) { }
+    BackHandler {
+        if (!viewModel.state.value.settingRoute) {
+            viewModel.cancelSearch(); onBack()
+        }
+    }
     DisposableEffect(viewModel) {
         onDismissGuard { !viewModel.state.value.settingRoute }
         onDispose { onDismissGuard(null) }

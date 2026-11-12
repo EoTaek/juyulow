@@ -19,6 +19,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -510,5 +511,217 @@ class LiveJourneyRepositoryTest {
         } finally {
             repo.release()
         }
+    }
+
+    @Test
+    fun progressiveSearchPublishesFirstSuccessBeforeRemainingTrips() = runTest {
+        val n = Navi().apply { tripDelay = 100 }
+        val sessions = InMemoryComparisonSessionRepository()
+        val repo = LiveJourneyRepository(
+            { n },
+            dispatcher = StandardTestDispatcher(testScheduler),
+            candidateSource = { _, _ -> fixtures.take(3) })
+        repo.initialize()
+        val handle = repo.startSearch(
+            repo.context.value,
+            resolveRefuelConditions(RefuelSettings()),
+            sessions
+        )!!
+        runCurrent()
+        assertEquals(3, handle.state.value.session!!.stations.count { it.routePending })
+        advanceTimeBy(100); runCurrent()
+        val first = handle.state.value.session!!
+        assertEquals(fixtures.first().stationId, first.firstReadyId)
+        assertEquals(2, first.stations.count { it.routePending })
+        assertEquals(false, handle.state.value.complete)
+        advanceUntilIdle()
+        assertEquals(first.id, handle.state.value.session!!.id)
+        assertEquals(true, handle.state.value.complete)
+        assertEquals(3, n.tripCalls)
+        repo.release()
+    }
+
+    @Test
+    fun cancelledGenerationDrainsInflightTripWithoutStartingAnother() = runTest {
+        val n = Navi().apply { tripDelay = 100 }
+        val repo = LiveJourneyRepository(
+            { n },
+            dispatcher = StandardTestDispatcher(testScheduler),
+            candidateSource = { _, _ -> fixtures.take(3) })
+        repo.initialize()
+        val h = repo.startSearch(
+            repo.context.value,
+            resolveRefuelConditions(RefuelSettings()),
+            InMemoryComparisonSessionRepository()
+        )!!
+        runCurrent(); h.cancel(); advanceUntilIdle()
+        assertEquals(1, n.tripCalls)
+        assertEquals(0, h.state.value.session!!.stations.count { it.routePending })
+        assertNull(h.state.value.session!!.firstReadyId)
+        repo.release()
+    }
+
+    @Test
+    fun progressiveSearchSelectsFirstSuccessAfterCandidateFailure() = runTest {
+        val n = Navi()
+        var calls = 0
+        val mixed = object : NavigationRepository by n {
+            override suspend fun trips(candidates: List<NaviCandidate>): NaviResult<List<NaviTrip>> {
+                calls++
+                return if (calls == 1) NaviResult.Failure("NO_ROUTE") else n.trips(candidates)
+            }
+        }
+        val repo = LiveJourneyRepository(
+            { mixed },
+            dispatcher = StandardTestDispatcher(testScheduler),
+            candidateSource = { _, _ -> fixtures.take(2) })
+        repo.initialize()
+        val h = repo.startSearch(
+            repo.context.value,
+            resolveRefuelConditions(RefuelSettings()),
+            InMemoryComparisonSessionRepository()
+        )!!
+        advanceUntilIdle()
+        assertEquals(fixtures[1].stationId, h.state.value.session!!.firstReadyId)
+        assertNotNull(h.state.value.session!!.stations.first().routeError)
+        repo.release()
+    }
+
+    @Test
+    fun detourUsesOneBaselineAndAtMostTwoConcurrentRequests() = runTest {
+        val n =
+            Navi().apply { current = current.copy(destination = fixtures.last().candidate.point) }
+        var calls = 0
+        var concurrent = 0
+        var maximum = 0
+        val detour = object : DetourEtaRepository {
+            override suspend fun estimate(
+                origin: NaviSnapshot,
+                conditions: eotaek.juyulow.core.model.RefuelConditions,
+                waypoint: Station?
+            ): RouteEstimate {
+                calls++; concurrent++; maximum =
+                    maxOf(maximum, concurrent); delay(200); concurrent--
+                return if (waypoint == null) RouteEstimate(
+                    1000,
+                    100,
+                    100,
+                    "test"
+                ) else RouteEstimate(900, 90, 0, "test")
+            }
+        }
+        val repo = LiveJourneyRepository(
+            { n },
+            dispatcher = StandardTestDispatcher(testScheduler),
+            candidateSource = { _, _ -> fixtures.take(3) },
+            detours = detour
+        )
+        repo.initialize()
+        val h = repo.startSearch(
+            repo.context.value,
+            resolveRefuelConditions(RefuelSettings()),
+            InMemoryComparisonSessionRepository()
+        )!!
+        advanceUntilIdle()
+        assertEquals(4, calls); assertEquals(2, maximum)
+        assertEquals(-100, h.state.value.session!!.stations.first().detour!!.meters)
+        assertEquals(-10, h.state.value.session!!.stations.first().detour!!.seconds)
+        repo.release()
+    }
+
+    @Test
+    fun uncertainTripStopsBatchAndNeverPublishesFalseSuccess() = runTest {
+        val n = Navi()
+        var calls = 0
+        val uncertain = object : NavigationRepository by n {
+            override suspend fun trips(candidates: List<NaviCandidate>): NaviResult<List<NaviTrip>> {
+                calls++; n.state.value = n.state.value.copy(status = NaviStatus.UNCERTAIN)
+                return NaviResult.Failure("TIMEOUT")
+            }
+        }
+        val repo = LiveJourneyRepository(
+            { uncertain },
+            dispatcher = StandardTestDispatcher(testScheduler),
+            candidateSource = { _, _ -> fixtures.take(3) })
+        repo.initialize()
+        val h = repo.startSearch(
+            repo.context.value,
+            resolveRefuelConditions(RefuelSettings()),
+            InMemoryComparisonSessionRepository()
+        )!!
+        advanceUntilIdle()
+        assertEquals(1, calls); assertNull(h.state.value.session!!.firstReadyId)
+        assertEquals(0, h.state.value.session!!.stations.count { it.routePending })
+        assertNotNull(h.state.value.error)
+        repo.release()
+    }
+
+    @Test
+    fun noDestinationMakesZeroDetourCallsAndRouteSubmissionStopsNewTrips() = runTest {
+        val n = Navi().apply { tripDelay = 100 }
+        var calls = 0
+        val detour = object : DetourEtaRepository {
+            override suspend fun estimate(
+                origin: NaviSnapshot,
+                conditions: eotaek.juyulow.core.model.RefuelConditions,
+                waypoint: Station?
+            ): RouteEstimate {
+                calls++; error("not eligible")
+            }
+        }
+        val repo = LiveJourneyRepository(
+            { n },
+            dispatcher = StandardTestDispatcher(testScheduler),
+            candidateSource = { _, _ -> fixtures.take(3) },
+            detours = detour
+        )
+        repo.initialize()
+        val h = repo.startSearch(
+            repo.context.value,
+            resolveRefuelConditions(RefuelSettings()),
+            InMemoryComparisonSessionRepository()
+        )!!
+        runCurrent(); advanceTimeBy(100); runCurrent()
+        val batch = h.state.value.session!!
+        val submitted =
+            launch { repo.select(batch, batch.stations.first(), JourneyMode.DESTINATION) }
+        advanceUntilIdle(); submitted.join()
+        assertEquals(0, calls); assertEquals(1, n.routeCalls)
+        assertEquals(2, n.tripCalls)
+        assertEquals(0, h.state.value.session!!.stations.count { it.routePending })
+        repo.release()
+    }
+
+    @Test
+    fun baselineFailureLeavesPleosReadyAndNeverCallsVia() = runTest {
+        val n =
+            Navi().apply { current = current.copy(destination = fixtures.last().candidate.point) }
+        var calls = 0
+        val detour = object : DetourEtaRepository {
+            override suspend fun estimate(
+                origin: NaviSnapshot,
+                conditions: eotaek.juyulow.core.model.RefuelConditions,
+                waypoint: Station?
+            ): RouteEstimate {
+                calls++; throw KakaoRequestFailure(true)
+            }
+        }
+        val repo = LiveJourneyRepository(
+            { n },
+            dispatcher = StandardTestDispatcher(testScheduler),
+            candidateSource = { _, _ -> fixtures.take(3) },
+            detours = detour
+        )
+        repo.initialize()
+        val h = repo.startSearch(
+            repo.context.value,
+            resolveRefuelConditions(RefuelSettings()),
+            InMemoryComparisonSessionRepository()
+        )!!
+        advanceUntilIdle()
+        assertEquals(1, calls)
+        assertEquals(3, h.state.value.session!!.stations.count { it.outboundMeters != null })
+        assertEquals(3, h.state.value.session!!.stations.count { it.detour?.error != null })
+        repo.release()
     }
 }

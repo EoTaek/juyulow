@@ -15,7 +15,25 @@ interface SettingsRepository {
     suspend fun save(settings: RefuelSettings)
 }
 
+data class SearchProgress(
+    val session: ComparisonSession? = null,
+    val complete: Boolean = false,
+    val error: String? = null,
+    val empty: Boolean = false
+)
+
+class SearchHandle(val state: StateFlow<SearchProgress>, val cancel: () -> Unit)
+
 interface StationRepository {
+    fun startSearch(
+        journey: JourneyContext,
+        conditions: RefuelConditions,
+        sessions: ComparisonSessionRepository
+    ): SearchHandle? = null
+
+    fun pauseSearch(paused: Boolean) {}
+    fun cancelActiveSearch() {}
+
     suspend fun search(journey: JourneyContext): List<Station>
     suspend fun search(journey: JourneyContext, conditions: RefuelConditions): List<Station> =
         search(journey)
@@ -28,6 +46,8 @@ interface ComparisonSessionRepository {
         stations: List<Station>
     ): ComparisonSession
 
+    fun observe(id: String): Flow<ComparisonSession?> = kotlinx.coroutines.flow.flowOf(get(id))
+    fun update(session: ComparisonSession) {}
     fun get(id: String): ComparisonSession?
 }
 

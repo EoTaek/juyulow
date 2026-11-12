@@ -32,10 +32,12 @@ internal fun SelectionPanel(
     row: EvaluatedStation,
     context: ComparisonContext,
     mode: JourneyMode,
-    narrow: Boolean
+    narrow: Boolean,
+    detourExpired: Boolean = false,
 ) {
     val colors = JUYULOWTheme.colors
     val type = JUYULOWTheme.typography
+    fun signedMinutes(seconds: Int) = (if (seconds < 0) "−" else "+") + minutes(abs(seconds))
     val result = row.comparison
     val scroll = rememberScrollState()
     LaunchedEffect(row.station.id) { scroll.scrollTo(0) }
@@ -117,6 +119,33 @@ internal fun SelectionPanel(
                 JourneyMode.ROUND_TRIP -> "주유소를 경유해 현재 위치로 돌아와요."
             }, style = type.labelSmall, color = colors.textDarkSecondary
         )
+        row.station.detour?.let { estimate ->
+            HorizontalDivider(color = colors.basic200)
+            Text("예상 경유 추가 비용 · 카카오모빌리티", style = type.labelMedium)
+            when {
+                detourExpired -> Text("이전 검색 기준 · 재검색 필요", style = type.bodySmall)
+                estimate.pending -> Text("경유 비용 확인 중", style = type.bodySmall)
+                estimate.error != null -> Text(estimate.error.orEmpty(), style = type.bodySmall)
+                else -> {
+                    val meters = requireNotNull(estimate.meters)
+                    val seconds = requireNotNull(estimate.seconds)
+                    val toll = requireNotNull(estimate.tollWon)
+                    val fuel =
+                        meters / 1000.0 / context.conditions.efficiencyKmPerL * context.referencePriceWonPerL
+                    val time =
+                        (seconds + context.conditions.refuelSeconds) / 3600.0 * context.conditions.timeWonPerHour
+                    CostRow("추가 거리", kilometers(meters) + " km")
+                    CostRow("추가 주행 시간", signedMinutes(seconds) + " 분")
+                    CostRow("추가 통행료", won(toll.toDouble()) + " 원")
+                    CostRow(
+                        "주유 포함 추가 시간",
+                        signedMinutes(seconds + context.conditions.refuelSeconds) + " 분"
+                    )
+                    CostRow("경유 순절약액", won(result.fuelSavingWon - fuel - time - toll) + " 원")
+                    Text(estimate.assumptions + " · 실제 Pleos 경로와 다를 수 있어요", style = type.labelSmall)
+                }
+            }
+        }
         HorizontalDivider(color = colors.basic200)
         CostRow("유가 차이 절감액", "+${won(result.fuelSavingWon)}원")
         CostRow(

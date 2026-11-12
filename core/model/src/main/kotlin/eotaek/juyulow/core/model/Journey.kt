@@ -67,6 +67,9 @@ data class Station(
     val observedAtMillis: Long? = null,
     val routeError: String? = null,
     val source: String? = null,
+    val sourceIndex: Int = 0,
+    val routePending: Boolean = false,
+    val detour: DetourEstimate? = null,
 )
 
 data class ComparisonContext(
@@ -80,6 +83,8 @@ data class ComparisonSession(
     val context: ComparisonContext,
     val stations: List<Station>,
     val createdAtMillis: Long = System.currentTimeMillis(),
+    val firstReadyId: String? = null,
+    val searchComplete: Boolean = true,
 )
 
 data class StationComparison(
@@ -109,6 +114,8 @@ data class NavigationSelection(
     val conditions: RefuelConditions,
     val outboundOnly: Boolean = false,
     val routeWaypoints: List<String> = emptyList(),
+    val referencePriceWonPerL: Int? = null,
+    val comparison: StationComparison? = null,
 )
 
 /** Web journey.ts contract: metres, seconds, KRW; round only at display boundaries. */
@@ -147,3 +154,10 @@ fun compareStation(
         timeCostWon = extraTime / 3600.0 * context.conditions.timeWonPerHour,
     )
 }
+
+/** Kakao-only differences from the same frozen origin, destination and options. */
+data class DetourEstimate(
+    val pending: Boolean = true, val meters: Int? = null,
+    val seconds: Int? = null, val tollWon: Int? = null, val error: String? = null,
+    val assumptions: String = ""
+)

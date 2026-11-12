@@ -226,7 +226,7 @@ class PleosNavigationRepository(
                     check(trip.distance >= 0 && trip.eta >= 0) { "INVALID_TRIP" }
                     mutableState.value =
                         state.value.copy(tripCompleted = state.value.tripCompleted + 1)
-                    NaviTrip(c, trip.distance, trip.eta, clock())
+                    NaviTrip(c, trip.distance, trip.eta, clock(), before)
                 }
             }
             check(before.sameTripOriginAs(read())) { "CONTEXT_CHANGED" }

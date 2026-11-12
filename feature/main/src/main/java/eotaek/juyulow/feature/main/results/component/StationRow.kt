@@ -29,6 +29,7 @@ internal fun StationRow(
     selected: Boolean,
     enabled: Boolean,
     narrow: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val colors = JUYULOWTheme.colors
@@ -60,7 +61,7 @@ internal fun StationRow(
             )
         }
         Column(
-            Modifier
+            modifier
                 .testTag(row.station.id)
                 .selectable(selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
                 .padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)
