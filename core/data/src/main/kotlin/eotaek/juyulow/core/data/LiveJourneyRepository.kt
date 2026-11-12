@@ -423,8 +423,13 @@ class LiveJourneyRepository(
                             })
                     )
                 }
-                if (active()) progress.value =
-                    progress.value.copy(complete = true, error = e.message ?: "검색 중단")
+                if (active()) {
+                    if (batch?.firstReadyId == null) {
+                        cached = previousCache
+                        activeCandidates = previousCandidates
+                    }
+                    progress.value = progress.value.copy(complete = true, error = e.message ?: "검색 중단")
+                }
             }
         }
         return SearchHandle(progress.asStateFlow()) { if (active()) cancelActiveSearch() }

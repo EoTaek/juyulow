@@ -514,6 +514,50 @@ class LiveJourneyRepositoryTest {
     }
 
     @Test
+    fun refreshExceptionRestoresOldSelectionOnlyBeforeFirstReadyStation() = runTest {
+        for (failAfterFirstReady in listOf(false, true)) {
+            val n = Navi()
+            var tripRequests = 0
+            var searches = 0
+            val navigation = object : NavigationRepository by n {
+                override suspend fun trips(candidates: List<NaviCandidate>): NaviResult<List<NaviTrip>> {
+                    tripRequests++
+                    if (tripRequests == if (failAfterFirstReady) 3 else 2) error("CONNECTION_LOST")
+                    return n.trips(candidates)
+                }
+            }
+            val repo = LiveJourneyRepository(
+                { navigation }, dispatcher = StandardTestDispatcher(testScheduler),
+                candidateSource = { _, _ ->
+                    if (++searches == 1) fixtures.take(1) else fixtures.drop(1).take(2)
+                }
+            )
+            try {
+                repo.initialize()
+                val sessions = InMemoryComparisonSessionRepository()
+                val conditions = resolveRefuelConditions(RefuelSettings())
+                val first = repo.startSearch(repo.context.value, conditions, sessions)!!
+                advanceUntilIdle()
+                val previous = first.state.value.session!!
+                val refresh = repo.startSearch(repo.context.value, conditions, sessions)!!
+                advanceUntilIdle()
+                assertEquals(true, refresh.state.value.complete)
+                assertEquals("CONNECTION_LOST", refresh.state.value.error)
+                val failed = refresh.state.value.session!!
+                assertEquals(0, failed.stations.count { it.routePending })
+                val visible = if (failAfterFirstReady) failed else previous
+                assertEquals(if (failAfterFirstReady) fixtures[1].stationId else null, failed.firstReadyId)
+                val station = visible.stations.first { it.id == visible.firstReadyId }
+                repo.select(visible, station, JourneyMode.DESTINATION)
+                assertEquals(station.name, n.current.destination?.name)
+                assertEquals(1, n.routeCalls)
+            } finally {
+                repo.release()
+            }
+        }
+    }
+
+    @Test
     fun progressiveSearchPublishesFirstSuccessBeforeRemainingTrips() = runTest {
         val n = Navi().apply { tripDelay = 100 }
         val sessions = InMemoryComparisonSessionRepository()

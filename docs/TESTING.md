@@ -1,5 +1,11 @@
 # 검증
 
+## 2026-11-12 PR #14 재검색 초기 실패 복구
+
+`LiveJourneyRepositoryTest.refreshExceptionRestoresOldSelectionOnlyBeforeFirstReadyStation`은 새 후보 등록 후 첫 Trip 성공 전 예외 시
+이전 검색의 주유소를 실제 선택할 수 있는지 검증한다. 첫 성공 후 예외에서는 새 후보의 선택이 유지되는지도 함께 확인한다.
+수정 전 SEARCH_EXPIRED 실패를 재현했으며, 수정 후 core:data 전체 단위 테스트가 통과했다.
+
 ## 2026-11-12 오피넷·카카오 HTTP 재시도
 
 `ApiRetryTest`는 0.5초·1초 대기 후 세 번째 시도 성공, 세 번째 실패 후 원래 오류 유지, 요청 중 취소와 대기 중 취소의 후속 호출 차단을 검증한다.
