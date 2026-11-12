@@ -1,5 +1,12 @@
 # 검증
 
+## 2026-11-12 PR #14 확인 팝업 자동 종료 후 검색 재개
+
+`MainViewModelsTest.targetChangeDismissesReplacementAndResumesSearchOnlyWhenDialogWasOpen`은 목적지 대체 확인 중 위치 변화에는
+팝업·일시정지를 유지하고, 목적지가 변경되면 팝업 종료와 함께 검색을 재개하는지 검증한다. 팝업이 닫힌 뒤 추가 목적지 변경은 별도 일시정지를 해제하지 않는다.
+수정 전 재개 호출 누락을 재현했으며, 수정 후 앱 debug 빌드, app/core:model/core:data/feature:main/feature:settings 전체 단위 테스트,
+lintDebug와 git diff --check가 통과했다. 두 리뷰의 오류 분기는 Fake 내비·저장소와 가상 시간으로 검증했으며 에뮬레이터에서 새로 재현하지 않았다.
+
 ## 2026-11-12 PR #14 재검색 초기 실패 복구
 
 `LiveJourneyRepositoryTest.refreshExceptionRestoresOldSelectionOnlyBeforeFirstReadyStation`은 새 후보 등록 후 첫 Trip 성공 전 예외 시

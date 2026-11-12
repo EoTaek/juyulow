@@ -54,18 +54,21 @@ class ResultsViewModel(
                 if (a != null && b != null) {
                     val origin = session.context.journey.tripOrigin ?: a
                     val reusable = origin.sameTripOriginAs(b)
+                    val sameTargets = a.sameRouteTargetsAs(b)
+                    val resumeSearch = !sameTargets && state.value.confirmReplacement
                     mutableState.update {
                         it.copy(
-                            comparisonExpired = !reusable || !a.sameRouteTargetsAs(b),
+                            comparisonExpired = !reusable || !sameTargets,
                             mode = if (it.mode in context.availableModes) it.mode else JourneyMode.DESTINATION,
                             session = session.copy(
                                 context = session.context.copy(
                                     journey = session.context.journey.copy(waypointSupported = context.waypointSupported)
                                 )
                             ),
-                            confirmReplacement = a.sameRouteTargetsAs(b) && it.confirmReplacement,
+                            confirmReplacement = sameTargets && it.confirmReplacement,
                         )
                     }
+                    if (resumeSearch) stations.pauseSearch(false)
                 }
             }
         }
