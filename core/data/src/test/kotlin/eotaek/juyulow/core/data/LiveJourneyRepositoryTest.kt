@@ -406,10 +406,56 @@ class LiveJourneyRepositoryTest {
             val second = repo.search(repo.context.value, conditions)
             assertEquals(1800, second.single().priceWonPerL)
             assertEquals(1, n.tripCalls)
+            val previousJourney = repo.context.value
             n.current = n.current.copy(location = n.current.location.copy(latitude = 37.415))
-            repo.refresh()
-            repo.search(repo.context.value, conditions)
+            // The results screen may submit its old session without refreshing first.
+            repo.search(previousJourney, conditions)
             assertEquals(2, n.tripCalls)
+            assertEquals(n.current, repo.context.value.tripOrigin)
+        } finally {
+            repo.release()
+        }
+    }
+
+    @Test
+    fun dynamicSearchCompletesAfterMovementDuringSourceAndTripsWithoutCachingMixedOrigins() = runTest {
+        val n = Navi()
+        val requestedOrigins = mutableListOf<NaviSnapshot>()
+        var moveDuringSearch = true
+        val moving = object : NavigationRepository by n {
+            override suspend fun trips(candidates: List<NaviCandidate>): NaviResult<List<NaviTrip>> {
+                val result = n.trips(candidates)
+                if (moveDuringSearch) {
+                    n.current = n.current.copy(location = n.current.location.copy(latitude = 37.43))
+                }
+                return result
+            }
+        }
+        val repo = LiveJourneyRepository(
+            { moving }, dispatcher = StandardTestDispatcher(testScheduler),
+            candidateSource = { origin, _ ->
+                requestedOrigins += origin
+                if (moveDuringSearch) {
+                    n.current = n.current.copy(location = n.current.location.copy(latitude = 37.42))
+                }
+                fixtures.take(2)
+            })
+        try {
+            repo.initialize()
+            val journey = repo.context.value
+            val conditions = resolveRefuelConditions(RefuelSettings())
+            val found = repo.search(journey, conditions)
+            assertEquals(2, found.size)
+            assertEquals(2, n.tripCalls)
+            assertEquals(journey.navigation, requestedOrigins.single())
+            assertEquals(37.43, repo.context.value.navigation!!.location.latitude, .000001)
+
+            // Returning to the batch origin must not reuse trips obtained while moving.
+            moveDuringSearch = false
+            n.current = n.current.copy(location = n.current.location.copy(latitude = 37.42))
+            assertEquals(2, repo.search(journey, conditions).size)
+            assertEquals(n.current, requestedOrigins.last())
+            assertEquals(4, n.tripCalls)
         } finally {
             repo.release()
         }

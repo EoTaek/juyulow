@@ -1,5 +1,11 @@
 # 검증
 
+2026-11-12 PR #13 P2 대응: 오피넷 검색의 이전 세션/검색 중 위치 비교에 따른 `CONTEXT_CHANGED` 중단을 제거했다.
+`dynamicSearchUsesSnapshotConditionsAndReusesOnlyValidTrips`는 50m 이상 이동 후 이전 세션으로 재검색하는 동작을 검증한다.
+`dynamicSearchCompletesAfterMovementDuringSourceAndTripsWithoutCachingMixedOrigins`는 API·Trip 대기 중 이동해도 결과를 반환하고,
+재검색이 최신 위치를 사용하며 이동 중 조회한 Trip 캐시를 재사용하지 않는지 검증한다.
+앱 빌드, app/core:model/core:data/feature:main/feature:settings 단위 테스트, `lintDebug`와 `git diff --check`가 통과했다.
+
 2026-11-12 PR #13 P1 대응: 오피넷 거리순 유효 후보를 최대 15곳으로 제한한다.
 `LiveJourneyRepositoryTest.opinetSearchRequestsTripsOnlyForNearestFifteenValidStations`는 실제 오피넷 파싱·좌표 변환 소스와 Fake 내비를 연결해
 0/3/15/34건 응답, 무효 가격·좌표 제외, 거리순 유지, 먼 저가 후보 제외 및 최대 15회 Trip 요청을 검증한다.

@@ -148,13 +148,12 @@ class LiveJourneyRepository(
         check(initialized) { "NAVIGATION_NOT_READY" }
         check(canInteract()) { "PARKING_REQUIRED" }
         val origin = mutex.withLock { navigation.refresh().value().also(::publish) }
-        check(requireNotNull(journey.navigation).sameTripOriginAs(origin)) { "CONTEXT_CHANGED" }
+        // Every search uses the latest location, regardless of the displayed session's origin.
         val entries = source(origin, conditions)
         val fetchedAt = System.currentTimeMillis()
         return mutex.withLock {
             check(pending == null) { "ROUTE_UNCERTAIN" }
             val current = navigation.refresh().value()
-            check(origin.sameTripOriginAs(current)) { "CONTEXT_CHANGED" }
             val candidates = entries.associate { it.stationId to it.candidate }
             val stations = entries.mapIndexed { index, entry ->
                 check(canInteract()) { "PARKING_REQUIRED" }
@@ -191,7 +190,11 @@ class LiveJourneyRepository(
                 )
             }
             val after = navigation.refresh().value()
-            check(current.sameTripOriginAs(after)) { "CONTEXT_CHANGED" }
+            // Movement during sequential requests must not discard the results or cache
+            // trips from different origins as if they all started at the batch origin.
+            if (!current.sameTripOriginAs(after)) {
+                entries.forEach { tripCache.remove(it.candidate.key) }
+            }
             activeCandidates = candidates
             cached = current to stations
             publish(after)
