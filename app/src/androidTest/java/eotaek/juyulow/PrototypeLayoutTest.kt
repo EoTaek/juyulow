@@ -103,7 +103,7 @@ class PrototypeLayoutTest(
                     null,
                     destinationOnly = true
                 ) else JourneyContext(),
-                resolveRefuelConditions(RefuelSettings(includeTimeCost = true)).copy(
+                resolveRefuelConditions(RefuelSettings()).copy(
                     liters = 37.655,
                     efficiencyKmPerL = 100.0 / 8.5,
                     litersSource = RefuelValueSource.TANK_LEVEL,

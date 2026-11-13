@@ -9,7 +9,7 @@ import eotaek.juyulow.core.model.VehicleFetchStatus
 import eotaek.juyulow.core.model.VehicleProperty
 import eotaek.juyulow.core.model.VehicleValue
 import eotaek.juyulow.core.model.VehicleValueOrigin
-import eotaek.juyulow.core.model.resolveRefuelConditions
+import eotaek.juyulow.core.model.resolveVehicleRefuelConditions
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -157,7 +157,7 @@ class VehicleStartupTest {
             true,
             { msg, _ -> logs += msg }).start()
         runCurrent()
-        val conditions = resolveRefuelConditions(RefuelSettings(), repo.fields.value)
+        val conditions = resolveVehicleRefuelConditions(RefuelSettings(), repo.fields.value)
         assertEquals(37.5, conditions.liters, 0.0)
         assertEquals(RefuelValueSource.FUEL_PERCENT, conditions.litersSource)
         assertEquals(

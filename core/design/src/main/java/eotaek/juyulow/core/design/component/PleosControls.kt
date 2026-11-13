@@ -52,6 +52,22 @@ fun PleosButton(
     enabled: Boolean = true,
     loading: Boolean = false,
 ) {
+    PleosButton(onClick, modifier, icon, trailingIcon, outlined, enabled, loading) {
+        Text(label, style = JUYULOWTheme.typography.bodySmallStrong)
+    }
+}
+
+@Composable
+fun PleosButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: PleosIcon? = null,
+    trailingIcon: PleosIcon? = null,
+    outlined: Boolean = false,
+    enabled: Boolean = true,
+    loading: Boolean = false,
+    content: @Composable () -> Unit,
+) {
     val colors = JUYULOWTheme.colors
     val interactions = remember { MutableInteractionSource() }
     val pressed by interactions.collectIsPressedAsState()
@@ -77,11 +93,7 @@ fun PleosButton(
         )
         else if (icon != null) PleosIcon(icon)
         if (loading || icon != null) Spacer(Modifier.width(12.dp))
-        Text(
-            label,
-            style = JUYULOWTheme.typography.bodySmallStrong,
-            modifier = Modifier.weight(1f, fill = false)
-        )
+        Box(Modifier.weight(1f, fill = false)) { content() }
         if (trailingIcon != null && !loading) {
             Spacer(Modifier.width(12.dp))
             PleosIcon(trailingIcon)
@@ -318,8 +330,8 @@ private fun TabsPreview() = ControlPreview {
 )
 @Composable
 private fun SwitchPreview() = ControlPreview {
-    PleosSwitch(true, "시간 비용 반영", {})
-    PleosSwitch(false, "시간 비용 제외", {})
+    PleosSwitch(true, "옵션 사용", {})
+    PleosSwitch(false, "옵션 해제", {})
     PleosSwitch(true, "사용 불가", {}, enabled = false)
 }
 

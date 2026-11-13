@@ -132,8 +132,6 @@ internal fun SelectionPanel(
                     val toll = requireNotNull(estimate.tollWon)
                     val fuel =
                         meters / 1000.0 / context.conditions.efficiencyKmPerL * context.referencePriceWonPerL
-                    val time =
-                        (seconds + context.conditions.refuelSeconds) / 3600.0 * context.conditions.timeWonPerHour
                     CostRow("추가 거리", kilometers(meters) + " km")
                     CostRow("추가 주행 시간", signedMinutes(seconds) + " 분")
                     CostRow("추가 통행료", won(toll.toDouble()) + " 원")
@@ -141,7 +139,7 @@ internal fun SelectionPanel(
                         "주유 포함 추가 시간",
                         signedMinutes(seconds + context.conditions.refuelSeconds) + " 분"
                     )
-                    CostRow("경유 순절약액", won(result.fuelSavingWon - fuel - time - toll) + " 원")
+                    CostRow("경유 순절약액", won(result.fuelSavingWon - fuel - toll) + " 원")
                     Text(estimate.assumptions + " · 실제 Pleos 경로와 다를 수 있어요", style = type.labelSmall)
                 }
             }
@@ -153,10 +151,6 @@ internal fun SelectionPanel(
             "−${won(result.drivingCostWon)}원"
         )
         CostRow("통행료", result.tollWon?.let { "−${won(it)}원" } ?: "제외")
-        CostRow(
-            "시간 비용",
-            if (context.conditions.includeTimeCost) "−${won(result.timeCostWon)}원" else "제외"
-        )
         Text(
             "${vehicleNumber(context.conditions.liters)} L 주유 · 주변 최고가 ${won(context.referencePriceWonPerL.toDouble())}원/L 대비",
             style = type.labelSmall,

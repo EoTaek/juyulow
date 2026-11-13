@@ -121,21 +121,21 @@ class VehicleConditionsLayoutTest(private val widthDp: Int, private val dark: Bo
     }
 
     @Test
-    fun homeShowsEnergyAndAutomaticConditions() {
+    fun homeShowsEnergyAndStoredConditions() {
         render {
             HomeScreen(
                 HomeUiState(settings = RefuelSettings(), vehicleFields = fields),
                 {},
                 {})
         }
-        compose.onNodeWithText("차량 에너지원: 전기 · 휘발유 기준 비교").assertIsDisplayed()
+        compose.onNodeWithText("차량 에너지원: 전기").assertIsDisplayed()
         compose.onNodeWithTag("search-stations").assertIsEnabled()
         compose.onNodeWithTag("open-settings").assertIsDisplayed()
         verifyAndCapture("vehicle-home")
     }
 
     @Test
-    fun settingsShowsReadOnlyValuesAndScrollableVehicleDetails() {
+    fun settingsShowsEditableStoredValuesAndScrollableVehicleDetails() {
         render {
             SettingsScreen(
                 SettingsUiState(draft = RefuelSettings(), vehicleFields = fields),
@@ -144,9 +144,9 @@ class VehicleConditionsLayoutTest(private val widthDp: Int, private val dark: Bo
                 {},
                 {})
         }
-        compose.onNodeWithText("37.7 L").assertIsDisplayed()
+        compose.onNodeWithText("40 L").assertIsDisplayed()
         compose.onNodeWithContentDescription("예상 주유량 늘리기").assertIsEnabled()
-        compose.onNodeWithContentDescription("차량 연비 늘리기").assertDoesNotExist()
+        compose.onNodeWithContentDescription("평균연비 늘리기").assertIsEnabled()
         compose.onNodeWithText("차량 조회 정보").performScrollTo().assertIsDisplayed()
         verifyAndCapture("vehicle-settings")
         compose.onNodeWithText("적용하기").performScrollTo().assertIsDisplayed()
@@ -167,7 +167,7 @@ class VehicleConditionsLayoutTest(private val widthDp: Int, private val dark: Bo
             conditions
         )
         render { CompletionScreen(selection, {}, {}) }
-        compose.onNodeWithText("차량 에너지원: 전기 · 휘발유 기준 비교").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("차량 에너지원: 전기").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("홈으로").performScrollTo().assertIsDisplayed()
         verifyAndCapture("vehicle-completion")
     }

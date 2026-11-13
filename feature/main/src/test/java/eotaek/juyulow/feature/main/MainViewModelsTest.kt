@@ -207,7 +207,7 @@ class MainViewModelsTest {
     }
 
     @Test
-    fun lateVehicleReadsOnlyAffectNewHomeSearchesAndCompletionKeepsSnapshot() =
+    fun lateVehicleReadsPreserveSettingsAndCompletionKeepsSnapshot() =
         runTest(dispatcher) {
             val settings = Settings()
             val vehicle = InMemoryVehicleInfoRepository()
@@ -229,7 +229,7 @@ class MainViewModelsTest {
                 requireNotNull(sessions.get(requireNotNull(home.state.value.readySessionId)))
             assertEquals(40.0, first.context.conditions.liters, 0.0)
             assertTrue(first.context.conditions.energy.codes.isEmpty())
-            assertEquals(37.655, requireNotNull(home.state.value.conditions).liters, 0.0)
+            assertEquals(40.0, requireNotNull(home.state.value.conditions).liters, 0.0)
             val results = keep(ResultsViewModel(first.id, stations, sessions, journeys))
             settings.save(RefuelSettings(liters = 80))
             results.refresh()
@@ -248,13 +248,13 @@ class MainViewModelsTest {
             advanceUntilIdle()
             val second =
                 requireNotNull(sessions.get(requireNotNull(home.state.value.readySessionId)))
-            assertEquals(37.655, second.context.conditions.liters, 0.0)
-            assertEquals(100.0 / 8.5, second.context.conditions.efficiencyKmPerL, 0.0)
+            assertEquals(80.0, second.context.conditions.liters, 0.0)
+            assertEquals(12.0, second.context.conditions.efficiencyKmPerL, 0.0)
             assertEquals(listOf(10), second.context.conditions.energy.codes)
         }
 
     @Test
-    fun zeroAutomaticLitersStillAllowsSearching() = runTest(dispatcher) {
+    fun fullTankStillUsesStoredLiters() = runTest(dispatcher) {
         val vehicle = InMemoryVehicleInfoRepository()
         vehicle.complete(VehicleProperty.FUEL_CAPACITY, VehicleValue.Number(15_000.0), 1, null)
         vehicle.complete(VehicleProperty.FUEL_LEVEL, VehicleValue.Number(15_000.0), 1, null)
@@ -265,7 +265,7 @@ class MainViewModelsTest {
         home.search()
         advanceUntilIdle()
         val session = requireNotNull(sessions.get(requireNotNull(home.state.value.readySessionId)))
-        assertEquals(0.0, session.context.conditions.liters, 0.0)
+        assertEquals(40.0, session.context.conditions.liters, 0.0)
     }
 
     @Test

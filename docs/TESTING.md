@@ -1,5 +1,12 @@
 # 검증
 
+## 2026-11-13 DataStore 주유 조건 및 시간 비용 제거
+
+주유량·평균연비는 저장 설정을 사용하며 차량 기반 도출 함수는 별도로 보존한다. 저장소 재생성, 늦은 차량 응답, 초안 편집·취소·저장 실패와 시간 비용 없는 계산을 검증했다.
+앱 debug 빌드, 전체 단위 테스트 154개 (실패·오류·건너뜀 0), lintDebug, AndroidTest APK 빌드 및 git diff --check가 통과했다.
+Pleos 2.1.0 활성 사용자 10에 데이터 유지 재설치 후 VehicleConditionsLayoutTest 12개 (두 크기·두 테마), PrototypeFlowTest 3개가 통과했다.
+검색·내비는 Fake 저장소로 검증하며 실제 외부 API 호출 검증은 포함하지 않는다.
+
 ## 2026-11-13 홈 목적지 전환 토글 제거
 
 홈의 미사용 목적지 전환 토글과 화면·ViewModel 콜백을 제거했다. `PrototypeFlowTest`의 목적지 없는 상태는 UI 토글 대신 Mock 저장소에서 설정한다.

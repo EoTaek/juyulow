@@ -56,14 +56,7 @@ class SettingsViewModel(
         val current = state.value
         if (!current.saving && !current.saved && current.draft != null) mutableState.update {
             it.copy(
-                draft = update(current.draft).let { next ->
-                    // The SDK may finish while the popup is open. Keep the manual draft intact.
-                    val conditions = requireNotNull(current.conditions)
-                    next.copy(
-                        liters = if (conditions.automaticLiters) current.draft.liters else next.liters,
-                        efficiencyKmPerL = if (conditions.automaticEfficiency) current.draft.efficiencyKmPerL else next.efficiencyKmPerL,
-                    )
-                },
+                draft = update(current.draft),
                 error = null
             )
         }

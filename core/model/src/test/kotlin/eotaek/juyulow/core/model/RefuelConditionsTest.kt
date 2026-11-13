@@ -12,11 +12,28 @@ class RefuelConditionsTest {
         origin = VehicleValueOrigin.FETCH,
     )
 
+    @Test
+    fun persistedInputsWinOverVehicleReads() {
+        val settings = RefuelSettings(liters = 70, efficiencyKmPerL = 18)
+        val fields = mapOf(
+            VehicleProperty.FUEL_CAPACITY to fetched(50_000.0),
+            VehicleProperty.FUEL_LEVEL to fetched(12_345.0),
+            VehicleProperty.CUMULATIVE_ECONOMY to fetched(8.5),
+        )
+        for (values in listOf(emptyMap(), fields)) {
+            val result = resolveRefuelConditions(settings, values)
+            assertEquals(70.0, result.liters, 0.0)
+            assertEquals(18.0, result.efficiencyKmPerL, 0.0)
+            assertFalse(result.automaticLiters)
+            assertFalse(result.automaticEfficiency)
+        }
+    }
+
     private val manual = RefuelSettings()
 
     @Test
     fun fractionalAutomaticInputsAreUsedWithoutClampingOrRounding() {
-        val conditions = resolveRefuelConditions(
+        val conditions = resolveVehicleRefuelConditions(
             manual, mapOf(
                 VehicleProperty.FUEL_CAPACITY to fetched(150_000.5),
                 VehicleProperty.FUEL_LEVEL to fetched(12_345.25),
@@ -39,7 +56,7 @@ class RefuelConditionsTest {
 
     @Test
     fun fullTankIsZeroAndStillCalculatesDrivingCost() {
-        val conditions = resolveRefuelConditions(
+        val conditions = resolveVehicleRefuelConditions(
             manual, mapOf(
                 VehicleProperty.FUEL_CAPACITY to fetched(15_000.0),
                 VehicleProperty.FUEL_LEVEL to fetched(15_000.0),
@@ -64,30 +81,30 @@ class RefuelConditionsTest {
             VehicleProperty.FUEL_CAPACITY to fetched(52_500.0),
             VehicleProperty.FUEL_PERCENT to fetched(37.5),
         )
-        val percent = resolveRefuelConditions(manual, fields)
+        val percent = resolveVehicleRefuelConditions(manual, fields)
         assertEquals(32.8125, percent.liters, 0.0)
         assertEquals(RefuelValueSource.FUEL_PERCENT, percent.litersSource)
         assertEquals(
             percent,
-            resolveRefuelConditions(
+            resolveVehicleRefuelConditions(
                 manual,
                 fields + (VehicleProperty.FUEL_LEVEL to fetched(60_000.0))
             )
         )
         assertEquals(
             40.0,
-            resolveRefuelConditions(manual, fields - VehicleProperty.FUEL_CAPACITY).liters,
+            resolveVehicleRefuelConditions(manual, fields - VehicleProperty.FUEL_CAPACITY).liters,
             0.0
         )
         assertEquals(
             40.0,
-            resolveRefuelConditions(
+            resolveVehicleRefuelConditions(
                 manual,
                 fields + (VehicleProperty.FUEL_PERCENT to fetched(101.0))
             ).liters,
             0.0
         )
-        val level = resolveRefuelConditions(
+        val level = resolveVehicleRefuelConditions(
             manual,
             fields + (VehicleProperty.FUEL_LEVEL to fetched(20_000.0))
         )
@@ -101,7 +118,7 @@ class RefuelConditionsTest {
             status = VehicleFetchStatus.FAILED,
             origin = VehicleValueOrigin.DEFAULT
         )
-        val conditions = resolveRefuelConditions(
+        val conditions = resolveVehicleRefuelConditions(
             manual, mapOf(
                 VehicleProperty.CUMULATIVE_ECONOMY to default,
                 VehicleProperty.CURRENT_ECONOMY to fetched(7.7),
@@ -113,7 +130,7 @@ class RefuelConditionsTest {
         assertEquals(RefuelValueSource.CURRENT_ECONOMY, conditions.efficiencySource)
         assertFalse(conditions.automaticLiters)
         listOf(Double.NaN, Double.POSITIVE_INFINITY, 0.0, -1.0).forEach {
-            val invalid = resolveRefuelConditions(
+            val invalid = resolveVehicleRefuelConditions(
                 manual,
                 mapOf(VehicleProperty.CUMULATIVE_ECONOMY to fetched(it))
             )
@@ -124,7 +141,7 @@ class RefuelConditionsTest {
     @Test
     fun energyCodesAreCopiedWithoutInferringVehicleTypeOrChangingComparisonFuel() {
         val codes = mutableListOf(10, 1, 999, 10)
-        val conditions = resolveRefuelConditions(
+        val conditions = resolveVehicleRefuelConditions(
             manual, mapOf(
                 VehicleProperty.FUEL_TYPES to VehicleField(
                     status = VehicleFetchStatus.SUCCESS,

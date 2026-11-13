@@ -32,11 +32,8 @@ import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.component.PleosIconButton
 import eotaek.juyulow.core.design.component.PleosInlineError
 import eotaek.juyulow.core.design.component.PleosStepper
-import eotaek.juyulow.core.design.component.PleosSwitch
 import eotaek.juyulow.core.design.component.VehicleEnergySummary
-import eotaek.juyulow.core.design.component.displayLabel
 import eotaek.juyulow.core.design.component.vehicleFieldDisplay
-import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.design.theme.pleosShadow
 import eotaek.juyulow.core.model.ComparisonFuel
@@ -123,48 +120,12 @@ fun SettingsScreen(
                         }
                     }
                     SettingRow("예상 주유량", narrow) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                PleosIconButton(PleosIcon.Minus, "예상 주유량 줄이기", {
-                                    onChange(
-                                        draft.copy(
-                                            litersOverride = (conditions.liters - 10.0).coerceAtLeast(
-                                                0.0
-                                            )
-                                        )
-                                    )
-                                }, enabled = !state.saving && conditions.liters > 0)
-                                Text(
-                                    "${vehicleNumber(conditions.liters)} L",
-                                    Modifier.weight(1f),
-                                    style = type.bodyMediumStrong
-                                )
-                                PleosIconButton(PleosIcon.Plus, "예상 주유량 늘리기", {
-                                    onChange(
-                                        draft.copy(
-                                            litersOverride = (conditions.liters + 10.0).coerceAtMost(
-                                                100.0
-                                            )
-                                        )
-                                    )
-                                }, enabled = !state.saving && conditions.liters < 100.0)
-                            }
-                            Text(conditions.litersSource.displayLabel(), style = type.labelSmall)
-                        }
+                        PleosStepper("예상 주유량", draft.liters, "L", 10..100, 10,
+                            { onChange(draft.copy(liters = it)) }, enabled = !state.saving)
                     }
-                    SettingRow("차량 연비", narrow) {
-                        if (conditions.automaticEfficiency) Text(
-                            "${vehicleNumber(conditions.efficiencyKmPerL)} km/L (${conditions.efficiencySource.displayLabel()})",
-                            style = type.bodyMediumStrong,
-                        ) else PleosStepper(
-                            "차량 연비",
-                            draft.efficiencyKmPerL,
-                            "km/L",
-                            1..30,
-                            1,
-                            { onChange(draft.copy(efficiencyKmPerL = it)) },
-                            enabled = !state.saving
-                        )
+                    SettingRow("평균연비", narrow) {
+                        PleosStepper("평균연비", draft.efficiencyKmPerL, "km/L", 1..30, 1,
+                            { onChange(draft.copy(efficiencyKmPerL = it)) }, enabled = !state.saving)
                     }
                     SettingRow("주유 시간", narrow) {
                         PleosStepper(
@@ -177,21 +138,8 @@ fun SettingsScreen(
                             enabled = !state.saving
                         )
                     }
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        PleosSwitch(
-                            draft.includeTimeCost,
-                            "시간 비용 반영",
-                            { onChange(draft.copy(includeTimeCost = it)) },
-                            enabled = !state.saving
-                        )
-                        Text(
-                            "시간당 12,000원",
-                            style = type.labelSmall,
-                            color = colors.textDarkTertiary
-                        )
-                    }
                     Text(
-                        "모든 주유소에 같은 조건으로 적용해요.",
+                        "모든 주유소에 같은 조건으로 적용해요. 차량 조회값은 참고 정보이며 계산에는 저장한 주유량·평균연비를 사용해요.",
                         style = type.labelMedium,
                         color = colors.textDarkTertiary
                     )

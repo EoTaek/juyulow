@@ -119,20 +119,22 @@ class PrototypeFlowTest {
     }
 
     @Test
-    fun automaticVolumeCanBeEditedCancelledAndApplied() {
+    fun storedVolumeCanBeEditedCancelledAndApplied() {
+        val nextLiters = if (original.liters == 100) 90 else original.liters + 10
+        val volumeAction = if (original.liters == 100) "예상 주유량 줄이기" else "예상 주유량 늘리기"
         compose.onNodeWithTag("open-settings").performClick()
-        compose.onNodeWithContentDescription("예상 주유량 늘리기").performClick()
+        compose.onNodeWithContentDescription(volumeAction).performClick()
         compose.onNodeWithContentDescription("설정 닫기").performClick()
         assertEquals(original, runBlocking { settings.settings.first() })
         compose.onNodeWithTag("open-settings").performClick()
-        compose.onNodeWithContentDescription("예상 주유량 늘리기").performClick()
+        compose.onNodeWithContentDescription(volumeAction).performClick()
         compose.onNodeWithText("적용하기").performScrollTo().performClick()
         compose.waitUntil(10_000) {
             compose.onAllNodesWithText("적용하기").fetchSemanticsNodes().isEmpty()
         }
-        org.junit.Assert.assertNotNull(runBlocking { settings.settings.first() }.litersOverride)
+        assertEquals(nextLiters, runBlocking { settings.settings.first() }.liters)
         compose.onNodeWithTag("open-settings").performClick()
-        compose.onNodeWithText("수동").assertIsDisplayed()
+        compose.onNodeWithContentDescription("예상 주유량 $nextLiters L").assertExists()
         pressBack()
     }
 

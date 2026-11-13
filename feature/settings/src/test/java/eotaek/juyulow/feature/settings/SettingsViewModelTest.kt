@@ -66,7 +66,7 @@ class SettingsViewModelTest {
         val repository = Repository()
         val first = create(repository)
         runCurrent()
-        first.edit { it.copy(liters = 70, includeTimeCost = true) }
+        first.edit { it.copy(liters = 70) }
         assertEquals(RefuelSettings(), repository.settings.value)
         val second = create(repository)
         runCurrent()
@@ -79,7 +79,7 @@ class SettingsViewModelTest {
         val repository = Repository()
         val first = create(repository)
         runCurrent()
-        val changed = RefuelSettings(90, 21, 12, true)
+        val changed = RefuelSettings(90, 21, 12)
         first.edit { changed }
         first.apply(); first.apply()
         runCurrent()
@@ -112,21 +112,21 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun volumeOverrideBeatsLateFetchAndApplyRetainsIt() = runTest(dispatcher) {
+    fun storedVolumeBeatsLateFetchAndApplyPersistsIt() = runTest(dispatcher) {
         val repository = Repository()
         val vehicle = InMemoryVehicleInfoRepository()
         val viewModel = SettingsViewModel(repository, vehicle).also { store.put("settings", it) }
         runCurrent()
-        viewModel.edit { it.copy(litersOverride = 20.5) }
+        viewModel.edit { it.copy(liters = 20) }
         vehicle.complete(VehicleProperty.FUEL_CAPACITY, VehicleValue.Number(15_000.0), 1, null)
         vehicle.complete(VehicleProperty.FUEL_LEVEL, VehicleValue.Number(15_000.0), 1, null)
         runCurrent()
-        assertEquals(20.5, requireNotNull(viewModel.state.value.conditions).liters, 0.0)
+        assertEquals(20.0, requireNotNull(viewModel.state.value.conditions).liters, 0.0)
         assertFalse(requireNotNull(viewModel.state.value.conditions).automaticLiters)
-        assertNull(repository.settings.value.litersOverride)
+        assertEquals(40, repository.settings.value.liters)
         viewModel.apply()
         advanceUntilIdle()
-        assertEquals(20.5, requireNotNull(repository.settings.value.litersOverride), 0.0)
+        assertEquals(20.0, repository.settings.value.liters.toDouble(), 0.0)
     }
 
     @Test
@@ -140,20 +140,19 @@ class SettingsViewModelTest {
         vehicle.complete(VehicleProperty.FUEL_LEVEL, VehicleValue.Number(12_345.0), 1, null)
         vehicle.complete(VehicleProperty.CURRENT_ECONOMY, VehicleValue.Number(8.5), 1, null)
         runCurrent()
-        assertEquals(37.655, requireNotNull(viewModel.state.value.conditions).liters, 0.0)
-        assertTrue(requireNotNull(viewModel.state.value.conditions).automaticEfficiency)
+        assertEquals(70.0, requireNotNull(viewModel.state.value.conditions).liters, 0.0)
+        assertFalse(requireNotNull(viewModel.state.value.conditions).automaticEfficiency)
         viewModel.edit {
             it.copy(
                 liters = 20,
                 efficiencyKmPerL = 3,
                 refuelMinutes = 9,
-                includeTimeCost = true
             )
         }
-        assertEquals(70, viewModel.state.value.draft?.liters)
-        assertEquals(18, viewModel.state.value.draft?.efficiencyKmPerL)
+        assertEquals(20, viewModel.state.value.draft?.liters)
+        assertEquals(3, viewModel.state.value.draft?.efficiencyKmPerL)
         viewModel.apply()
         advanceUntilIdle()
-        assertEquals(RefuelSettings(70, 18, 9, true), repository.settings.value)
+        assertEquals(RefuelSettings(20, 3, 9), repository.settings.value)
     }
 }

@@ -12,7 +12,6 @@ data class RefuelConditions(
     val liters: Double,
     val efficiencyKmPerL: Double,
     val refuelMinutes: Int,
-    val includeTimeCost: Boolean,
     val litersSource: RefuelValueSource = RefuelValueSource.MANUAL,
     val efficiencySource: RefuelValueSource = RefuelValueSource.MANUAL,
     val energy: VehicleEnergy = VehicleEnergy(),
@@ -26,7 +25,6 @@ data class RefuelConditions(
     }
 
     val refuelSeconds: Int get() = refuelMinutes * 60
-    val timeWonPerHour: Int get() = if (includeTimeCost) 12_000 else 0
     val automaticLiters: Boolean get() = litersSource != RefuelValueSource.MANUAL
     val automaticEfficiency: Boolean get() = efficiencySource != RefuelValueSource.MANUAL
 }
@@ -40,7 +38,7 @@ data class VehicleEnergy(
 }
 
 /** Only actual successful reads can replace the user's manual calculation defaults. */
-fun resolveRefuelConditions(
+fun resolveVehicleRefuelConditions(
     manual: RefuelSettings,
     fields: Map<VehicleProperty, VehicleField> = emptyMap(),
 ): RefuelConditions {
@@ -65,13 +63,12 @@ fun resolveRefuelConditions(
     return RefuelConditions(
         comparisonFuel = manual.comparisonFuel,
         searchRadiusKm = manual.searchRadiusKm,
-        liters = manual.litersOverride ?: liters ?: manual.liters.toDouble(),
+        liters = liters ?: manual.liters.toDouble(),
         efficiencyKmPerL = (cumulative ?: current)?.let { 100.0 / it }
             ?: manual.efficiencyKmPerL.toDouble(),
         refuelMinutes = manual.refuelMinutes,
-        includeTimeCost = manual.includeTimeCost,
         litersSource = when {
-            manual.litersOverride != null || liters == null -> RefuelValueSource.MANUAL
+            liters == null -> RefuelValueSource.MANUAL
             level != null -> RefuelValueSource.TANK_LEVEL
             else -> RefuelValueSource.FUEL_PERCENT
         },
@@ -87,3 +84,11 @@ fun resolveRefuelConditions(
         ),
     )
 }
+
+/** Persisted settings supply active calculation inputs; vehicle values remain diagnostic. */
+fun resolveRefuelConditions(manual: RefuelSettings, fields: Map<VehicleProperty, VehicleField> = emptyMap()): RefuelConditions =
+    RefuelConditions(
+        liters = manual.liters.toDouble(), efficiencyKmPerL = manual.efficiencyKmPerL.toDouble(),
+        refuelMinutes = manual.refuelMinutes, comparisonFuel = manual.comparisonFuel,
+        searchRadiusKm = manual.searchRadiusKm, energy = resolveVehicleRefuelConditions(manual, fields).energy,
+    )
