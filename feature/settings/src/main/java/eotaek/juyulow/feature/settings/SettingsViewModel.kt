@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val draft: RefuelSettings? = null,
     val saving: Boolean = false,
+    val dismissRequested: Boolean = false,
     val error: String? = null,
     val vehicleFields: Map<VehicleProperty, VehicleField> = emptyMap(),
 ) {
@@ -30,6 +31,7 @@ class SettingsViewModel(
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(SettingsUiState())
     val state = mutableState.asStateFlow()
+    private val pendingSaves = ArrayDeque<RefuelSettings>()
 
     init {
         viewModelScope.launch {
@@ -54,32 +56,45 @@ class SettingsViewModel(
     fun edit(update: (RefuelSettings) -> RefuelSettings) {
         val current = state.value
         val settings = current.draft ?: return
-        if (current.saving) return
         val next = update(settings)
         if (next == settings && current.error == null) return
         mutableState.update { it.copy(draft = next) }
-        retrySave()
+        enqueueSave(next)
     }
 
     fun retrySave() {
         val snapshot = state.value
         val draft = snapshot.draft ?: return
         if (snapshot.saving) return
+        enqueueSave(draft)
+    }
+
+    fun canDismiss(): Boolean {
+        if (!state.value.saving) return true
+        mutableState.update { it.copy(dismissRequested = true) }
+        return false
+    }
+
+    private fun enqueueSave(settings: RefuelSettings) {
+        pendingSaves.addLast(settings)
+        if (state.value.saving) return
         mutableState.update { it.copy(saving = true, error = null) }
         viewModelScope.launch {
-            try {
-                repository.save(draft)
-                mutableState.update { it.copy(saving = false) }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (_: Exception) {
-                mutableState.update {
-                    it.copy(
-                        saving = false,
-                        error = "조건을 저장하지 못했어요. 다시 저장해 주세요."
-                    )
+            // One consumer preserves edit order without cancelling an in-flight DataStore write.
+            while (pendingSaves.isNotEmpty()) {
+                val next = pendingSaves.removeFirst()
+                try {
+                    repository.save(next)
+                    mutableState.update { it.copy(error = null) }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    mutableState.update {
+                        it.copy(error = "조건을 저장하지 못했어요. 다시 저장해 주세요.")
+                    }
                 }
             }
+            mutableState.update { it.copy(saving = false) }
         }
     }
 }

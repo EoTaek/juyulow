@@ -21,6 +21,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -149,6 +151,21 @@ class VehicleConditionsLayoutTest(private val widthDp: Int, private val dark: Bo
         compose.onNodeWithText("차량 조회 정보").performScrollTo().assertIsDisplayed()
         verifyAndCapture("vehicle-settings")
         compose.onNodeWithText("적용하기").assertDoesNotExist()
+    }
+
+    @Test
+    fun settingsRemainsInteractiveWithoutProgressWhileSaving() {
+        render {
+            SettingsScreen(
+                SettingsUiState(draft = RefuelSettings(), saving = true, vehicleFields = fields),
+                {}, {}, {})
+        }
+        compose.onNodeWithContentDescription("설정 닫기").assertIsEnabled()
+        compose.onNodeWithContentDescription("검색 반경 늘리기").assertIsEnabled()
+        compose.onNodeWithContentDescription("예상 주유량 늘리기").assertIsEnabled()
+        compose.onNodeWithContentDescription("평균연비 늘리기").assertIsEnabled()
+        compose.onNodeWithContentDescription("주유 시간 늘리기").assertIsEnabled()
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).assertDoesNotExist()
     }
 
     @Test

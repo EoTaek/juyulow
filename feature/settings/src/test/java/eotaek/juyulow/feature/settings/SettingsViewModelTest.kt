@@ -34,12 +34,19 @@ class SettingsViewModelTest {
     private class Repository : SettingsRepository {
         override val settings = MutableStateFlow(RefuelSettings())
         var fail = false
+        var failNext = false
         var writes = 0
+        val saved = mutableListOf<RefuelSettings>()
         override suspend fun save(settings: RefuelSettings) {
             writes++
             delay(100.milliseconds)
+            if (failNext) {
+                failNext = false
+                throw IOException("disk full")
+            }
             if (fail) throw IOException("disk full")
             this.settings.value = settings
+            saved += settings
         }
     }
 
@@ -80,20 +87,55 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun pendingSaveIsGuardedAndEditingContinuesAfterSuccess() = runTest(dispatcher) {
+    fun pendingChangesAreDisplayedImmediatelyAndSavedInOrder() = runTest(dispatcher) {
         val repository = Repository()
         val viewModel = create(repository)
         runCurrent()
         viewModel.edit { it.copy(liters = 70) }
+        runCurrent() // The first write is suspended while more edits arrive.
         viewModel.edit { it.copy(refuelMinutes = 9) }
+        viewModel.edit { it.copy(efficiencyKmPerL = 18) }
         viewModel.retrySave()
+        val latest = RefuelSettings(liters = 70, refuelMinutes = 9, efficiencyKmPerL = 18)
+        assertEquals(latest, viewModel.state.value.draft)
+        assertTrue(viewModel.state.value.saving)
         advanceUntilIdle()
-        assertEquals(1, repository.writes)
-        assertEquals(70, repository.settings.value.liters)
+        assertEquals(listOf(
+            RefuelSettings(liters = 70),
+            RefuelSettings(liters = 70, refuelMinutes = 9),
+            latest,
+        ), repository.saved)
+        assertEquals(latest, repository.settings.value)
+        assertFalse(viewModel.state.value.saving)
+    }
+
+    @Test
+    fun dismissalWaitsForTheEntireQueue() = runTest(dispatcher) {
+        val repository = Repository()
+        val viewModel = create(repository)
+        runCurrent()
+        viewModel.edit { it.copy(liters = 70) }
+        viewModel.edit { it.copy(liters = 80) }
+        assertFalse(viewModel.canDismiss())
+        assertTrue(viewModel.state.value.dismissRequested)
+        advanceUntilIdle()
+        assertEquals(80, repository.settings.value.liters)
+        assertTrue(viewModel.canDismiss())
+    }
+
+    @Test
+    fun failedWriteDoesNotStopLaterQueuedChanges() = runTest(dispatcher) {
+        val repository = Repository().apply { failNext = true }
+        val viewModel = create(repository)
+        runCurrent()
+        viewModel.edit { it.copy(liters = 70) }
+        viewModel.edit { it.copy(liters = 80) }
         viewModel.edit { it.copy(refuelMinutes = 9) }
         advanceUntilIdle()
-        assertEquals(2, repository.writes)
-        assertEquals(RefuelSettings(liters = 70, refuelMinutes = 9), repository.settings.value)
+        assertEquals(RefuelSettings(liters = 80, refuelMinutes = 9), repository.settings.value)
+        assertNull(viewModel.state.value.error)
+        assertFalse(viewModel.state.value.saving)
+        assertEquals(3, repository.writes)
     }
 
     @Test

@@ -1,5 +1,12 @@
 # 검증
 
+## 2026-11-14 설정 저장 큐 및 로딩 표시 제거
+
+저장 중에도 설정 입력과 닫기 버튼을 활성 상태로 유지하고 저장 인디케이터를 표시하지 않는다. 단위 테스트는 쓰기 중 추가 변경의 즉시 화면 반영·FIFO 저장 순서·중간 실패 이후 큐 처리·전체 큐 처리 후 닫기를 검증한다.
+앱 debug 빌드, 전체 단위 테스트 157개 (실패·오류 0), lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다.
+Pleos 2.1.0 활성 사용자 10에 데이터를 유지해 재설치하고 VehicleConditionsLayoutTest 16개와 PrototypeFlowTest 3개가 통과했다.
+두 창 크기·두 테마에서 saving 상태에도 컨트롤 활성·로딩 표시 부재를 확인했다. 기존 저장·재열기 흐름도 통과했으며 검색·내비는 Fake 저장소를 사용한다.
+
 ## 2026-11-13 설정 변경 즉시 저장
 
 설정의 적용 버튼을 제거하고 항목 변경 즉시 DataStore에 저장한다. 단위 테스트는 즉시 저장·재열기·저장 중 중복 요청 방지·연속 편집·실패 후 재시도·동일 값 선택 시 쓰기 생략을 검증한다.
@@ -108,7 +115,7 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
 ```
 
 - `assembleDebug`: 앱과 연결된 모든 Android/Kotlin 모듈의 빌드·패키징을 확인한다.
-- `testDebugUnitTest`: app의 백스택 동작, feature:main의 검색·선택·정렬·스냅샷·경로 설정, feature:settings의 초안·적용·저장 실패
+- `testDebugUnitTest`: app의 백스택 동작, feature:main의 검색·선택·정렬·스냅샷·경로 설정, feature:settings의 즉시 저장·FIFO 큐·저장 실패
   후 재시도를 검증한다.
 - `:core:model:test`, `:core:data:test`: 세 이동 방식의 거리·시간·비용·경계값, mock 데이터 생성·목적지 반영, 실제 Preferences
   DataStore 파일의 저장·재로딩을 검증한다.

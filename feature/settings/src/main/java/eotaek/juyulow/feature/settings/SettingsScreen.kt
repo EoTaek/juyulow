@@ -20,6 +20,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,13 +48,16 @@ fun SettingsRoute(
 ) {
     DisposableEffect(viewModel, onDismissGuardChanged) {
         // Read the current state at dismissal time, including before the next recomposition.
-        onDismissGuardChanged { !viewModel.state.value.saving }
+        onDismissGuardChanged(viewModel::canDismiss)
         onDispose { onDismissGuardChanged(null) }
     }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(state.dismissRequested, state.saving) {
+        if (state.dismissRequested && !state.saving) onDismiss()
+    }
     SettingsScreen(
         state,
-        { next -> viewModel.edit { next } },
+        viewModel::edit,
         onDismiss,
         { if (state.draft == null) viewModel.load() else viewModel.retrySave() }
     )
@@ -61,7 +65,7 @@ fun SettingsRoute(
 
 @Composable
 fun SettingsScreen(
-    state: SettingsUiState, onChange: (RefuelSettings) -> Unit,
+    state: SettingsUiState, onChange: ((RefuelSettings) -> RefuelSettings) -> Unit,
     onDismiss: () -> Unit, onRetry: () -> Unit, modifier: Modifier = Modifier,
 ) {
     val colors = JUYULOWTheme.colors
@@ -89,7 +93,7 @@ fun SettingsScreen(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("주유 조건", style = type.titleMediumBold, modifier = Modifier.weight(1f))
-                    PleosIconButton(PleosIcon.Close, "설정 닫기", onDismiss, enabled = !state.saving)
+                    PleosIconButton(PleosIcon.Close, "설정 닫기", onDismiss)
                 }
                 val draft = state.draft
                 if (draft == null) {
@@ -102,7 +106,7 @@ fun SettingsScreen(
                     SettingRow("검색 반경", narrow) {
                         PleosStepper(
                             "검색 반경", draft.searchRadiusKm, "km", 1..5, 1,
-                            { onChange(draft.copy(searchRadiusKm = it)) }, enabled = !state.saving
+                            { value -> onChange { it.copy(searchRadiusKm = value) } }
                         )
                     }
                     SettingRow("검색 유종", narrow) {
@@ -110,19 +114,19 @@ fun SettingsScreen(
                             ComparisonFuel.entries.forEach { fuel ->
                                 PleosButton(
                                     (if (draft.comparisonFuel == fuel) "✓ " else "") + fuel.label,
-                                    { onChange(draft.copy(comparisonFuel = fuel)) },
-                                    Modifier.fillMaxWidth(), enabled = !state.saving
+                                    { onChange { it.copy(comparisonFuel = fuel) } },
+                                    Modifier.fillMaxWidth()
                                 )
                             }
                         }
                     }
                     SettingRow("예상 주유량", narrow) {
                         PleosStepper("예상 주유량", draft.liters, "L", 10..100, 10,
-                            { onChange(draft.copy(liters = it)) }, enabled = !state.saving)
+                            { value -> onChange { it.copy(liters = value) } })
                     }
                     SettingRow("평균연비", narrow) {
                         PleosStepper("평균연비", draft.efficiencyKmPerL, "km/L", 1..30, 1,
-                            { onChange(draft.copy(efficiencyKmPerL = it)) }, enabled = !state.saving)
+                            { value -> onChange { it.copy(efficiencyKmPerL = value) } })
                     }
                     SettingRow("주유 시간", narrow) {
                         PleosStepper(
@@ -131,8 +135,7 @@ fun SettingsScreen(
                             "분",
                             1..20,
                             1,
-                            { onChange(draft.copy(refuelMinutes = it)) },
-                            enabled = !state.saving
+                            { value -> onChange { it.copy(refuelMinutes = value) } }
                         )
                     }
                     Text(
@@ -165,8 +168,7 @@ fun SettingsScreen(
                 state.error?.let {
                     PleosInlineError(it)
                 }
-                if (state.saving) CircularProgressIndicator()
-                if (draft != null && state.error != null) {
+                if (draft != null && state.error != null && !state.saving) {
                     PleosButton("다시 저장", onRetry, Modifier.fillMaxWidth())
                 }
             }
