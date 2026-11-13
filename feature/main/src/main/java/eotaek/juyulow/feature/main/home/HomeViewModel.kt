@@ -82,10 +82,6 @@ class HomeViewModel(
         }
     }
 
-    fun setHasDestination(value: Boolean) {
-        if (!state.value.searching) journeys.setHasDestination(value)
-    }
-
     fun search() {
         val snapshot = state.value
         val conditions = snapshot.conditions ?: return

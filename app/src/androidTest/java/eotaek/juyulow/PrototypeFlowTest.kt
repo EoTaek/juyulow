@@ -108,7 +108,10 @@ class PrototypeFlowTest {
         compose.onNodeWithTag("add-waypoint").performClick()
         compose.onNodeWithText("경유지를 추가했어요.").assertIsDisplayed()
         compose.onNodeWithText("홈으로").performClick()
-        compose.onNodeWithText("유효 목적지 있음").performClick()
+        compose.runOnIdle {
+            GlobalContext.get().get<JourneyRepository>().setHasDestination(false)
+        }
+        compose.onNodeWithText("목적지 없음").assertIsDisplayed()
         search()
         compose.onNodeWithTag("add-waypoint").assertDoesNotExist()
         compose.onNodeWithTag("confirm-route").assertIsDisplayed()

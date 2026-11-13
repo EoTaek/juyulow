@@ -1,5 +1,11 @@
 # 검증
 
+## 2026-11-13 홈 목적지 전환 토글 제거
+
+홈의 미사용 목적지 전환 토글과 화면·ViewModel 콜백을 제거했다. `PrototypeFlowTest`의 목적지 없는 상태는 UI 토글 대신 Mock 저장소에서 설정한다.
+앱 debug 빌드, 전체 단위 테스트 153개 (실패·오류·건너뜀 0개), `lintDebug`, AndroidTest APK 빌드와 `git diff --check`가 통과했다.
+수정한 연결 테스트는 컴파일만 확인했으며 에뮬레이터에서 실행하지 않았다.
+
 ## 2026-11-12 PR #14 확인 팝업 자동 종료 후 검색 재개
 
 `MainViewModelsTest.targetChangeDismissesReplacementAndResumesSearchOnlyWhenDialogWasOpen`은 목적지 대체 확인 중 위치 변화에는

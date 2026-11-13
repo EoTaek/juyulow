@@ -126,7 +126,6 @@ class VehicleConditionsLayoutTest(private val widthDp: Int, private val dark: Bo
             HomeScreen(
                 HomeUiState(settings = RefuelSettings(), vehicleFields = fields),
                 {},
-                {},
                 {})
         }
         compose.onNodeWithText("차량 에너지원: 전기 · 휘발유 기준 비교").assertIsDisplayed()

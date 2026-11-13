@@ -28,7 +28,6 @@ import eotaek.juyulow.core.design.component.PleosButton
 import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.component.PleosInlineError
 import eotaek.juyulow.core.design.component.PleosOutlinedCard
-import eotaek.juyulow.core.design.component.PleosSwitch
 import eotaek.juyulow.core.design.component.VehicleEnergySummary
 import eotaek.juyulow.core.design.component.displayLabel
 import eotaek.juyulow.core.design.component.vehicleNumber
@@ -42,7 +41,6 @@ fun HomeScreen(
     state: HomeUiState,
     onSearch: () -> Unit,
     onSettings: () -> Unit,
-    onDestinationChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = JUYULOWTheme.colors
@@ -145,33 +143,17 @@ fun HomeScreen(
                 }
                 HorizontalDivider(color = colors.basic200)
                 Spacer(Modifier.height(24.dp))
-                val destination: @Composable () -> Unit = {
-                    if (!state.journey.destinationOnly) PleosSwitch(
-                        state.journey.hasDestination,
-                        "유효 목적지 ${if (state.journey.hasDestination) "있음" else "없음"}",
-                        onDestinationChange,
-                        enabled = !state.searching
-                    )
-                }
-                val settings: @Composable () -> Unit = {
-                    val value = state.conditions
-                    PleosButton(
-                        if (value == null) "주유 조건을 불러오는 중" else
-                            "${vehicleNumber(value.liters)} L (${value.litersSource.displayLabel()}) · " +
-                                    "연비 ${vehicleNumber(value.efficiencyKmPerL)} km/L (${value.efficiencySource.displayLabel()}) · 주유 ${value.refuelMinutes}분",
-                        onSettings,
-                        Modifier.testTag("open-settings"),
-                        trailingIcon = PleosIcon.Settings,
-                        outlined = true,
-                        enabled = value != null && !state.searching,
-                    )
-                }
-                if (narrow) Column(verticalArrangement = Arrangement.spacedBy(16.dp)) { destination(); settings() }
-                else Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) { destination(); settings() }
+                val value = state.conditions
+                PleosButton(
+                    if (value == null) "주유 조건을 불러오는 중" else
+                        "${vehicleNumber(value.liters)} L (${value.litersSource.displayLabel()}) · " +
+                                "연비 ${vehicleNumber(value.efficiencyKmPerL)} km/L (${value.efficiencySource.displayLabel()}) · 주유 ${value.refuelMinutes}분",
+                    onSettings,
+                    Modifier.testTag("open-settings"),
+                    trailingIcon = PleosIcon.Settings,
+                    outlined = true,
+                    enabled = value != null && !state.searching,
+                )
             }
         }
     }
@@ -181,7 +163,7 @@ fun HomeScreen(
 @Preview(name = "Home · Portrait", widthDp = 840, heightDp = 1184)
 @Composable
 private fun HomePreview() {
-    JUYULOWTheme { HomeScreen(HomeUiState(settings = RefuelSettings()), {}, {}, {}) }
+    JUYULOWTheme { HomeScreen(HomeUiState(settings = RefuelSettings()), {}, {}) }
 }
 
 @Preview(name = "Home · Dark Landscape", widthDp = 1700, heightDp = 1184)
@@ -191,7 +173,6 @@ private fun HomeDarkPreview() {
     JUYULOWTheme(darkTheme = true) {
         HomeScreen(
             HomeUiState(settings = RefuelSettings()),
-            {},
             {},
             {})
     }
