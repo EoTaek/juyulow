@@ -32,7 +32,6 @@ import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.component.PleosIconButton
 import eotaek.juyulow.core.design.component.PleosInlineError
 import eotaek.juyulow.core.design.component.PleosStepper
-import eotaek.juyulow.core.design.component.VehicleEnergySummary
 import eotaek.juyulow.core.design.component.vehicleFieldDisplay
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.design.theme.pleosShadow
@@ -102,7 +101,6 @@ fun SettingsScreen(
                         onRetry
                     )
                 } else {
-                    val conditions = requireNotNull(state.conditions)
                     SettingRow("검색 반경", narrow) {
                         PleosStepper(
                             "검색 반경", draft.searchRadiusKm, "km", 1..5, 1,
@@ -145,7 +143,6 @@ fun SettingsScreen(
                         style = type.labelMedium,
                         color = colors.textDarkTertiary
                     )
-                    VehicleEnergySummary(conditions.energy)
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("차량 조회 정보", style = type.bodyMediumStrong)
                         listOf(

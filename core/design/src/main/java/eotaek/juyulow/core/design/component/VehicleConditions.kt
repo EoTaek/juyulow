@@ -77,7 +77,7 @@ fun RefuelConditionsSummary(conditions: RefuelConditions, modifier: Modifier = M
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         VehicleEnergySummary(conditions.energy)
         Text(
-            "검색 반경: ${conditions.searchRadiusKm} km · 검색 유종: ${conditions.comparisonFuel.label}",
+            "검색 반경: ${conditions.searchRadiusKm} km",
             style = JUYULOWTheme.typography.labelSmall
         )
         Text(

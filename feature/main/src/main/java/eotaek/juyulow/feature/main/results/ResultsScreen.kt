@@ -40,7 +40,6 @@ import eotaek.juyulow.core.design.component.PleosIconButton
 import eotaek.juyulow.core.design.component.PleosInlineError
 import eotaek.juyulow.core.design.component.PleosTab
 import eotaek.juyulow.core.design.component.PleosTabs
-import eotaek.juyulow.core.design.component.VehicleEnergySummary
 import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.ComparisonContext
@@ -101,10 +100,6 @@ fun ResultsScreen(
                                 } km / ${vehicleNumber(batch.context.conditions.liters)} L 주유 기준"
                                 else "${route.destination ?: "현재 위치"} / ${vehicleNumber(batch.context.conditions.liters)} L 주유 기준",
                                 style = type.labelMedium, color = colors.textDarkSecondary,
-                            )
-                            VehicleEnergySummary(
-                                batch.context.conditions.energy,
-                                showElectricNotice = false
                             )
                         }
                     }
@@ -228,18 +223,18 @@ fun ResultsScreen(
                                             )
                                         )
                                     ) {
-                                    StationRow(
-                                        row,
-                                        state.mode,
-                                        row.station.id == state.selectedId,
-                                        !state.busy,
-                                        narrow,
-                                        Modifier
-                                            .focusRequester(requester)
-                                            .onFocusChanged {
-                                                if (it.isFocused) focusedId = row.station.id
-                                            }
-                                    ) { onSelect(row.station.id) }
+                                        StationRow(
+                                            row,
+                                            state.mode,
+                                            row.station.id == state.selectedId,
+                                            !state.busy,
+                                            narrow,
+                                            Modifier
+                                                .focusRequester(requester)
+                                                .onFocusChanged {
+                                                    if (it.isFocused) focusedId = row.station.id
+                                                }
+                                        ) { onSelect(row.station.id) }
                                     }
                                 }
                                 items(
@@ -333,8 +328,6 @@ internal fun modeIcon(mode: JourneyMode): PleosIcon = when (mode) {
     JourneyMode.DESTINATION -> PleosIcon.Flag
     JourneyMode.ROUND_TRIP -> PleosIcon.Refresh
 }
-
-
 
 
 internal fun previewSession(): ComparisonSession = ComparisonSession(

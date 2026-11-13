@@ -1,5 +1,10 @@
 # 검증
 
+## 2026-11-14 홈·설정 차량 에너지원 안내 제거
+
+홈·설정에서 차량 에너지원과 전기차 안내 문구를 제거했다. 앱 debug 빌드, 전체 단위 테스트, lintDebug와 AndroidTest APK 빌드가 통과했다.
+Pleos 2.1.0 활성 사용자 10에 데이터를 유지해 재설치하고 VehicleConditionsLayoutTest 16개가 통과했다. 두 창 크기·두 테마에서 홈·설정의 안내 문구 부재와 기존 화면 배치를 확인했다. git diff --check도 통과했다.
+
 ## 2026-11-14 단일 feature 모듈 통합
 
 설정 화면·ViewModel·단위 테스트를 `feature:main`의 `feature.main.settings` 패키지로 이동했다. 설정 테스트는

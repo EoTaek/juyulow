@@ -123,14 +123,15 @@ class VehicleConditionsLayoutTest(private val widthDp: Int, private val dark: Bo
     }
 
     @Test
-    fun homeShowsEnergyAndStoredConditions() {
+    fun homeShowsStoredConditionsWithoutEnergyNotices() {
         render {
             HomeScreen(
                 HomeUiState(settings = RefuelSettings(), vehicleFields = fields),
                 {},
                 {})
         }
-        compose.onNodeWithText("차량 에너지원: 전기").assertIsDisplayed()
+        compose.onNodeWithText("차량 에너지원:", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("전기차", substring = true).assertDoesNotExist()
         compose.onNodeWithTag("search-stations").assertIsEnabled()
         compose.onNodeWithTag("open-settings").assertIsDisplayed()
         verifyAndCapture("vehicle-home")
@@ -146,6 +147,8 @@ class VehicleConditionsLayoutTest(private val widthDp: Int, private val dark: Bo
                 {})
         }
         compose.onNodeWithText("40 L").assertIsDisplayed()
+        compose.onNodeWithText("차량 에너지원:", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("전기차", substring = true).assertDoesNotExist()
         compose.onNodeWithContentDescription("예상 주유량 늘리기").assertIsEnabled()
         compose.onNodeWithContentDescription("평균연비 늘리기").assertIsEnabled()
         compose.onNodeWithText("차량 조회 정보").performScrollTo().assertIsDisplayed()

@@ -28,7 +28,6 @@ import eotaek.juyulow.core.design.component.PleosButton
 import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.component.PleosInlineError
 import eotaek.juyulow.core.design.component.PleosOutlinedCard
-import eotaek.juyulow.core.design.component.VehicleEnergySummary
 import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.RefuelSettings
@@ -117,7 +116,6 @@ fun HomeScreen(
                             enabled = state.settings != null && state.navigationReady,
                         )
                         state.conditions?.let { conditions ->
-                            VehicleEnergySummary(conditions.energy)
                             Text(
                                 "반경 ${conditions.searchRadiusKm} km · 검색 유종: ${conditions.comparisonFuel.label}",
                                 style = type.labelSmall
