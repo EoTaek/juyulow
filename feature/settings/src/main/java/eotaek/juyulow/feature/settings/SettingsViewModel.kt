@@ -18,7 +18,6 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val draft: RefuelSettings? = null,
     val saving: Boolean = false,
-    val saved: Boolean = false,
     val error: String? = null,
     val vehicleFields: Map<VehicleProperty, VehicleField> = emptyMap(),
 ) {
@@ -43,7 +42,7 @@ class SettingsViewModel(
         viewModelScope.launch {
             try {
                 val settings = repository.settings.first()
-                mutableState.update { it.copy(draft = settings, error = null, saved = false) }
+                mutableState.update { it.copy(draft = settings, error = null) }
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Exception) {
@@ -54,30 +53,30 @@ class SettingsViewModel(
 
     fun edit(update: (RefuelSettings) -> RefuelSettings) {
         val current = state.value
-        if (!current.saving && !current.saved && current.draft != null) mutableState.update {
-            it.copy(
-                draft = update(current.draft),
-                error = null
-            )
-        }
+        val settings = current.draft ?: return
+        if (current.saving) return
+        val next = update(settings)
+        if (next == settings && current.error == null) return
+        mutableState.update { it.copy(draft = next) }
+        retrySave()
     }
 
-    fun apply() {
+    fun retrySave() {
         val snapshot = state.value
         val draft = snapshot.draft ?: return
-        if (snapshot.saving || snapshot.saved) return
+        if (snapshot.saving) return
         mutableState.update { it.copy(saving = true, error = null) }
         viewModelScope.launch {
             try {
                 repository.save(draft)
-                mutableState.update { it.copy(saving = false, saved = true) }
+                mutableState.update { it.copy(saving = false) }
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Exception) {
                 mutableState.update {
                     it.copy(
                         saving = false,
-                        error = "조건을 저장하지 못했어요. 다시 적용해 주세요."
+                        error = "조건을 저장하지 못했어요. 다시 저장해 주세요."
                     )
                 }
             }

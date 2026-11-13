@@ -5,12 +5,10 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -119,19 +117,14 @@ class PrototypeFlowTest {
     }
 
     @Test
-    fun storedVolumeCanBeEditedCancelledAndApplied() {
+    fun storedVolumeSavesImmediatelyAndSurvivesClosing() {
         val nextLiters = if (original.liters == 100) 90 else original.liters + 10
         val volumeAction = if (original.liters == 100) "예상 주유량 줄이기" else "예상 주유량 늘리기"
         compose.onNodeWithTag("open-settings").performClick()
         compose.onNodeWithContentDescription(volumeAction).performClick()
-        compose.onNodeWithContentDescription("설정 닫기").performClick()
-        assertEquals(original, runBlocking { settings.settings.first() })
-        compose.onNodeWithTag("open-settings").performClick()
-        compose.onNodeWithContentDescription(volumeAction).performClick()
-        compose.onNodeWithText("적용하기").performScrollTo().performClick()
-        compose.waitUntil(10_000) {
-            compose.onAllNodesWithText("적용하기").fetchSemanticsNodes().isEmpty()
-        }
+        compose.waitUntil(10_000) { runBlocking { settings.settings.first() }.liters == nextLiters }
+        compose.onNodeWithText("적용하기").assertDoesNotExist()
+        compose.onNodeWithContentDescription("설정 닫기").assertIsDisplayed().performClick()
         assertEquals(nextLiters, runBlocking { settings.settings.first() }.liters)
         compose.onNodeWithTag("open-settings").performClick()
         compose.onNodeWithContentDescription("예상 주유량 $nextLiters L").assertExists()
@@ -139,20 +132,14 @@ class PrototypeFlowTest {
     }
 
     @Test
-    fun settingsCancelApplyAndReopen() {
+    fun settingsSaveImmediatelyAndSurviveBackAndReopen() {
         val changedMinutes = if (original.refuelMinutes == 20) 19 else original.refuelMinutes + 1
         val stepLabel = if (original.refuelMinutes == 20) "주유 시간 줄이기" else "주유 시간 늘리기"
         compose.onNodeWithTag("open-settings").performClick()
         compose.onNodeWithContentDescription(stepLabel).performClick()
-        compose.onNodeWithContentDescription("설정 닫기").performClick()
-        assertEquals(original, runBlocking { settings.settings.first() })
-        compose.onNodeWithTag("open-settings").performClick()
-        compose.onNodeWithContentDescription("주유 시간 ${original.refuelMinutes} 분").assertExists()
-        compose.onNodeWithContentDescription(stepLabel).performClick()
-        compose.onNodeWithText("적용하기").performScrollTo().performClick()
-        compose.waitUntil(10_000) {
-            compose.onAllNodesWithText("적용하기").fetchSemanticsNodes().isEmpty()
-        }
+        compose.waitUntil(10_000) { runBlocking { settings.settings.first() }.refuelMinutes == changedMinutes }
+        compose.onNodeWithContentDescription("설정 닫기").assertIsDisplayed()
+        pressBack()
         assertEquals(changedMinutes, runBlocking { settings.settings.first() }.refuelMinutes)
         compose.onNodeWithTag("open-settings").performClick()
         compose.onNodeWithContentDescription("주유 시간 $changedMinutes 분").assertExists()

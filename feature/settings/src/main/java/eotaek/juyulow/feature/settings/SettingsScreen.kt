@@ -20,7 +20,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,19 +51,17 @@ fun SettingsRoute(
         onDispose { onDismissGuardChanged(null) }
     }
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(state.saved) { if (state.saved) onDismiss() }
     SettingsScreen(
         state,
         { next -> viewModel.edit { next } },
-        viewModel::apply,
         onDismiss,
-        viewModel::load
+        { if (state.draft == null) viewModel.load() else viewModel.retrySave() }
     )
 }
 
 @Composable
 fun SettingsScreen(
-    state: SettingsUiState, onChange: (RefuelSettings) -> Unit, onApply: () -> Unit,
+    state: SettingsUiState, onChange: (RefuelSettings) -> Unit,
     onDismiss: () -> Unit, onRetry: () -> Unit, modifier: Modifier = Modifier,
 ) {
     val colors = JUYULOWTheme.colors
@@ -168,14 +165,10 @@ fun SettingsScreen(
                 state.error?.let {
                     PleosInlineError(it)
                 }
-                PleosButton(
-                    "적용하기",
-                    onApply,
-                    Modifier.fillMaxWidth(),
-                    trailingIcon = PleosIcon.Check,
-                    enabled = draft != null,
-                    loading = state.saving
-                )
+                if (state.saving) CircularProgressIndicator()
+                if (draft != null && state.error != null) {
+                    PleosButton("다시 저장", onRetry, Modifier.fillMaxWidth())
+                }
             }
         }
     }
@@ -206,7 +199,7 @@ private fun SettingsPreview() {
         Box(
             Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
-        ) { SettingsScreen(SettingsUiState(RefuelSettings()), {}, {}, {}, {}) }
+        ) { SettingsScreen(SettingsUiState(RefuelSettings()), {}, {}, {}) }
     }
 }
 
@@ -218,6 +211,6 @@ private fun SettingsDarkPreview() {
         Box(
             Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
-        ) { SettingsScreen(SettingsUiState(RefuelSettings()), {}, {}, {}, {}) }
+        ) { SettingsScreen(SettingsUiState(RefuelSettings()), {}, {}, {}) }
     }
 }

@@ -141,7 +141,6 @@ class VehicleConditionsLayoutTest(private val widthDp: Int, private val dark: Bo
                 SettingsUiState(draft = RefuelSettings(), vehicleFields = fields),
                 {},
                 {},
-                {},
                 {})
         }
         compose.onNodeWithText("40 L").assertIsDisplayed()
@@ -149,7 +148,7 @@ class VehicleConditionsLayoutTest(private val widthDp: Int, private val dark: Bo
         compose.onNodeWithContentDescription("평균연비 늘리기").assertIsEnabled()
         compose.onNodeWithText("차량 조회 정보").performScrollTo().assertIsDisplayed()
         verifyAndCapture("vehicle-settings")
-        compose.onNodeWithText("적용하기").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("적용하기").assertDoesNotExist()
     }
 
     @Test
