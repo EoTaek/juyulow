@@ -43,20 +43,20 @@ API·가격 캐시 없음이다.
 통행료는 제외한다. 기존 목적지·경유지를 대체할 때 확인을 받고, 실제 반영
 확인 후 완료한다. startup 차량 연료 정보는 참고 정보로 표시하며 백엔드는 호출하지 않는다.
 
-| 모듈               | 역할                                                                                          |
-|--------------------|-----------------------------------------------------------------------------------------------|
-| `app`              | Application의 Koin 조립, Navigation 3 백스택·팝업·화면 연결, Android 저장 경로 제공           |
-| `core:design`      | 공통 테마·토큰·outlined 벡터 아이콘·버튼·탭·스위치·스텝퍼·차량 조건 요약                      |
-| `core:model`       | 순수 Kotlin/JVM 모델과 이동 방식별 비용·시간 계산                                             |
-| `core:data`        | 저장소 계약, 오피넷·좌표 변환·내비 UI 세션·후보 비교, 메모리 비교 세션, Preferences DataStore |
-| `feature:main`     | 홈·결과·완료 화면과 각각의 ViewModel, 두 창 크기·두 테마 프리뷰                               |
-| `feature:settings` | 주유 조건 팝업과 SettingsViewModel, 변경 즉시 저장                                         |
+| 모듈           | 역할                                                                                          |
+|----------------|-----------------------------------------------------------------------------------------------|
+| `app`          | Application의 Koin 조립, Navigation 3 백스택·팝업·화면 연결, Android 저장 경로 제공           |
+| `core:design`  | 공통 테마·토큰·outlined 벡터 아이콘·버튼·탭·스위치·스텝퍼·차량 조건 요약                      |
+| `core:model`   | 순수 Kotlin/JVM 모델과 이동 방식별 비용·시간 계산                                             |
+| `core:data`    | 저장소 계약, 오피넷·좌표 변환·내비 UI 세션·후보 비교, 메모리 비교 세션, Preferences DataStore |
+| `feature:main` | 홈·결과·완료·주유 조건 팝업과 각각의 ViewModel, 두 창 크기·두 테마 프리뷰                     |
 
 `core:design`은 로컬 Pleos 디자인 가이드의 색상·타이포그래피·그림자 토큰을 `JUYULOWTheme.colors`, `.typography`, `.shadows`로 제공한다. 기존 Material 컴포넌트는 매핑된 `MaterialTheme.colorScheme`과 `.typography`를 사용한다. 출처·매핑·서체 및 원문 해석은 [DESIGN.md](DESIGN.md), 아이콘 제작·사용 지침은 [ICONOGRAPHY.md](ICONOGRAPHY.md)를 참고한다.
 
 의존 방향은 `app → feature/core`, `feature → core`, `core:data/core:design → core:model`이다. core는
 feature나 app에 의존하지
-않으며 feature 간 직접 의존도 두지 않는다. 저장소 계약은 `core:data`에 두고, 추후 실제 데이터·SDK 구현으로 교체한다. 별도 domain 모듈은 추가하지
+않는다. feature 모듈은 `feature:main` 하나이며 설정 화면·ViewModel은 `feature.main.settings` 패키지에 둔다. 저장소 계약은
+`core:data`에 두고, 추후 실제 데이터·SDK 구현으로 교체한다. 별도 domain 모듈은 추가하지
 않았다.
 
 앱은 `MainActivity → JUYULOWTheme → JuyulowApp` 순서로 실행한다. app의 ViewModel이 Navigation 3 백스택을 소유하고,

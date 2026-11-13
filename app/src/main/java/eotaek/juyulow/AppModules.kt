@@ -16,7 +16,7 @@ import eotaek.juyulow.core.data.VehicleInfoRepository
 import eotaek.juyulow.feature.main.completion.CompletionViewModel
 import eotaek.juyulow.feature.main.home.HomeViewModel
 import eotaek.juyulow.feature.main.results.ResultsViewModel
-import eotaek.juyulow.feature.settings.SettingsViewModel
+import eotaek.juyulow.feature.main.settings.SettingsViewModel
 import eotaek.juyulow.location.FusedLocationClient
 import eotaek.juyulow.location.PleosFusedLocationClient
 import eotaek.juyulow.navigation.NaviClient

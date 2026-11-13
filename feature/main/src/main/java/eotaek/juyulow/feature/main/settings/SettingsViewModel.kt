@@ -1,4 +1,4 @@
-package eotaek.juyulow.feature.settings
+package eotaek.juyulow.feature.main.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

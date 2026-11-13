@@ -11,7 +11,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.captureToImage
@@ -21,8 +23,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -40,8 +40,8 @@ import eotaek.juyulow.core.model.resolveRefuelConditions
 import eotaek.juyulow.feature.main.completion.CompletionScreen
 import eotaek.juyulow.feature.main.home.HomeScreen
 import eotaek.juyulow.feature.main.home.HomeUiState
-import eotaek.juyulow.feature.settings.SettingsScreen
-import eotaek.juyulow.feature.settings.SettingsUiState
+import eotaek.juyulow.feature.main.settings.SettingsScreen
+import eotaek.juyulow.feature.main.settings.SettingsUiState
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test

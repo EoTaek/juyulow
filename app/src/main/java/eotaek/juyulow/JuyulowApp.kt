@@ -22,7 +22,7 @@ import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.feature.main.completion.CompletionRoute
 import eotaek.juyulow.feature.main.home.HomeRoute
 import eotaek.juyulow.feature.main.results.ResultsRoute
-import eotaek.juyulow.feature.settings.SettingsRoute
+import eotaek.juyulow.feature.main.settings.SettingsRoute
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

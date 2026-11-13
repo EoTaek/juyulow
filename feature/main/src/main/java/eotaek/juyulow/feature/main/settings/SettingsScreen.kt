@@ -1,4 +1,4 @@
-package eotaek.juyulow.feature.settings
+package eotaek.juyulow.feature.main.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -121,11 +121,13 @@ fun SettingsScreen(
                         }
                     }
                     SettingRow("예상 주유량", narrow) {
-                        PleosStepper("예상 주유량", draft.liters, "L", 10..100, 10,
+                        PleosStepper(
+                            "예상 주유량", draft.liters, "L", 10..100, 10,
                             { value -> onChange { it.copy(liters = value) } })
                     }
                     SettingRow("평균연비", narrow) {
-                        PleosStepper("평균연비", draft.efficiencyKmPerL, "km/L", 1..30, 1,
+                        PleosStepper(
+                            "평균연비", draft.efficiencyKmPerL, "km/L", 1..30, 1,
                             { value -> onChange { it.copy(efficiencyKmPerL = value) } })
                     }
                     SettingRow("주유 시간", narrow) {

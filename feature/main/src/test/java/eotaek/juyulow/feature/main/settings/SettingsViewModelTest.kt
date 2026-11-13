@@ -1,4 +1,4 @@
-package eotaek.juyulow.feature.settings
+package eotaek.juyulow.feature.main.settings
 
 import androidx.lifecycle.ViewModelStore
 import eotaek.juyulow.core.data.InMemoryVehicleInfoRepository
@@ -100,11 +100,13 @@ class SettingsViewModelTest {
         assertEquals(latest, viewModel.state.value.draft)
         assertTrue(viewModel.state.value.saving)
         advanceUntilIdle()
-        assertEquals(listOf(
-            RefuelSettings(liters = 70),
-            RefuelSettings(liters = 70, refuelMinutes = 9),
-            latest,
-        ), repository.saved)
+        assertEquals(
+            listOf(
+                RefuelSettings(liters = 70),
+                RefuelSettings(liters = 70, refuelMinutes = 9),
+                latest,
+            ), repository.saved
+        )
         assertEquals(latest, repository.settings.value)
         assertFalse(viewModel.state.value.saving)
     }

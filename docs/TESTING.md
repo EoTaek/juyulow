@@ -1,5 +1,13 @@
 # 검증
 
+## 2026-11-14 단일 feature 모듈 통합
+
+설정 화면·ViewModel·단위 테스트를 `feature:main`의 `feature.main.settings` 패키지로 이동했다. 설정 테스트는
+`:feature:main:testDebugUnitTest`에서 실행한다. 이전 검증 기록의 `feature:settings`는 통합 전 모듈명이다.
+앱 debug 빌드, 전체 단위 테스트 157개 (실패·오류·건너뜀 0), lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다.
+Pleos 2.1.0 활성 사용자 10에 데이터를 유지해 재설치하고 PrototypeFlowTest 3개가 통과했다. 설정 열기·즉시 저장·닫기·재열기와 기존 화면 흐름을
+확인했으며 검색·내비는 Fake 저장소를 사용한다.
+
 ## 2026-11-14 설정 저장 큐 및 로딩 표시 제거
 
 저장 중에도 설정 입력과 닫기 버튼을 활성 상태로 유지하고 저장 인디케이터를 표시하지 않는다. 단위 테스트는 쓰기 중 추가 변경의 즉시 화면 반영·FIFO 저장 순서·중간 실패 이후 큐 처리·전체 큐 처리 후 닫기를 검증한다.
@@ -111,11 +119,11 @@ POI 기능은 유지한다. mobile-mcp로 실제 홈 검색에서 빈 결과 화
 
 ```powershell
 $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
-.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :core:model:test :core:data:test :feature:main:testDebugUnitTest :feature:settings:testDebugUnitTest lintDebug --console=plain
+.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :core:model:test :core:data:test :feature:main:testDebugUnitTest lintDebug --console=plain
 ```
 
 - `assembleDebug`: 앱과 연결된 모든 Android/Kotlin 모듈의 빌드·패키징을 확인한다.
-- `testDebugUnitTest`: app의 백스택 동작, feature:main의 검색·선택·정렬·스냅샷·경로 설정, feature:settings의 즉시 저장·FIFO 큐·저장 실패
+- `testDebugUnitTest`: app의 백스택 동작, feature:main의 검색·선택·정렬·스냅샷·경로 설정과 설정의 즉시 저장·FIFO 큐·저장 실패
   후 재시도를 검증한다.
 - `:core:model:test`, `:core:data:test`: 세 이동 방식의 거리·시간·비용·경계값, mock 데이터 생성·목적지 반영, 실제 Preferences
   DataStore 파일의 저장·재로딩을 검증한다.
@@ -175,11 +183,11 @@ waypoint 모드에서 초기 목적지가 없으면 실측된 소설한남 fixtu
 
 버전은 `gradle/libs.versions.toml`에서 관리하고 각 모듈의 `testImplementation`으로 선언한다.
 
-| 모듈                                            | 테스트 의존성                                              |
-|-------------------------------------------------|------------------------------------------------------------|
-| `core:model`                                    | JUnit4 `4.13.2`                                            |
-| `app`                                           | JUnit4 `4.13.2`, Coroutines Test `1.11.0`                  |
-| `core:data`, `feature:main`, `feature:settings` | JUnit4 `4.13.2`, Coroutines Test `1.11.0`, Turbine `1.2.1` |
+| 모듈                        | 테스트 의존성                                              |
+|-----------------------------|------------------------------------------------------------|
+| `core:model`                | JUnit4 `4.13.2`                                            |
+| `app`                       | JUnit4 `4.13.2`, Coroutines Test `1.11.0`                  |
+| `core:data`, `feature:main` | JUnit4 `4.13.2`, Coroutines Test `1.11.0`, Turbine `1.2.1` |
 
 - **JUnit4**: `org.junit.Test`와 assertion으로 계산 결과·경계값·상태를 검증한다. 기존 테스트와 AndroidJUnit4 구성을 유지한다.
 - **Coroutines Test**: `kotlinx-coroutines-test` 버전은 `kotlinx-coroutines-core`와 같은 `coroutines` 버전 키를 사용한다. suspend 함수와 비동기 로직은 `runTest`로 실행하고, 실행 순서와 가상 시간은 `runCurrent`, `advanceTimeBy`, `advanceUntilIdle` 등으로 제어한다. 테스트 Dispatcher는 같은 `testScheduler`를 공유하도록 구성한다.
@@ -329,8 +337,8 @@ PrototypeLayoutTest 8개가 모두 통과했다. 최초 실행에서 발견한 8
 - 전체 단위 테스트 138개가 실패 없이 통과했다. debug/release 빌드, lintDebug, AndroidTest APK 빌드와 git diff --check를
   확인했다. release BuildConfig의 카카오 키는 빈 값이다. 기존 Lifecycle custom lint 제외 항목은 위 제약을 따른다.
 - 빌드는 호스트 GRADLE_USER_HOME을 C:\Users\ddddd\.gradle로 지정하고 :app:assembleDebug :app:testDebugUnitTest :
-  core:model:test :core:data:test :feature:main:testDebugUnitTest :feature:settings:
-  testDebugUnitTest lintDebug :app:assembleDebugAndroidTest :app:assembleRelease 태스크를 사용한다.
+  core:model:test :core:data:test :feature:main:testDebugUnitTest lintDebug :app:
+  assembleDebugAndroidTest :app:assembleRelease 태스크를 사용한다.
 
 ### Pleos 2.1.0 후속 실측
 
