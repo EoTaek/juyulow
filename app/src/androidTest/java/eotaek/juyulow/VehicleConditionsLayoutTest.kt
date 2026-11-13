@@ -165,7 +165,8 @@ class VehicleConditionsLayoutTest(private val widthDp: Int, private val dark: Bo
         compose.onNodeWithContentDescription("예상 주유량 늘리기").assertIsEnabled()
         compose.onNodeWithContentDescription("평균연비 늘리기").assertIsEnabled()
         compose.onNodeWithContentDescription("주유 시간 늘리기").assertIsEnabled()
-        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).assertDoesNotExist()
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+            .assertDoesNotExist()
     }
 
     @Test

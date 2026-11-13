@@ -81,24 +81,65 @@ class PleosNavigationRepository(
             if (!mutex.isLocked && connected && !closed && !readUncertain) refresh()
         }
     }
+
     private object Connected
     private object Changed
     private data class Failed(val reason: String)
+
     private val listener = object : NaviClientListener {
-        override fun onConnected() { events.trySend(Connected) }
-        override fun onConnectionFailed(cause: Throwable) { events.trySend(Failed(cause.toString())) }
-        override fun onCurrentLocationInfo(currentLocationInfo: CurrentLocationInfo) { events.trySend(currentLocationInfo) }
-        override fun onDestinationInfo(destinationInfo: DestinationInfo) { events.trySend(destinationInfo) }
-        override fun onWayPointInfo(waypointInfoList: List<WaypointInfo>) { events.trySend(waypointInfoList.toList()) }
-        override fun onRouteStateInfo(routeStateInfo: RouteStateInfo) { events.trySend(routeStateInfo) }
-        override fun onTripInfo(tripInfo: TripInfo) { events.trySend(tripInfo) }
-        override fun onRoutingCompleted() { scope.launch { changed() } }
-        override fun onRouteStarted(routeStartInfo: RouteStartInfo) { scope.launch { changed() } }
-        override fun onDestinationChanged() { scope.launch { changed() } }
-        override fun onWaypointChanged(waypointChangedInfo: WaypointChangedInfo) { scope.launch { changed() } }
-        override fun onRouteCancelled() { scope.launch { changed() } }
-        override fun onError(errorCode: NaviErrorCode) { events.trySend(Failed(errorCode.toString())) }
+        override fun onConnected() {
+            events.trySend(Connected)
+        }
+
+        override fun onConnectionFailed(cause: Throwable) {
+            events.trySend(Failed(cause.toString()))
+        }
+
+        override fun onCurrentLocationInfo(currentLocationInfo: CurrentLocationInfo) {
+            events.trySend(currentLocationInfo)
+        }
+
+        override fun onDestinationInfo(destinationInfo: DestinationInfo) {
+            events.trySend(destinationInfo)
+        }
+
+        override fun onWayPointInfo(waypointInfoList: List<WaypointInfo>) {
+            events.trySend(waypointInfoList.toList())
+        }
+
+        override fun onRouteStateInfo(routeStateInfo: RouteStateInfo) {
+            events.trySend(routeStateInfo)
+        }
+
+        override fun onTripInfo(tripInfo: TripInfo) {
+            events.trySend(tripInfo)
+        }
+
+        override fun onRoutingCompleted() {
+            scope.launch { changed() }
+        }
+
+        override fun onRouteStarted(routeStartInfo: RouteStartInfo) {
+            scope.launch { changed() }
+        }
+
+        override fun onDestinationChanged() {
+            scope.launch { changed() }
+        }
+
+        override fun onWaypointChanged(waypointChangedInfo: WaypointChangedInfo) {
+            scope.launch { changed() }
+        }
+
+        override fun onRouteCancelled() {
+            scope.launch { changed() }
+        }
+
+        override fun onError(errorCode: NaviErrorCode) {
+            events.trySend(Failed(errorCode.toString()))
+        }
     }
+
     private fun fail(reason: String): Nothing = throw IllegalStateException(reason)
     private suspend fun next(): Any = events.receive().also { if (it is Failed) fail(it.reason) }
     private suspend fun <T> operation(name: String, block: suspend () -> T): NaviResult<T> =
@@ -115,30 +156,37 @@ class PleosNavigationRepository(
                 }
                 return@withContext NaviResult.Failure("BUSY")
             }
-        try {
-            check(!closed) { "RELEASED" }
-            NaviResult.Success(block()).also {
-                ApiLog.event(
-                    "Navi",
-                    name,
-                    "completed",
-                    "I"
-                ) { mapOf("operationId" to operationId, "elapsedMs" to clock() - start) }
+            try {
+                check(!closed) { "RELEASED" }
+                NaviResult.Success(block()).also {
+                    ApiLog.event(
+                        "Navi",
+                        name,
+                        "completed",
+                        "I"
+                    ) { mapOf("operationId" to operationId, "elapsedMs" to clock() - start) }
+                }
+            } catch (e: CancellationException) {
+                ApiLog.error("Navi", name, e)
+                mutableState.value = state.value.copy(
+                    status = if (closed) NaviStatus.RELEASED else NaviStatus.UNCERTAIN,
+                    error = "CANCELLED"
+                )
+                if (e is TimeoutCancellationException) NaviResult.Failure("TIMEOUT") else throw e
+            } catch (e: Exception) {
+                ApiLog.error("Navi", name, e)
+                mutableState.value = state.value.copy(
+                    status = when {
+                        closed -> NaviStatus.RELEASED
+                        readUncertain || routeUncertain || ledger.uncertain -> NaviStatus.UNCERTAIN
+                        else -> NaviStatus.FAILED
+                    }, error = e.message
+                )
+                NaviResult.Failure(e.message ?: "FAILED")
+            } finally {
+                mutex.unlock()
             }
-        } catch (e: CancellationException) {
-            ApiLog.error("Navi", name, e)
-            mutableState.value = state.value.copy(status = if (closed) NaviStatus.RELEASED else NaviStatus.UNCERTAIN, error = "CANCELLED")
-            if (e is TimeoutCancellationException) NaviResult.Failure("TIMEOUT") else throw e
-        } catch (e: Exception) {
-            ApiLog.error("Navi", name, e)
-            mutableState.value = state.value.copy(status = when {
-                closed -> NaviStatus.RELEASED
-                readUncertain || routeUncertain || ledger.uncertain -> NaviStatus.UNCERTAIN
-                else -> NaviStatus.FAILED
-            }, error = e.message)
-            NaviResult.Failure(e.message ?: "FAILED")
-        } finally { mutex.unlock() }
-    }
+        }
 
     override suspend fun initialize() = operation("initialize") {
         check(state.value.status == NaviStatus.IDLE) { "ALREADY_INITIALIZED" }
@@ -154,7 +202,8 @@ class PleosNavigationRepository(
     override suspend fun refresh() = operation("refresh") { read() }
     private suspend fun read(): NaviSnapshot {
         check(connected && !readUncertain) { "READ_UNAVAILABLE" }
-        mutableState.value = state.value.copy(status = NaviStatus.READING, receivedFields = emptySet(), error = null)
+        mutableState.value =
+            state.value.copy(status = NaviStatus.READING, receivedFields = emptySet(), error = null)
         var location: CurrentLocationInfo? = null
         var destination: DestinationInfo? = null
         var waypoints: List<WaypointInfo>? = null
@@ -170,31 +219,57 @@ class PleosNavigationRepository(
             withTimeout(readTimeout.milliseconds) {
                 while (fields.size < 4) {
                     when (val e = next()) {
-                        is CurrentLocationInfo -> { location = e; fields += "location" }
-                        is DestinationInfo -> { destination = e; fields += "destination" }
-                        is RouteStateInfo -> { route = e; fields += "route" }
-                        is List<*> -> { @Suppress("UNCHECKED_CAST")
-                            waypoints = e as List<WaypointInfo>; fields += "waypoints" }
+                        is CurrentLocationInfo -> {
+                            location = e; fields += "location"
+                        }
+
+                        is DestinationInfo -> {
+                            destination = e; fields += "destination"
+                        }
+
+                        is RouteStateInfo -> {
+                            route = e; fields += "route"
+                        }
+
+                        is List<*> -> {
+                            @Suppress("UNCHECKED_CAST")
+                            waypoints = e as List<WaypointInfo>; fields += "waypoints"
+                        }
                     }
                     mutableState.value = state.value.copy(receivedFields = fields.toSet())
                 }
             }
-        } catch (e: Exception) { readUncertain = true; throw e }
-        val l = location!!; val r = route!!; val d = destination!!
+        } catch (e: Exception) {
+            readUncertain = true; throw e
+        }
+        val l = location!!
+        val r = route!!
+        val d = destination!!
         check(r.naviMode != NaviMode.NOT_WORKING) { "NAVIGATION_UNAVAILABLE" }
         check(valid(l.latitude, l.longitude)) { "INVALID_LOCATION" }
-        val dest = if (r.naviMode == NaviMode.SAFE_GUIDING && d.poiId.isBlank() && d.name.isBlank()) null
-        else d.point().also {
-            check(
-                valid(
-                    it.latitude,
-                    it.longitude
-                ) && it.name.isNotBlank()
-            ) { "UNKNOWN_DESTINATION" }
+        val dest =
+            if (r.naviMode == NaviMode.SAFE_GUIDING && d.poiId.isBlank() && d.name.isBlank()) null
+            else d.point().also {
+                check(
+                    valid(
+                        it.latitude,
+                        it.longitude
+                    ) && it.name.isNotBlank()
+                ) { "UNKNOWN_DESTINATION" }
+            }
+        val result =
+            NaviSnapshot(
+                NaviLocation(l.latitude, l.longitude, l.routeId, l.currentRouteIndex, clock()),
+                dest,
+                waypoints!!.map { it.point() },
+                r.naviMode.name,
+                r.isRouting,
+                r.routeOption.name,
+                clock()
+            )
+        if (pendingRoute?.invoke(result) == true) {
+            routeUncertain = false; pendingRoute = null
         }
-        val result = NaviSnapshot(NaviLocation(l.latitude, l.longitude, l.routeId, l.currentRouteIndex, clock()),
-            dest, waypoints!!.map { it.point() }, r.naviMode.name, r.isRouting, r.routeOption.name, clock())
-        if (pendingRoute?.invoke(result) == true) { routeUncertain = false; pendingRoute = null }
         mutableState.value = NaviState(
             if (routeUncertain || ledger.uncertain) NaviStatus.UNCERTAIN else NaviStatus.READY,
             result,
@@ -202,6 +277,7 @@ class PleosNavigationRepository(
         )
         return result
     }
+
     override suspend fun trips(candidates: List<NaviCandidate>) = operation("trips") {
         check(!ledger.uncertain) { "TRIP_UNCERTAIN" }
         check(candidates.isNotEmpty() && candidates.map { it.key }
@@ -255,7 +331,9 @@ class PleosNavigationRepository(
             }
             check(before.sameTripOriginAs(read())) { "CONTEXT_CHANGED" }
             result
-        } catch (e: Exception) { ledger.uncertain = true; throw e }
+        } catch (e: Exception) {
+            ledger.uncertain = true; throw e
+        }
     }
 
     override suspend fun setRoute(
@@ -290,10 +368,15 @@ class PleosNavigationRepository(
                 waypointIndex = WaypointIndex.FIRST,
                 poiId = point.poiId,
                 poiSubId = point.subId ?: "",
-            address=point.address, poiProvider=point.provider))
+                address = point.address, poiProvider = point.provider
+            )
+        )
         else client.requestRoute(destination.route(current.routeOption))
         val deadline = clock() + operationTimeout
-        withTimeout(operationTimeout.milliseconds) { while (next() !== Changed) { /* Await route event. */ } }
+        withTimeout(operationTimeout.milliseconds) {
+            while (next() !== Changed) { /* Await route event. */
+            }
+        }
         var actual = read()
         while (routeUncertain) {
             check(clock() < deadline) { "ROUTE_NOT_CONFIRMED" }
@@ -306,17 +389,28 @@ class PleosNavigationRepository(
     override suspend fun openNavigation() = operation("openNavigation") {
         check(connected); client.requestNavigationScreen(NavigationScreenRequest.Foreground)
     }
+
     override suspend fun release() = withContext(dispatcher) {
-        if (!closed) { closed = true; connected = false; scope.cancel(); events.close(); try { client.release() }
-            finally { mutableState.value = state.value.copy(status = NaviStatus.RELEASED) } }
+        if (!closed) {
+            closed = true; connected = false; scope.cancel(); events.close(); try {
+                client.release()
+            } finally {
+                mutableState.value = state.value.copy(status = NaviStatus.RELEASED)
+            }
+        }
     }
+
     private fun validate(c: NaviCandidate) {
         check(
             (c.coordinateOnly && c.point.poiId.isBlank() || c.point.poiId.isNotBlank() && c.point.subId != null) && valid(
                 c.point.latitude,
                 c.point.longitude
             ) &&
-            valid(c.responseLatitude, c.responseLongitude) && valid(c.routeResponseLatitude, c.routeResponseLongitude)) { "UNVERIFIED_POINT" }
+                    valid(c.responseLatitude, c.responseLongitude) && valid(
+                c.routeResponseLatitude,
+                c.routeResponseLongitude
+            )
+        ) { "UNVERIFIED_POINT" }
     }
 
     private fun distanceMeters(
@@ -334,11 +428,19 @@ class PleosNavigationRepository(
                 kotlin.math.cos(a) * kotlin.math.cos(b) * kotlin.math.sin(dLon / 2).let { it * it }
         return 6371000.0 * 2 * kotlin.math.asin(kotlin.math.sqrt(h.coerceIn(0.0, 1.0)))
     }
+
     private fun near(a: Double, b: Double) = abs(a - b) <= 0.000001
-    private fun valid(lat: Double, lon: Double) = lat.isFinite() && lon.isFinite() && lat in -90.0..90.0 && lon in -180.0..180.0
-    private fun DestinationInfo.point() = NaviPoint(latitude, longitude, name, poiId, poiSubId, address, poiProvider)
-    private fun WaypointInfo.point() = NaviPoint(latitude, longitude, name, poiId, poiSubId, address, poiProvider)
-    private fun NaviPoint.route(option: String) = RouteInfo(latitude = latitude, longitude = longitude, poiName = name,
+    private fun valid(lat: Double, lon: Double) =
+        lat.isFinite() && lon.isFinite() && lat in -90.0..90.0 && lon in -180.0..180.0
+
+    private fun DestinationInfo.point() =
+        NaviPoint(latitude, longitude, name, poiId, poiSubId, address, poiProvider)
+
+    private fun WaypointInfo.point() =
+        NaviPoint(latitude, longitude, name, poiId, poiSubId, address, poiProvider)
+
+    private fun NaviPoint.route(option: String) = RouteInfo(
+        latitude = latitude, longitude = longitude, poiName = name,
         poiId = poiId,
         poiSubId = subId ?: if (poiId.isBlank()) "" else fail("MISSING_SUB_ID"),
         address = address,

@@ -62,6 +62,7 @@ class LiveNavigationFlowTest {
             })
         }
     }
+
     @get:Rule
     val rules: RuleChain = RuleChain.outerRule(repositories).around(compose)
 

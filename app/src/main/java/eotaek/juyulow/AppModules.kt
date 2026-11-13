@@ -33,7 +33,12 @@ val appModule = module {
     single { eotaek.juyulow.core.data.OpinetClient.create(BuildConfig.OPINET_API_KEY) }
     single { eotaek.juyulow.core.data.OpinetCandidates(get()) }
     single { eotaek.juyulow.navigation.NaviTripLedger() }
-    factory<NavigationRepository> { eotaek.juyulow.navigation.PleosNavigationRepository(get(), get()) }
+    factory<NavigationRepository> {
+        eotaek.juyulow.navigation.PleosNavigationRepository(
+            get(),
+            get()
+        )
+    }
     factory<NaviClient> { PleosNaviClient(androidContext()) }
     factory<FusedLocationClient> { PleosFusedLocationClient(androidContext()) }
     factory<VehicleFuelClient> { PleosVehicleFuelClient(androidContext()) }

@@ -71,6 +71,7 @@ class AppNavigationViewModel(private val journeys: JourneyRepository? = null) : 
             }
         }
     }
+
     val backStack = NavBackStack<NavKey>(Home)
     private var settingsDismissGuard: (() -> Boolean)? = null
     private var routeDismissGuard: (() -> Boolean)? = null

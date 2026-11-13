@@ -58,6 +58,7 @@ class PrototypeFlowTest {
             })
         }
     }
+
     @get:Rule
     val rules: RuleChain = RuleChain.outerRule(repositories).around(compose)
     private lateinit var settings: SettingsRepository

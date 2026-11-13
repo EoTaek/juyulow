@@ -83,19 +83,19 @@ class PleosVehicleFuelClient internal constructor(private val api: VehicleFuelAp
 
     override fun checkCumulativeFuelEconomyCapabilities() =
         request("checkCumulativeFuelEconomyCapabilities") {
-        checkCumulativeFuelEconomyCapabilities(
-            capabilityResult(FuelProperty.CUMULATIVE_ECONOMY),
-            errorResult(FuelProperty.CUMULATIVE_ECONOMY)
-        )
-    }
+            checkCumulativeFuelEconomyCapabilities(
+                capabilityResult(FuelProperty.CUMULATIVE_ECONOMY),
+                errorResult(FuelProperty.CUMULATIVE_ECONOMY)
+            )
+        }
 
     override fun checkCurrentFuelEconomyCapabilities() =
         request("checkCurrentFuelEconomyCapabilities") {
-        checkCurrentFuelEconomyCapabilities(
-            capabilityResult(FuelProperty.CURRENT_ECONOMY),
-            errorResult(FuelProperty.CURRENT_ECONOMY)
-        )
-    }
+            checkCurrentFuelEconomyCapabilities(
+                capabilityResult(FuelProperty.CURRENT_ECONOMY),
+                errorResult(FuelProperty.CURRENT_ECONOMY)
+            )
+        }
 
     override fun checkFuelPercentCapabilities() = request("checkFuelPercentCapabilities") {
         checkFuelPercentCapabilities(
@@ -242,16 +242,16 @@ class PleosVehicleFuelClient internal constructor(private val api: VehicleFuelAp
 
     private inline fun register(property: FuelProperty, block: Fuel.() -> Unit) =
         request("register") {
-        check(property !in attempted) { "Fuel subscription already registered or requires cleanup: $property" }
-        attempted.add(property)
-        subscribed.add(property)
-        try {
-            block()
-        } catch (cause: Exception) {
-            subscribed.remove(property)
-            throw cause
+            check(property !in attempted) { "Fuel subscription already registered or requires cleanup: $property" }
+            attempted.add(property)
+            subscribed.add(property)
+            try {
+                block()
+            } catch (cause: Exception) {
+                subscribed.remove(property)
+                throw cause
+            }
         }
-    }
 
     private fun unregister(property: FuelProperty) = request("unregister") {
         subscribed.remove(property)
