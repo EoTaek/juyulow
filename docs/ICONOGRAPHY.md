@@ -22,3 +22,13 @@
 - 의미를 가진 조작 아이콘에는 동작을 설명하는 접근성 레이블을 제공한다. 인접 텍스트가 같은 의미를 전달하는 장식 아이콘은 중복 낭독을 피한다. 선택·비활성 상태는 색상만으로 전달하지 않는다.
 - 실제 에셋을 추가할 때는 `core:design`에서 공유하고 출처와 사용 조건을 기록한다. Material 아이콘 등 외부 에셋을 사용해도 Pleos 공식 아이콘과 동일하다고 간주하지 않는다.
 - 새 화면의 아이콘은 가로형 `1700 × 1184dp`, 세로형 `840 × 1184dp`에서 확인하고, 작은 모델 대응 시 [Display Layout](../pleos_sdk_guide/앱%20기획·설계%20가이드/디자인%20가이드/Getting%20Started/Display%20Layout.md)의 앱 영역도 확인한다.
+
+## 앱 런처 아이콘
+
+사용자가 제공한 [배경 SVG](assets/juyulow-adaptive-background.svg)
+와 [전경 SVG](assets/juyulow-adaptive-foreground.svg)를 각각 Android 벡터로
+적용한다. [합쳐진 심볼](assets/juyulow-icon.svg)도 원본으로 보관한다.
+`app/src/main/res/drawable/ic_launcher_foreground.xml`은 원본의 경로와 even-odd 채움을 보존한 Android 벡터다.
+108dp 뷰포트와 전경 원본의 `translate(18.16 18.16) scale(0.28)` 변환, 흰 배경을 그대로 보존한다. 별도의 모서리 반경은 설정하지 않는다.
+일반·원형 adaptive icon과 monochrome 레이어는 같은 전경을 참조한다.
+기본 Android 로봇의 밀도별 WebP는 제거했다. 앱의 최소 API 30에서는 adaptive icon을 사용한다.
