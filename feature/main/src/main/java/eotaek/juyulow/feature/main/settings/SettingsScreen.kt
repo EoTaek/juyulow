@@ -147,10 +147,6 @@ fun SettingsScreen(
                             PleosStepper(
                                 "평균연비", draft.efficiencyKmPerL, "km/L", 1..30, 1,
                                 { value -> onChange { it.copy(efficiencyKmPerL = value) } })
-                            Text(
-                                "누적 연비를 확인할 수 없을 때 사용해요.",
-                                style = type.labelSmall, color = colors.textDarkSecondary,
-                            )
                         }
                     }
                     SettingRow("주유 시간", narrow) {
@@ -171,9 +167,11 @@ fun SettingsScreen(
                                 .height(IntrinsicSize.Min),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
-                            VehicleInfoCard("탱크 잔량 / 용량", Modifier
-                                .weight(1f)
-                                .fillMaxHeight()) {
+                            VehicleInfoCard(
+                                "탱크 잔량 / 용량", Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                            ) {
                                 val level = vehicleFieldDisplay(
                                     VehicleProperty.FUEL_LEVEL,
                                     state.vehicleFields[VehicleProperty.FUEL_LEVEL]
@@ -199,9 +197,11 @@ fun SettingsScreen(
                                 )
                             }
                             val conditions = requireNotNull(state.conditions)
-                            VehicleInfoCard("누적 연비", Modifier
-                                .weight(1f)
-                                .fillMaxHeight()) {
+                            VehicleInfoCard(
+                                "누적 연비", Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                            ) {
                                 Text(
                                     "${vehicleNumber(conditions.efficiencyKmPerL)} km/L",
                                     style = type.bodyLargeStrong,

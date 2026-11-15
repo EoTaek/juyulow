@@ -1,6 +1,7 @@
 package eotaek.juyulow.feature.main.results.component
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -10,21 +11,25 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.ComparisonContext
 import eotaek.juyulow.core.model.JourneyMode
+import eotaek.juyulow.core.model.compareStation
 import eotaek.juyulow.feature.main.common.kilometers
 import eotaek.juyulow.feature.main.common.minutes
 import eotaek.juyulow.feature.main.common.won
 import eotaek.juyulow.feature.main.results.EvaluatedStation
+import eotaek.juyulow.feature.main.results.previewSession
 import kotlin.math.abs
 
 @Composable
@@ -58,12 +63,21 @@ internal fun SelectionPanel(
                 style = type.labelSmall,
                 color = colors.textDarkSecondary
             )
-            Text(
-                won(abs(result.netSavingWon)),
-                style = type.headlineSmallExtraBold,
-                color = if (result.netSavingWon >= 0) colors.informativePositive else colors.textDarkPrimary
-            )
-            Text(if (result.netSavingWon >= 0) "원 절약" else "원 더 들어요", style = type.bodySmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    won(abs(result.netSavingWon)),
+                    style = type.headlineSmallExtraBold,
+                    color = if (result.netSavingWon >= 0) colors.informativePositive else colors.textDarkPrimary,
+                    modifier = Modifier.alignByBaseline(),
+                    maxLines = 1
+                )
+                Text(
+                    if (result.netSavingWon >= 0) "원 절약" else "원 더 들어요",
+                    style = type.bodySmall,
+                    modifier = Modifier.alignByBaseline(),
+                    maxLines = 1
+                )
+            }
         }
         HorizontalDivider(color = colors.basic200)
         Row(
@@ -87,19 +101,20 @@ internal fun SelectionPanel(
         HorizontalDivider(color = colors.basic200)
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.Center
         ) {
-            Text("현재 위치", style = type.labelSmall)
-            PleosIcon(PleosIcon.Next, Modifier.size(24.dp))
-            Text(row.station.name, style = type.labelMedium)
+            Text("현재 위치", style = type.labelSmall, modifier = Modifier.align(Alignment.CenterVertically))
+            PleosIcon(PleosIcon.Next, Modifier.size(24.dp).align(Alignment.CenterVertically))
+            Text(row.station.name, style = type.labelSmall, modifier = Modifier.align(Alignment.CenterVertically))
             if (mode != JourneyMode.DESTINATION) {
-                PleosIcon(PleosIcon.Next, Modifier.size(24.dp))
+                PleosIcon(PleosIcon.Next, Modifier.size(24.dp).align(Alignment.CenterVertically))
                 Text(
                     if (mode == JourneyMode.WAYPOINT) listOfNotNull(
                         context.journey.waypoint,
                         context.journey.destination
                     ).joinToString(" → ") else "현재 위치로 복귀",
-                    style = type.labelSmall
+                    style = type.labelSmall,
+                    modifier = Modifier.align(Alignment.CenterVertically)
                 )
             }
         }
@@ -108,17 +123,18 @@ internal fun SelectionPanel(
                 kilometers(
                     result.distanceMeters
                 )
-            } km · 주유 ${context.conditions.refuelMinutes}분 포함",
+            } km",
             style = type.labelSmall,
             color = colors.textDarkTertiary
         )
-        Text(
-            when (mode) {
-                JourneyMode.WAYPOINT -> "${context.journey.destination} 목적지는 그대로 유지돼요."
-                JourneyMode.DESTINATION -> if (context.journey.hasDestination) "${context.journey.destination} 대신 주유소로 목적지를 변경해요." else "선택한 주유소로 목적지를 설정해요."
-                JourneyMode.ROUND_TRIP -> "주유소를 경유해 현재 위치로 돌아와요."
-            }, style = type.labelSmall, color = colors.textDarkSecondary
-        )
+        val routeDescription = when (mode) {
+            JourneyMode.WAYPOINT -> null
+            JourneyMode.DESTINATION -> if (context.journey.hasDestination) "${context.journey.destination} 대신 주유소로 목적지를 변경해요." else "선택한 주유소로 목적지를 설정해요."
+            JourneyMode.ROUND_TRIP -> "주유소를 경유해 현재 위치로 돌아와요."
+        }
+        routeDescription?.let {
+            Text(it, style = type.labelSmall, color = colors.textDarkSecondary)
+        }
         row.station.detour?.let { estimate ->
             HorizontalDivider(color = colors.basic200)
             Text("예상 경유 추가 비용 · 카카오모빌리티", style = type.labelMedium)
@@ -134,7 +150,6 @@ internal fun SelectionPanel(
                         meters / 1000.0 / context.conditions.efficiencyKmPerL * context.referencePriceWonPerL
                     CostRow("추가 거리", kilometers(meters) + " km")
                     CostRow("추가 주행 시간", signedMinutes(seconds) + " 분")
-                    CostRow("추가 통행료", won(toll.toDouble()) + " 원")
                     CostRow(
                         "주유 포함 추가 시간",
                         signedMinutes(seconds + context.conditions.refuelSeconds) + " 분"
@@ -150,11 +165,44 @@ internal fun SelectionPanel(
             if (mode == JourneyMode.WAYPOINT && !context.journey.destinationOnly) "추가 주행 연료비" else "이동 연료비",
             "−${won(result.drivingCostWon)}원"
         )
-        CostRow("통행료", result.tollWon?.let { "−${won(it)}원" } ?: "제외")
         Text(
             "${vehicleNumber(context.conditions.liters)} L 주유 · 주변 최고가 ${won(context.referencePriceWonPerL.toDouble())}원/L 대비",
             style = type.labelSmall,
             color = colors.textDarkTertiary
         )
+    }
+}
+
+// 1700dp / 840dp 앱 창에서 결과 화면의 여백과 열 간격을 제외한 상세 패널 너비.
+@Preview(name = "Selection · Wide", widthDp = 798, heightDp = 960)
+@Preview(name = "Selection · Narrow", widthDp = 390, heightDp = 960)
+@Composable
+private fun SelectionPanelPreview() {
+    SelectionPanelPreviewContent(darkTheme = false)
+}
+
+@Preview(name = "Selection · Dark Wide", widthDp = 798, heightDp = 960)
+@Preview(name = "Selection · Dark Narrow", widthDp = 390, heightDp = 960)
+@Composable
+private fun SelectionPanelDarkPreview() {
+    SelectionPanelPreviewContent(darkTheme = true)
+}
+
+@Composable
+private fun SelectionPanelPreviewContent(darkTheme: Boolean) {
+    val session = previewSession()
+    val station = session.stations.first()
+    val mode = JourneyMode.WAYPOINT
+    JUYULOWTheme(darkTheme = darkTheme) {
+        Surface(color = JUYULOWTheme.colors.backgroundPrimary) {
+            BoxWithConstraints {
+                SelectionPanel(
+                    row = EvaluatedStation(station, compareStation(session.context, station, mode)),
+                    context = session.context,
+                    mode = mode,
+                    narrow = maxWidth < 500.dp,
+                )
+            }
+        }
     }
 }

@@ -40,7 +40,6 @@ import eotaek.juyulow.core.design.component.PleosIconButton
 import eotaek.juyulow.core.design.component.PleosInlineError
 import eotaek.juyulow.core.design.component.PleosTab
 import eotaek.juyulow.core.design.component.PleosTabs
-import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.ComparisonContext
 import eotaek.juyulow.core.model.ComparisonSession
@@ -51,8 +50,6 @@ import eotaek.juyulow.core.model.Station
 import eotaek.juyulow.core.model.StationSort
 import eotaek.juyulow.core.model.resolveRefuelConditions
 import eotaek.juyulow.feature.main.common.actionLabel
-import eotaek.juyulow.feature.main.common.kilometers
-import eotaek.juyulow.feature.main.common.minutes
 import eotaek.juyulow.feature.main.results.component.SelectionPanel
 import eotaek.juyulow.feature.main.results.component.StationRow
 import kotlinx.coroutines.flow.first
@@ -81,28 +78,11 @@ fun ResultsScreen(
                     horizontalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
                     PleosIconButton(PleosIcon.Back, "이전 화면", onBack, enabled = !state.settingRoute)
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            "내 주변 주유소",
-                            style = if (narrow) type.titleSmallBold else type.titleLargeBold
-                        )
-                        if (batch != null) {
-                            val route = batch.context.journey
-                            Text(
-                                if (route.hasDestination && route.baselineSeconds != null && route.baselineMeters != null) "${route.destination}까지 ${
-                                    minutes(
-                                        route.baselineSeconds!!
-                                    )
-                                }분 · ${
-                                    kilometers(
-                                        route.baselineMeters!!
-                                    )
-                                } km / ${vehicleNumber(batch.context.conditions.liters)} L 주유 기준"
-                                else "${route.destination ?: "현재 위치"} / ${vehicleNumber(batch.context.conditions.liters)} L 주유 기준",
-                                style = type.labelMedium, color = colors.textDarkSecondary,
-                            )
-                        }
-                    }
+                    Text(
+                        "주변에 ${batch?.stations?.size ?: 0}개의 주유소가 있어요",
+                        modifier = Modifier.weight(1f),
+                        style = if (narrow) type.titleSmallBold else type.titleLargeBold
+                    )
                 }
                 state.error?.let {
                     PleosInlineError(it)
