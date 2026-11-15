@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import eotaek.juyulow.core.design.component.PleosButton
+import eotaek.juyulow.core.design.component.PleosDividedText
 import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.component.PleosIconButton
 import eotaek.juyulow.core.design.component.PleosInlineError
@@ -144,7 +145,7 @@ fun ResultsScreen(
                             var focusedId by remember { mutableStateOf<String?>(null) }
                             val requesters =
                                 remember(batch.id) { mutableMapOf<String, FocusRequester>() }
-                            if (!batch.searchComplete) Text(
+                            if (!batch.searchComplete) PleosDividedText(
                                 "잠정 절약액 · 기준 유가 갱신 중",
                                 style = type.labelSmall
                             )
@@ -223,12 +224,12 @@ fun ResultsScreen(
                                         Text(station.name, style = type.bodySmall)
                                         Text(station.brand, style = type.labelSmall)
                                         Text("${station.priceWonPerL} 원/L", style = type.bodySmall)
-                                        Text(
+                                        PleosDividedText(
                                             if (station.routePending) "ETA 확인 중" else station.routeError
                                                 ?: "경로 확인 불가",
                                             style = type.labelSmall
                                         )
-                                        Text("거리·시간·절약액 미확보 · 내비 설정 불가", style = type.labelSmall)
+                                        PleosDividedText("거리·시간·절약액 미확보 · 내비 설정 불가", style = type.labelSmall)
                                     }
                                 }
                                 if (batch.stations.isEmpty()) item {

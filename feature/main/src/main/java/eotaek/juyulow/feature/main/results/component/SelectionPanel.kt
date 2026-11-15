@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import eotaek.juyulow.core.design.component.PleosIcon
+import eotaek.juyulow.core.design.component.PleosDividedText
 import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.ComparisonContext
@@ -119,7 +120,7 @@ internal fun SelectionPanel(
                 )
             }
         }
-        Text(
+        PleosDividedText(
             "${if (context.journey.destinationOnly) "주유소까지" else "전체"} ${minutes(result.totalSeconds)}분 · ${
                 kilometers(
                     result.distanceMeters
@@ -132,9 +133,9 @@ internal fun SelectionPanel(
             HorizontalDivider(color = colors.basic200)
             Text("예상 경유 추가 비용", style = type.labelMedium)
             when {
-                detourExpired -> Text("이전 검색 기준 · 재검색 필요", style = type.bodySmall)
+                detourExpired -> PleosDividedText("이전 검색 기준 · 재검색 필요", style = type.bodySmall)
                 estimate.pending -> Text("경유 비용 확인 중", style = type.bodySmall)
-                estimate.error != null -> Text(estimate.error.orEmpty(), style = type.bodySmall)
+                estimate.error != null -> PleosDividedText(estimate.error.orEmpty(), style = type.bodySmall)
                 else -> {
                     val meters = requireNotNull(estimate.meters)
                     val seconds = requireNotNull(estimate.seconds)
@@ -157,7 +158,7 @@ internal fun SelectionPanel(
             if (mode == JourneyMode.WAYPOINT && !context.journey.destinationOnly) "추가 주행 연료비" else "이동 연료비",
             "−${won(result.drivingCostWon)}원"
         )
-        Text(
+        PleosDividedText(
             "${vehicleNumber(context.conditions.liters)} L 주유 · 주변 최고가 ${won(context.referencePriceWonPerL.toDouble())}원/L 대비",
             style = type.labelSmall,
             color = colors.textDarkTertiary

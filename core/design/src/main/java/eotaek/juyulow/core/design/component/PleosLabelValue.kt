@@ -18,7 +18,7 @@ fun PleosLabelValue(
     valueStyle: TextStyle = JUYULOWTheme.typography.bodyMediumStrong,
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
+        PleosDividedText(
             label,
             style = JUYULOWTheme.typography.labelSmall,
             color = JUYULOWTheme.colors.textDarkTertiary,

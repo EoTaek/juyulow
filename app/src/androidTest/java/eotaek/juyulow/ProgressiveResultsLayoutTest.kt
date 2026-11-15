@@ -112,6 +112,7 @@ class ProgressiveResultsLayoutTest(private val width: Int, private val dark: Boo
         compose.waitForIdle()
         compose.onNodeWithTag("s0").assertIsFocused().assertIsSelected()
         compose.onNodeWithTag("confirm-route").assertIsEnabled()
-        compose.onNodeWithText("잠정 절약액 · 기준 유가 갱신 중").assertIsDisplayed()
+        compose.onNodeWithText("잠정 절약액").assertIsDisplayed()
+        compose.onNodeWithText("기준 유가 갱신 중").assertIsDisplayed()
     }
 }

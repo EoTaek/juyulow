@@ -22,10 +22,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import eotaek.juyulow.core.design.component.PleosButton
+import eotaek.juyulow.core.design.component.PleosDividedText
 import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.component.PleosLabelValue
 import eotaek.juyulow.core.design.component.PleosOutlinedCard
-import eotaek.juyulow.core.design.component.RefuelConditionsSummary
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.NavigationSelection
@@ -104,7 +104,11 @@ fun CompletionScreen(
                             )
                             if (selection.waypoint != null) {
                                 PleosIcon(PleosIcon.Next, Modifier.padding(top = 24.dp))
-                                PleosLabelValue("최종 목적지", selection.destination, valueStyle = type.titleSmallBold)
+                                PleosLabelValue(
+                                    "최종 목적지",
+                                    selection.destination,
+                                    valueStyle = type.titleSmallBold
+                                )
                             }
                             PleosLabelValue(
                                 "${if (selection.outboundOnly) "검색 시점 기준 · 주유소까지 " else ""}${
@@ -117,8 +121,7 @@ fun CompletionScreen(
                             )
                         }
                     }
-                    RefuelConditionsSummary(selection.conditions)
-                    error?.let { Text(it, style = type.labelSmall) }
+                    error?.let { PleosDividedText(it, style = type.labelSmall) }
                     onOpenNavigation?.let { PleosButton("내비게이션 열기", it) }
                     if (narrow) Column(
                         Modifier.fillMaxWidth(),

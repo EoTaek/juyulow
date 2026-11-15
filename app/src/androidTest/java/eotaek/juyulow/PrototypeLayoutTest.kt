@@ -202,7 +202,8 @@ class PrototypeLayoutTest(
             check(root)
         }
         assertTrue("Text overflow: ${overflow.joinToString("; ")}", overflow.isEmpty())
-        compose.onNodeWithText("37.7 L 주유 · 주변 최고가 1,670원/L 대비").performScrollTo()
+        compose.onNodeWithText("37.7 L 주유").performScrollTo()
+        compose.onNodeWithText("주변 최고가 1,670원/L 대비").performScrollTo()
             .assertIsDisplayed()
     }
 }
