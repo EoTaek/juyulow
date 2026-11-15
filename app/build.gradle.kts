@@ -51,6 +51,14 @@ android {
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
             }
         }
+        create("qaRelease") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
+    }
+    sourceSets.getByName("qaRelease") {
+        kotlin.directories.add("src/release/java")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

@@ -1,5 +1,26 @@
 # 검증
 
+## 2026-11-15 QA release 시작 시 IllegalAccessError 수정
+
+기존 QA APK의 DEX에서 `am2`가 다른 패키지의 package-private `kotlin.text.g`를 상속하는 접근 오류 1건을 확인했다.
+R8 매핑의 원본 클래스는 각각 `kotlin.text.StringsKt__StringBuilderKt`, `kotlin.text.StringsKt__IndentKt`였다.
+공통 keep 규칙에 `-keeppackagenames kotlin.**`를 추가한 뒤
+`:app:assembleQaRelease :app:assembleRelease :app:lintQaRelease`가 통과했다.
+두 APK 각각 8,509개 DEX 클래스의 직접 상속 관계를 검사해 다른 패키지의 비공개 부모 상속 0건을 확인했다.
+문제의 두 클래스는 모두 `kotlin.text`에 남아 있으며 QA APK v2 서명과 `git diff --check`도 검증했다.
+설치·실행은 사용자 요청에 따라 생략했으므로 앱 시작·실제 SDK 연동 성공까지 검증한 것은 아니다.
+
+## 2026-11-15 설치용 QA release 변형
+
+`:app:assembleQaRelease :app:assembleRelease :app:assembleDebug :app:testDebugUnitTest :app:lintQaRelease`
+가 통과했다.
+app 단위 테스트 66개는 실패·오류 0이다. `qaRelease`의 `BuildConfig.DEBUG=false`, 빈 카카오 키, release 로그 소스 재사용과 R8
+최적화 실행을 확인했다.
+생성된 `app/build/outputs/apk/qaRelease/app-qaRelease.apk`는 `apksigner verify --verbose --print-certs`
+에서 Android Debug 인증서의 v2 서명 검증을 통과했다.
+`aapt2 dump badging`으로 기존 패키지명·버전 유지와 debuggable 플래그 부재를 확인했다. `git diff --check`도 통과했다.
+사용자 요청에 따라 실제 장치 설치·실행은 수행하지 않았다. 빌드·설치 방법과 서명 제약은 [PROJECT.md](PROJECT.md#로컬-qa-release-빌드)를 참조한다.
+
 ## 2026-11-15 버튼 콘텐츠 전체 확대 및 경유 추가 우선 포커스
 
 홈 검색·결과 경로 버튼은 좌우 아이콘·텍스트를 포함한 콘텐츠 행 전체에 포커스 확대(150ms·6%)를 적용한다. 버튼 배경·레이아웃 크기는 유지한다.

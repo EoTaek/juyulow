@@ -17,6 +17,27 @@
 
 ## 현재 구현 및 모듈 구조
 
+### 로컬 QA release 빌드
+
+`app`의 `qaRelease`는 `release` 설정을 복사하고 로컬 debug 키로 서명하는 설치용 빌드다. release의 최적화 설정과 로그 비활성화 구현을 재사용하며
+카카오 키·호출도 비활성화한다.
+Android 라이브러리는 `release` 변형을 사용한다. `release` 자체는 서명을 설정하지 않아 별도 서명 없이 생성한 APK를 설치할 수 없다.
+현재 AGP의 패키지 범위 최적화에서 Kotlin 내부 상속 클래스가 서로 다른 패키지로 재배치되어 `IllegalAccessError`가 발생할 수 있어,
+`app/src/main/keepRules/rules.keep`에서 `kotlin.**` 패키지명을 보존한다. release와 qaRelease 모두에 적용하며 코드 최적화는
+유지한다.
+Android Studio에서 Gradle Sync 후 `qaRelease`를 선택하거나 아래 명령으로 APK를 만든다.
+
+```powershell
+$env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
+.\gradlew.bat :app:assembleQaRelease --console=plain
+```
+
+산출물은 `app/build/outputs/apk/qaRelease/app-qaRelease.apk`다. 연결된 개발 장치에는 `:app:installQaRelease`로 설치할
+수 있다.
+패키지명·버전은 debug/release와 동일하므로 병렬 설치되지 않는다. 같은 debug 키로 서명된 기존 앱은 데이터를 유지하며 교체할 수 있지만, 서명이 다른 앱은
+업데이트할 수 없다.
+QA 서명은 로컬 검증용이며 배포용 서명이 아니다. Pleos 실차 설치·배포 정책 충족을 의미하지 않는다.
+
 검색 반경은 3km로 고정하고 설정 화면에는 표시하지 않는다. 과거 DataStore에 저장된 반경은 무시하며 다음 설정 저장 시 제거한다.
 검색 유종 (휘발유 기본, 고급휘발유, 경유)은 가로 1행 3개 버튼으로 선택하며 변경 즉시 기존 Preferences DataStore에 저장하고 재시작 후 복원한다.
 예상 주유량·평균연비·주유 시간 Stepper의 값은 중앙 정렬한다. 검색 유종은 차량 에너지원과 별개이며 차량 조회값으로 덮어쓰지 않는다. 오피넷 `aroundAll.do`

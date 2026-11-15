@@ -10,3 +10,8 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
+
+# Scoped R8 optimization can move a Kotlin stdlib subclass out of the package
+# of its package-private superclass (StringsKt__StringBuilderKt / StringsKt__IndentKt).
+# Preserve stdlib packages to avoid IllegalAccessError while retaining optimization.
+-keeppackagenames kotlin.**
