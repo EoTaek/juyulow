@@ -1,7 +1,6 @@
 package eotaek.juyulow.core.design.component
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -16,7 +15,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 
-/** 독립 정보를 세로 구분선으로 나란히 표시한다. 좁은 창에서는 항목 단위로 줄바꿈한다. */
+/** 한 Row 안에서 텍스트 사이에 세로 구분선을 배치한다. 각 텍스트는 할당된 폭 안에서 줄바꿈한다. */
 @Composable
 fun PleosDividedText(
     text: String,
@@ -28,23 +27,17 @@ fun PleosDividedText(
     if (parts.size <= 1) {
         Text(text, modifier = modifier, style = style, color = color)
     } else {
-        FlowRow(
-            modifier,
+        Row(
+            modifier.height(IntrinsicSize.Min),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             parts.forEachIndexed { index, part ->
-                Row(
-                    Modifier.height(IntrinsicSize.Min).align(Alignment.CenterVertically),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (index > 0) VerticalDivider(
-                        modifier = Modifier.fillMaxHeight(),
-                        color = JUYULOWTheme.colors.basic200,
-                    )
-                    Text(part, style = style, color = color)
-                }
+                if (index > 0) VerticalDivider(
+                    modifier = Modifier.fillMaxHeight(),
+                    color = JUYULOWTheme.colors.basic200,
+                )
+                Text(part, modifier = Modifier.weight(1f, fill = false), style = style, color = color)
             }
         }
     }
