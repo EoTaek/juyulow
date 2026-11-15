@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
@@ -24,6 +25,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -101,20 +105,28 @@ fun SettingsScreen(
                         onRetry
                     )
                 } else {
-                    SettingRow("검색 반경", narrow) {
-                        PleosStepper(
-                            "검색 반경", draft.searchRadiusKm, "km", 1..5, 1,
-                            { value -> onChange { it.copy(searchRadiusKm = value) } }
-                        )
-                    }
                     SettingRow("검색 유종", narrow) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .selectableGroup(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
                             ComparisonFuel.entries.forEach { fuel ->
+                                val selected = draft.comparisonFuel == fuel
                                 PleosButton(
-                                    (if (draft.comparisonFuel == fuel) "✓ " else "") + fuel.label,
-                                    { onChange { it.copy(comparisonFuel = fuel) } },
-                                    Modifier.fillMaxWidth()
-                                )
+                                    onClick = { onChange { it.copy(comparisonFuel = fuel) } },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .semantics { this.selected = selected },
+                                    outlined = !selected,
+                                ) {
+                                    Text(
+                                        fuel.label,
+                                        style = type.labelMedium,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
                             }
                         }
                     }
@@ -138,11 +150,6 @@ fun SettingsScreen(
                             { value -> onChange { it.copy(refuelMinutes = value) } }
                         )
                     }
-                    Text(
-                        "모든 주유소에 같은 조건으로 적용해요. 차량 조회값은 참고 정보이며 계산에는 저장한 주유량·평균연비를 사용해요.",
-                        style = type.labelMedium,
-                        color = colors.textDarkTertiary
-                    )
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("차량 조회 정보", style = type.bodyMediumStrong)
                         listOf(
@@ -186,7 +193,7 @@ private fun SettingRow(label: String, narrow: Boolean, content: @Composable () -
             horizontalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             Text(label, style = JUYULOWTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-            Box(Modifier.width(380.dp)) { content() }
+            Box(Modifier.width(520.dp)) { content() }
         }
         HorizontalDivider(color = JUYULOWTheme.colors.basic200)
     }

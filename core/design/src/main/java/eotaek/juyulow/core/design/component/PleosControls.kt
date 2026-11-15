@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
@@ -251,6 +252,7 @@ fun PleosStepper(
         Text(
             "$value $unit",
             style = JUYULOWTheme.typography.titleSmallBold,
+            textAlign = TextAlign.Center,
             modifier = Modifier
                 .weight(1f)
                 .semantics { contentDescription = "$label $value $unit" })

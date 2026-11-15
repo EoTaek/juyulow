@@ -38,7 +38,8 @@ class PreferencesSettingsRepository(storage: SettingsStorage) : SettingsReposito
             liters = (values[Liters] ?: 40).takeIf { it in 10..100 && it % 10 == 0 } ?: 40,
             efficiencyKmPerL = (values[Efficiency] ?: 12).takeIf { it in 1..30 } ?: 12,
             refuelMinutes = (values[Minutes] ?: 5).takeIf { it in 1..20 } ?: 5,
-            searchRadiusKm = (values[Radius] ?: 3).takeIf { it in 1..5 } ?: 3,
+            // Ignore legacy radius preferences: new searches always use the fixed 3 km default.
+            searchRadiusKm = 3,
             comparisonFuel = ComparisonFuel.entries.firstOrNull { it.name == values[Fuel] }
                 ?: ComparisonFuel.GASOLINE,
         )
@@ -50,7 +51,7 @@ class PreferencesSettingsRepository(storage: SettingsStorage) : SettingsReposito
             values[Liters] = settings.liters
             values[Efficiency] = settings.efficiencyKmPerL
             values[Minutes] = settings.refuelMinutes
-            values[Radius] = settings.searchRadiusKm
+            values.remove(Radius)
             values[Fuel] = settings.comparisonFuel.name
         }
     }

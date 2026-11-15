@@ -1,5 +1,12 @@
 # 검증
 
+## 2026-11-15 설정 검색 반경 고정 및 조작 영역 배치
+
+검색 반경은 3km로 고정하고 설정 화면에서 제거했다. 검색 유종은 가로 1행 3개 버튼으로 표시하고 Stepper 값을 중앙 정렬한다.
+PreferencesSettingsRepositoryTest는 과거 반경 5km를 읽어도 3km로 제공하고 저장 시 과거 키를 제거하며 다른 설정은 유지하는지 검증한다.
+debug 빌드, 전체 단위 테스트 158개 (실패·오류 0), lintDebug, AndroidTest APK 빌드가 통과했다.
+VehicleConditionsLayoutTest의 반경 조작 단언은 새 UI에 맞게 수정했으며 연결 실행과 두 창 크기·두 테마의 실제 렌더링 검증은 수행하지 않았다.
+
 ## 2026-11-14 홈·설정 차량 에너지원 안내 제거
 
 홈·설정에서 차량 에너지원과 전기차 안내 문구를 제거했다. 앱 debug 빌드, 전체 단위 테스트, lintDebug와 AndroidTest APK 빌드가 통과했다.
