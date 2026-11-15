@@ -133,7 +133,7 @@
 
 | 차량 환경에 맞춘 요소 | 구현 방식 |
 | --- | --- |
-| 차량 정보 활용 | 지원되는 연료·연비 정보를 조회하고 미확보 항목은 수동값으로 보완 |
+| 차량 정보 활용 | 누적 연비를 계산에 사용하고 미확보 시 수동 연비로 보완, 탱크 잔량·용량은 참고 정보로 표시 |
 | 도로 기준 비교 | 단순 직선거리 대신 NaviHelper의 주유소까지 도로 거리·ETA 사용 |
 | 적은 화면 이동 | 목록과 선택 후보 상세를 같은 화면에 배치 |
 | 입력 부담 감소 | 주유 조건에 증감 버튼과 선택 조작 제공 |
@@ -193,7 +193,7 @@
 | --- | --- |
 | 주변 주유소·유가 검색 | 오피넷 실제 반경 검색, 가까운 유효 후보 최대 15곳 비교 |
 | 검색 조건 | 휘발유·고급휘발유·경유 선택 저장, 반경 3km 고정 |
-| 차량 정보 | Pleos Vehicle·AAOS 조회, 항목별 수동 기본값 보완 |
+| 차량 정보 | 앱 프로세스 시작 시 Pleos Vehicle·AAOS 1회 조회, 누적 연비 미확보 시 수동 연비 사용 |
 | 주유소까지 거리·ETA | 오피넷 좌표를 변환해 NaviHelper로 조회 |
 | 점진적 결과 표시 | 첫 ETA 성공 후 비교 화면 진입, 나머지 후보를 순차 갱신 |
 | 비용 비교 | 편도 기준 순절약액·비용 내역, 절약액순·시간순 정렬 |
@@ -223,7 +223,8 @@
 | --- | --- |
 | 차량 앱 | Kotlin, Jetpack Compose, Navigation 3 |
 | 상태·의존성 | ViewModel, Coroutines / Flow, Koin |
-| 차량·내비 | Pleos Vehicle, NaviHelper, FusedLocation, Android Automotive OS |
+| 차량·내비 | Pleos Vehicle·Android Automotive OS의 차량 정보, NaviHelper의 위치·경로 조회 및 내비 설정 |
+| 위치 SDK 어댑터 | Pleos FusedLocation 조회·구독 어댑터 구현, 현재 검색 위치는 NaviHelper에서 조회 |
 | 주유소 데이터 | 오피넷 Open API, Proj4J 좌표 변환 |
 | 경유 추정 | 카카오모빌리티 자동차 길찾기 API — 키가 설정된 debug·release·qaRelease |
 | 통신·저장 | Retrofit, Kotlin Serialization, Preferences DataStore |
