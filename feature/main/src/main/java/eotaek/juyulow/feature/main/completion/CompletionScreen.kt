@@ -1,5 +1,7 @@
 package eotaek.juyulow.feature.main.completion
 
+import android.content.res.Configuration
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -162,16 +164,98 @@ private val previewSelection = NavigationSelection(
     resolveRefuelConditions(RefuelSettings()),
 )
 
-@Preview(name = "Completion · Landscape", widthDp = 1700, heightDp = 1184)
-@Preview(name = "Completion · Portrait", widthDp = 840, heightDp = 1184)
+@Preview(name = "Wide", widthDp = 1700, heightDp = 1184)
+@Preview(name = "Narrow", widthDp = 840, heightDp = 1184)
+@Preview(name = "Dark Wide", widthDp = 1700, heightDp = 1184, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Dark Narrow", widthDp = 840, heightDp = 1184, uiMode = Configuration.UI_MODE_NIGHT_YES)
+private annotation class CompletionPreviewVariants
+
+@CompletionPreviewVariants
 @Composable
 private fun CompletionPreview() {
-    JUYULOWTheme { CompletionScreen(previewSelection, {}, {}) }
+    CompletionPreviewContent()
 }
 
+// 기존 프리뷰 선택이 참조하는 함수 이름을 유지한다.
 @Preview(name = "Completion · Dark Landscape", widthDp = 1700, heightDp = 1184)
 @Preview(name = "Completion · Dark Portrait", widthDp = 840, heightDp = 1184)
 @Composable
 private fun CompletionDarkPreview() {
-    JUYULOWTheme(darkTheme = true) { CompletionScreen(previewSelection, {}, {}) }
+    CompletionPreviewContent(darkTheme = true)
+}
+
+@CompletionPreviewVariants
+@Composable
+private fun CompletionDestinationPreview() {
+    CompletionPreviewContent(previewSelection.copy(
+        mode = JourneyMode.DESTINATION,
+        destination = previewSelection.stationName,
+        waypoint = null,
+        distanceMeters = 1800,
+        durationSeconds = 600,
+    ))
+}
+
+@CompletionPreviewVariants
+@Composable
+private fun CompletionOutboundOnlyPreview() {
+    CompletionPreviewContent(previewSelection.copy(
+        outboundOnly = true, distanceMeters = 1800, durationSeconds = 600,
+    ))
+}
+
+@CompletionPreviewVariants
+@Composable
+private fun CompletionMultipleWaypointsPreview() {
+    CompletionPreviewContent(previewSelection.copy(
+        routeWaypoints = listOf(previewSelection.stationName, "서울역"),
+    ))
+}
+
+@CompletionPreviewVariants
+@Composable
+private fun CompletionMissingSelectionPreview() {
+    CompletionPreviewContent(selection = null)
+}
+
+@CompletionPreviewVariants
+@Composable
+private fun CompletionWithoutNavigationActionPreview() {
+    CompletionPreviewContent(showNavigationAction = false)
+}
+
+@CompletionPreviewVariants
+@Composable
+private fun CompletionNavigationErrorPreview() {
+    CompletionPreviewContent(error = "내비게이션을 열지 못했어요. 잠시 후 다시 시도해 주세요.")
+}
+
+@CompletionPreviewVariants
+@Composable
+private fun CompletionLongNamesPreview() {
+    val stationName = "서울 만남의광장 고속도로 휴게소 셀프주유소"
+    CompletionPreviewContent(previewSelection.copy(
+        stationName = stationName,
+        waypoint = stationName,
+        destination = "현대자동차 양재 본사 서관 방문객 주차장",
+        routeWaypoints = listOf(stationName),
+    ))
+}
+
+@Composable
+private fun CompletionPreviewContent(
+    selection: NavigationSelection? = previewSelection,
+    showNavigationAction: Boolean = true,
+    error: String? = null,
+    darkTheme: Boolean = isSystemInDarkTheme(),
+) {
+    JUYULOWTheme(darkTheme = darkTheme) {
+        CompletionScreen(
+            selection = selection,
+            onCompare = {},
+            onHome = {},
+            onOpenNavigation = if (showNavigationAction) ({}) else null,
+            error = error,
+        )
+    }
 }
