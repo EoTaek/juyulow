@@ -46,7 +46,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import eotaek.juyulow.core.design.component.PleosButton
-import eotaek.juyulow.core.design.component.PleosDividedText
 import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.component.PleosIconButton
 import eotaek.juyulow.core.design.component.PleosInlineError
@@ -176,22 +175,9 @@ fun ResultsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) { refresh(); sort() }
-                            if (batch.context.journey.stationSource == "오피넷") {
-                                val fetchedAt = batch.stations.firstOrNull()?.observedAtMillis
-                                    ?: batch.createdAtMillis
-                            }
                             var focusedId by remember { mutableStateOf<String?>(null) }
                             val requesters =
                                 remember(batch.id) { mutableMapOf<String, FocusRequester>() }
-                            PleosDividedText(
-                                if (batch.searchComplete) "주유소 조회 완료" else "잠정 절약액 · 기준 유가 갱신 중",
-                                style = type.labelSmall
-                            )
-                            val detourCount = batch.stations.count { it.detour != null }
-                            if (detourCount > 0) Text(
-                                "카카오 경유 " + batch.stations.count { it.detour?.pending == false } + "/" + detourCount,
-                                style = type.labelSmall
-                            )
                             val listState = rememberLazyListState()
                             val evaluated = state.evaluated
                             val evaluatedById = evaluated.associateBy { it.station.id }
