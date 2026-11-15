@@ -1,5 +1,7 @@
 package eotaek.juyulow.feature.main.results
 
+import android.content.res.Configuration
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
@@ -138,18 +140,6 @@ fun ResultsScreen(
                             if (batch.context.journey.stationSource == "오피넷") {
                                 val fetchedAt = batch.stations.firstOrNull()?.observedAtMillis
                                     ?: batch.createdAtMillis
-                                Text(
-                                    "오피넷 · 반경 ${batch.context.conditions.searchRadiusKm} km · ${batch.context.conditions.comparisonFuel.label}",
-                                    style = type.labelSmall
-                                )
-                                Text(
-                                    "조회: ${
-                                        java.text.SimpleDateFormat(
-                                            "MM-dd HH:mm",
-                                            java.util.Locale.KOREA
-                                        ).format(java.util.Date(fetchedAt))
-                                    } · 가격 기준시각 미제공", style = type.labelSmall
-                                )
                             }
                             var focusedId by remember { mutableStateOf<String?>(null) }
                             val requesters =
@@ -357,30 +347,119 @@ internal fun previewSession(): ComparisonSession = ComparisonSession(
     )
 )
 
-@Preview(name = "Results · Landscape", widthDp = 1700, heightDp = 1184)
-@Preview(name = "Results · Portrait", widthDp = 840, heightDp = 1184)
+// 각 상태를 인자 없는 진입점으로 제공해 IDE의 프리뷰 인자 주입에 의존하지 않는다.
+@Preview(name = "Wide", widthDp = 1700, heightDp = 1184)
+@Preview(name = "Narrow", widthDp = 840, heightDp = 1184)
+@Preview(name = "Dark Wide", widthDp = 1700, heightDp = 1184, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Dark Narrow", widthDp = 840, heightDp = 1184, uiMode = Configuration.UI_MODE_NIGHT_YES)
+private annotation class ResultsPreviewVariants
+
+@ResultsPreviewVariants
 @Composable
-private fun ResultsPreview() {
-    JUYULOWTheme {
-        ResultsScreen(
-            ResultsUiState(
-                previewSession(),
-                JourneyMode.WAYPOINT,
-                selectedId = "station-0"
-            ), {}, {}, {}, {}, {})
-    }
+private fun ResultsNoDestinationPreview() {
+    ResultsPreviewContent("목적지 없음")
 }
 
-@Preview(name = "Results · Dark Landscape", widthDp = 1700, heightDp = 1184)
-@Preview(name = "Results · Dark Portrait", widthDp = 840, heightDp = 1184)
+@ResultsPreviewVariants
+@Composable
+private fun ResultsReplaceDestinationPreview() {
+    ResultsPreviewContent("목적지 있음·목적지 대체")
+}
+
+@ResultsPreviewVariants
+@Composable
+private fun ResultsPreview() {
+    ResultsPreviewContent("목적지 있음·경유 추정 미제공")
+}
+
+@Preview(name = "Results · Dark", widthDp = 1700, heightDp = 1184, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Results · Dark Narrow", widthDp = 840, heightDp = 1184, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun ResultsDarkPreview() {
-    JUYULOWTheme(darkTheme = true) {
-        ResultsScreen(
-            ResultsUiState(
-                previewSession(),
-                JourneyMode.WAYPOINT,
-                selectedId = "station-0"
-            ), {}, {}, {}, {}, {})
+    ResultsPreviewContent("목적지 있음·경유 추정 미제공", darkTheme = true)
+}
+
+@ResultsPreviewVariants
+@Composable
+private fun ResultsDetourSuccessPreview() {
+    ResultsPreviewContent("경유 추정 성공")
+}
+
+@ResultsPreviewVariants
+@Composable
+private fun ResultsDetourPendingPreview() {
+    ResultsPreviewContent("경유 추정 조회 중")
+}
+
+@ResultsPreviewVariants
+@Composable
+private fun ResultsDetourFailedPreview() {
+    ResultsPreviewContent("경유 추정 실패")
+}
+
+@ResultsPreviewVariants
+@Composable
+private fun ResultsExpiredPreview() {
+    ResultsPreviewContent("이전 검색 기준")
+}
+
+@ResultsPreviewVariants
+@Composable
+private fun ResultsExtraCostPreview() {
+    ResultsPreviewContent("추가 지출")
+}
+
+@ResultsPreviewVariants
+@Composable
+private fun ResultsMixedEtaPreview() {
+    ResultsPreviewContent("ETA 성공·조회 중·실패 혼합")
+}
+
+@ResultsPreviewVariants
+@Composable
+private fun ResultsAllEtaFailedPreview() {
+    ResultsPreviewContent("ETA 전체 실패")
+}
+
+@ResultsPreviewVariants
+@Composable
+private fun ResultsEmptyPreview() {
+    ResultsPreviewContent("검색 결과 없음")
+}
+
+@ResultsPreviewVariants
+@Composable
+private fun ResultsRefreshingPreview() {
+    ResultsPreviewContent("재검색 중")
+}
+
+@ResultsPreviewVariants
+@Composable
+private fun ResultsRefreshFailedPreview() {
+    ResultsPreviewContent("재검색 실패·기존 결과 유지")
+}
+
+@ResultsPreviewVariants
+@Composable
+private fun ResultsSettingRoutePreview() {
+    ResultsPreviewContent("경로 설정 중")
+}
+
+@ResultsPreviewVariants
+@Composable
+private fun ResultsRouteUncertainPreview() {
+    ResultsPreviewContent("경로 설정 결과 불명")
+}
+
+@ResultsPreviewVariants
+@Composable
+private fun ResultsMissingSessionPreview() {
+    ResultsPreviewContent("세션 없음")
+}
+
+@Composable
+private fun ResultsPreviewContent(name: String, darkTheme: Boolean = isSystemInDarkTheme()) {
+    JUYULOWTheme(darkTheme = darkTheme) {
+        ResultsScreen(resultsPreviewCases().first { it.name == name }.state, {}, {}, {}, {}, {})
     }
 }

@@ -1,5 +1,7 @@
 package eotaek.juyulow.feature.main.results.component
 
+import android.content.res.Configuration
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -24,12 +26,11 @@ import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.ComparisonContext
 import eotaek.juyulow.core.model.JourneyMode
-import eotaek.juyulow.core.model.compareStation
 import eotaek.juyulow.feature.main.common.kilometers
 import eotaek.juyulow.feature.main.common.minutes
 import eotaek.juyulow.feature.main.common.won
 import eotaek.juyulow.feature.main.results.EvaluatedStation
-import eotaek.juyulow.feature.main.results.previewSession
+import eotaek.juyulow.feature.main.results.selectionPreviewCases
 import kotlin.math.abs
 
 @Composable
@@ -127,17 +128,9 @@ internal fun SelectionPanel(
             style = type.labelSmall,
             color = colors.textDarkTertiary
         )
-        val routeDescription = when (mode) {
-            JourneyMode.WAYPOINT -> null
-            JourneyMode.DESTINATION -> if (context.journey.hasDestination) "${context.journey.destination} 대신 주유소로 목적지를 변경해요." else "선택한 주유소로 목적지를 설정해요."
-            JourneyMode.ROUND_TRIP -> "주유소를 경유해 현재 위치로 돌아와요."
-        }
-        routeDescription?.let {
-            Text(it, style = type.labelSmall, color = colors.textDarkSecondary)
-        }
         row.station.detour?.let { estimate ->
             HorizontalDivider(color = colors.basic200)
-            Text("예상 경유 추가 비용 · 카카오모빌리티", style = type.labelMedium)
+            Text("예상 경유 추가 비용", style = type.labelMedium)
             when {
                 detourExpired -> Text("이전 검색 기준 · 재검색 필요", style = type.bodySmall)
                 estimate.pending -> Text("경유 비용 확인 중", style = type.bodySmall)
@@ -155,7 +148,6 @@ internal fun SelectionPanel(
                         signedMinutes(seconds + context.conditions.refuelSeconds) + " 분"
                     )
                     CostRow("경유 순절약액", won(result.fuelSavingWon - fuel - toll) + " 원")
-                    Text(estimate.assumptions + " · 실제 Pleos 경로와 다를 수 있어요", style = type.labelSmall)
                 }
             }
         }
@@ -173,34 +165,81 @@ internal fun SelectionPanel(
     }
 }
 
-// 1700dp / 840dp 앱 창에서 결과 화면의 여백과 열 간격을 제외한 상세 패널 너비.
-@Preview(name = "Selection · Wide", widthDp = 798, heightDp = 960)
-@Preview(name = "Selection · Narrow", widthDp = 390, heightDp = 960)
+// 각 상태를 인자 없는 진입점으로 제공해 IDE의 프리뷰 인자 주입에 의존하지 않는다.
+@Preview(name = "Wide", widthDp = 798, heightDp = 960)
+@Preview(name = "Narrow", widthDp = 390, heightDp = 960)
+@Preview(name = "Dark Wide", widthDp = 798, heightDp = 960, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Dark Narrow", widthDp = 390, heightDp = 960, uiMode = Configuration.UI_MODE_NIGHT_YES)
+private annotation class SelectionPreviewVariants
+
+@SelectionPreviewVariants
+@Composable
+private fun SelectionNoDestinationPreview() {
+    SelectionPreviewContent("목적지 없음")
+}
+
+@SelectionPreviewVariants
+@Composable
+private fun SelectionReplaceDestinationPreview() {
+    SelectionPreviewContent("목적지 있음·목적지 대체")
+}
+
+@SelectionPreviewVariants
 @Composable
 private fun SelectionPanelPreview() {
-    SelectionPanelPreviewContent(darkTheme = false)
+    SelectionPreviewContent("목적지 있음·경유 추정 미제공")
 }
 
-@Preview(name = "Selection · Dark Wide", widthDp = 798, heightDp = 960)
-@Preview(name = "Selection · Dark Narrow", widthDp = 390, heightDp = 960)
+// 이전 프리뷰 선택을 유지한 IDE에서도 같은 진입점을 찾을 수 있도록 이름을 유지한다.
+@Preview(name = "Selection · Dark", widthDp = 798, heightDp = 960, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Selection · Dark Narrow", widthDp = 390, heightDp = 960, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun SelectionPanelDarkPreview() {
-    SelectionPanelPreviewContent(darkTheme = true)
+    SelectionPreviewContent("목적지 있음·경유 추정 미제공", darkTheme = true)
+}
+
+@SelectionPreviewVariants
+@Composable
+private fun SelectionDetourSuccessPreview() {
+    SelectionPreviewContent("경유 추정 성공")
+}
+
+@SelectionPreviewVariants
+@Composable
+private fun SelectionDetourPendingPreview() {
+    SelectionPreviewContent("경유 추정 조회 중")
+}
+
+@SelectionPreviewVariants
+@Composable
+private fun SelectionDetourFailedPreview() {
+    SelectionPreviewContent("경유 추정 실패")
+}
+
+@SelectionPreviewVariants
+@Composable
+private fun SelectionExpiredPreview() {
+    SelectionPreviewContent("이전 검색 기준")
+}
+
+@SelectionPreviewVariants
+@Composable
+private fun SelectionExtraCostPreview() {
+    SelectionPreviewContent("추가 지출")
 }
 
 @Composable
-private fun SelectionPanelPreviewContent(darkTheme: Boolean) {
-    val session = previewSession()
-    val station = session.stations.first()
-    val mode = JourneyMode.WAYPOINT
+private fun SelectionPreviewContent(name: String, darkTheme: Boolean = isSystemInDarkTheme()) {
+    val state = selectionPreviewCases().first { it.name == name }.state
     JUYULOWTheme(darkTheme = darkTheme) {
         Surface(color = JUYULOWTheme.colors.backgroundPrimary) {
             BoxWithConstraints {
                 SelectionPanel(
-                    row = EvaluatedStation(station, compareStation(session.context, station, mode)),
-                    context = session.context,
-                    mode = mode,
+                    row = requireNotNull(state.selected),
+                    context = requireNotNull(state.session).context,
+                    mode = state.mode,
                     narrow = maxWidth < 500.dp,
+                    detourExpired = state.comparisonExpired,
                 )
             }
         }
