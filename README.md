@@ -173,11 +173,25 @@
 
 ## 실행 및 테스트 환경
 
-- **실행 방법:** 아래 APK를 Pleos Connect 에뮬레이터에 설치한 뒤 앱 목록에서 **주유로**를 실행합니다. 주유 조건을 확인하고 **주변 주유소 찾기**를 누르면 비교를 시작할 수 있습니다.
-- **APK 파일 또는 GitHub Release:** **[빌드·업로드 후 링크 입력]** (현재 빌드 전)
+- **실행 방법:** 로컬에서 빌드한 설치용 APK를 Pleos Connect 에뮬레이터에 설치한 뒤 앱 목록에서 **주유로**를 실행합니다. 주유 조건을 확인하고 **주변 주유소 찾기**를 누르면 비교를 시작할 수 있습니다.
+- **APK 배포 링크:** 아직 README에 등록되지 않았습니다. 로컬 빌드 방법은 아래를 참고합니다.
 - **개발 에뮬레이터:** Pleos Connect **2.1.0**, Android 14, Pleos Connect-S-17
 - **앱 화면 규격:** 가로형 **1700 × 1184dp**, 분할 창 **840 × 1184dp**. 실제 디스플레이의 픽셀 해상도가 아닌 앱의 논리 영역입니다.
 - **필요한 설정:** 정차 상태에서 시연하며, 주유소 검색과 경로 조회를 위해 네트워크와 현재 위치가 필요합니다. 앱에서 차량 에너지 접근 권한을 요청하면 허용해 주세요.
+
+### 로컬 APK 빌드
+
+Git에서 제외된 `local.properties`에 `OPINET_API_KEY`를 설정합니다. debug 빌드에서 경유 비용 추정도 시연하려면 `KAKAO_REST_API_KEY`가 필요합니다.
+
+| 빌드 | Gradle 태스크 | APK 경로 (`app/build/outputs/apk/` 아래) | 용도 |
+| --- | --- | --- | --- |
+| `debug` | `:app:assembleDebug` | `debug/app-debug.apk` | 개발·시연, 카카오 키 설정 시 경유 비용 추정 제공 |
+| `qaRelease` | `:app:assembleQaRelease` | `qaRelease/app-qaRelease.apk` | release 최적화·로그 비활성화, 로컬 debug 키 서명, 카카오 경유 추정 비활성화 |
+| `release` | `:app:assembleRelease` | `release/app-release-unsigned.apk` | 별도 서명이 필요한 산출물 |
+
+저장소의 Gradle Wrapper로 실행하며 Windows 빌드 환경과 서명 제약은 [로컬 QA release 빌드](docs/PROJECT.md#로컬-qa-release-빌드)를 참고합니다. `qaRelease`는 debug와 패키지명이 같아 병렬 설치되지 않으며, 기존 앱과 서명이 같을 때 데이터를 유지하며 교체할 수 있습니다. 로컬 QA 서명은 배포용 서명이 아닙니다.
+
+QA 빌드·서명·DEX 검사 결과는 [검증 문서](docs/TESTING.md)에 기록돼 있으며, 해당 QA APK의 장치 설치·실행은 검증하지 않았습니다.
 
 ### 에뮬레이터 시연 안내
 
