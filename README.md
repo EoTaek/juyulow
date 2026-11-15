@@ -179,8 +179,8 @@
 
 ## 실행 및 테스트 환경
 
-- **실행 방법:** 로컬에서 빌드한 설치용 APK를 Pleos Connect 에뮬레이터에 설치한 뒤 앱 목록에서 **주유로**를 실행합니다. 주유 조건을 확인하고 **주변 주유소 찾기**를 누르면 비교를 시작할 수 있습니다.
-- **APK 배포 링크:** 아직 README에 등록되지 않았습니다. 로컬 빌드 방법은 아래를 참고합니다.
+- **제출 APK:** [eotaek_juyulow_release.apk 다운로드](https://github.com/EoTaek/juyulow/releases/download/v0.1.0/eotaek_juyulow_release.apk) · [v0.1.0 Release](https://github.com/EoTaek/juyulow/releases/tag/v0.1.0) · [저장소 내 APK](apk/eotaek_juyulow_release.apk)
+- **실행 방법:** 제출 APK를 Pleos Connect 에뮬레이터에 설치한 뒤 앱 목록에서 **주유로**를 실행합니다. 주유 조건을 확인하고 **주변 주유소 찾기**를 누르면 비교를 시작할 수 있습니다. 소스에서 직접 빌드하는 방법과 API 키 설정은 아래 개발 안내를 참고합니다.
 - **개발 에뮬레이터:** Pleos Connect **2.1.0**, Android 14, Pleos Connect-S-17
 - **앱 화면 규격:** 가로형 **1700 × 1184dp**, 분할 창 **840 × 1184dp**. 실제 디스플레이의 픽셀 해상도가 아닌 앱의 논리 영역입니다.
 - **필요한 설정:** 정차 상태에서 시연하며, 주유소 검색과 경로 조회를 위해 네트워크와 현재 위치가 필요합니다. 앱에서 차량 에너지 접근 권한을 요청하면 허용해 주세요.
