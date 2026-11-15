@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,15 +25,11 @@ import androidx.compose.ui.unit.dp
 import eotaek.juyulow.core.design.component.PleosButton
 import eotaek.juyulow.core.design.component.PleosDividedText
 import eotaek.juyulow.core.design.component.PleosIcon
-import eotaek.juyulow.core.design.component.PleosLabelValue
-import eotaek.juyulow.core.design.component.PleosOutlinedCard
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.NavigationSelection
 import eotaek.juyulow.core.model.RefuelSettings
 import eotaek.juyulow.core.model.resolveRefuelConditions
-import eotaek.juyulow.feature.main.common.kilometers
-import eotaek.juyulow.feature.main.common.minutes
 
 @Composable
 fun CompletionScreen(
@@ -89,40 +84,6 @@ fun CompletionScreen(
                             JourneyMode.ROUND_TRIP -> "${selection.stationName}에 들른 뒤 현재 위치로 돌아와요."
                         }, style = type.bodyMedium, color = colors.textDarkTertiary
                     )
-                    PleosOutlinedCard(cornerRadius = 24.dp) {
-                        FlowRow(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(28.dp),
-                            horizontalArrangement = Arrangement.spacedBy(28.dp),
-                            verticalArrangement = Arrangement.spacedBy(24.dp)
-                        ) {
-                            PleosLabelValue(
-                                if (selection.waypoint != null) "경유지" else "목적지",
-                                if (selection.routeWaypoints.isNotEmpty()) selection.routeWaypoints.joinToString(
-                                    " → "
-                                ) else selection.stationName,
-                                valueStyle = type.titleSmallBold
-                            )
-                            if (selection.waypoint != null) {
-                                PleosIcon(PleosIcon.Next, Modifier.padding(top = 24.dp))
-                                PleosLabelValue(
-                                    "최종 목적지",
-                                    selection.destination,
-                                    valueStyle = type.titleSmallBold
-                                )
-                            }
-                            PleosLabelValue(
-                                "${if (selection.outboundOnly) "검색 시점 기준 · 주유소까지 " else ""}${
-                                    kilometers(
-                                        selection.distanceMeters
-                                    )
-                                } km · 주유 포함",
-                                "${minutes(selection.durationSeconds)}분",
-                                valueStyle = type.titleSmallBold
-                            )
-                        }
-                    }
                     error?.let { PleosDividedText(it, style = type.labelSmall) }
                     onOpenNavigation?.let { PleosButton("내비게이션 열기", it) }
                     if (narrow) Column(
