@@ -199,7 +199,7 @@ class VehicleConditionsLayoutTest(private val widthDp: Int, private val dark: Bo
             300,
             conditions
         )
-        render { CompletionScreen(selection, {}, {}) }
+        render { CompletionScreen(selection, {}) }
         compose.onNodeWithText("차량 에너지원: 전기").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("홈으로").performScrollTo().assertIsDisplayed()
         verifyAndCapture("vehicle-completion")

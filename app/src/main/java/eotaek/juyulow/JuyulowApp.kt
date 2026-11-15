@@ -136,7 +136,6 @@ fun JuyulowApp(navigation: AppNavigationViewModel = koinViewModel()) {
                 entry<Completion> { key ->
                     CompletionRoute(
                         koinViewModel(parameters = { parametersOf(key.selectionId) }),
-                        navigation::back,
                         navigation::home
                     )
                 }

@@ -18,8 +18,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import eotaek.juyulow.core.design.component.PleosButton
@@ -34,7 +38,6 @@ import eotaek.juyulow.core.model.resolveRefuelConditions
 @Composable
 fun CompletionScreen(
     selection: NavigationSelection?,
-    onCompare: () -> Unit,
     onHome: () -> Unit,
     modifier: Modifier = Modifier,
     onOpenNavigation: (() -> Unit)? = null,
@@ -42,6 +45,7 @@ fun CompletionScreen(
 ) {
     val colors = JUYULOWTheme.colors
     val type = JUYULOWTheme.typography
+    val navigationFocus = remember { FocusRequester() }
     Surface(modifier.fillMaxSize(), color = colors.backgroundPrimary) {
         BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             val narrow = maxWidth < 1100.dp
@@ -68,7 +72,7 @@ fun CompletionScreen(
                 }
                 if (selection == null) {
                     Text("설정한 경로가 없어요.", style = type.titleLargeBold)
-                    PleosButton("홈으로", onHome)
+                    PleosButton("홈으로", onHome, outlined = true)
                 } else {
                     Text(
                         when (selection.mode) {
@@ -85,26 +89,29 @@ fun CompletionScreen(
                         }, style = type.bodyMedium, color = colors.textDarkTertiary
                     )
                     error?.let { PleosDividedText(it, style = type.labelSmall) }
-                    onOpenNavigation?.let { PleosButton("내비게이션 열기", it) }
-                    if (narrow) Column(
-                        Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    Row(
+                        modifier = if (narrow) Modifier.fillMaxWidth() else Modifier,
+                        horizontalArrangement = Arrangement.spacedBy(20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        PleosButton(
-                            "다른 주유소 비교",
-                            onCompare,
-                            Modifier.fillMaxWidth(),
-                            outlined = true
-                        )
                         PleosButton(
                             "홈으로",
                             onHome,
-                            Modifier.fillMaxWidth(),
-                            trailingIcon = PleosIcon.Next
+                            if (narrow) Modifier.weight(1f) else Modifier,
+                            outlined = true,
                         )
-                    } else Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                        PleosButton("다른 주유소 비교", onCompare, outlined = true)
-                        PleosButton("홈으로", onHome, trailingIcon = PleosIcon.Next)
+                        onOpenNavigation?.let { openNavigation ->
+                            PleosButton(
+                                "내비게이션 열기",
+                                openNavigation,
+                                (if (narrow) Modifier.weight(1f) else Modifier)
+                                    .focusRequester(navigationFocus),
+                                trailingIcon = PleosIcon.Next,
+                            )
+                            LaunchedEffect(navigationFocus) {
+                                navigationFocus.requestFocus()
+                            }
+                        }
                     }
                 }
             }
@@ -213,7 +220,6 @@ private fun CompletionPreviewContent(
     JUYULOWTheme(darkTheme = darkTheme) {
         CompletionScreen(
             selection = selection,
-            onCompare = {},
             onHome = {},
             onOpenNavigation = if (showNavigationAction) ({}) else null,
             error = error,
