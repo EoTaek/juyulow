@@ -44,5 +44,6 @@ fun ResultsRoute(
         viewModel::changeSort,
         viewModel::requestRoute,
         onReconcile = viewModel::reconcile,
+        onUserInteraction = viewModel::onUserInteraction,
     )
 }

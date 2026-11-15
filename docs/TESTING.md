@@ -1,5 +1,12 @@
 # 검증
 
+## 2026-11-15 ETA 조회 중 최상단 자동 선택
+
+MainViewModelsTest에서 첫 성공 ID 대신 현재 정렬 최상단 선택, Pleos 종료 후 카카오 최종 응답까지 자동 선택,
+선택 변경 없는 사용자 입력의 자동 선택 중단, 조회 중 직접 선택 유지를 검증한다.
+debug 앱 빌드, feature:main 단위 테스트, lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다.
+실제 방향키·터치·스크롤 입력 연결의 디바이스 검증은 수행하지 않았다.
+
 ## 2026-11-15 한국어 어절 단위 줄바꿈
 
 공통 Pleos/Material 타이포그래피에 `ko-KR`, `WordBreak.Phrase`, 자동 하이픈 비활성화를 적용했다.

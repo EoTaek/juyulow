@@ -316,6 +316,77 @@ class MainViewModelsTest {
     }
 
     @Test
+    fun progressiveEtaFollowsSortedTopThroughFinalPleosAndKakaoUpdates() = runTest(dispatcher) {
+        val sessions = InMemoryComparisonSessionRepository()
+        val base = previewSession()
+        val batch = sessions.create(base.context.journey, base.context.conditions, base.stations)
+            .copy(searchComplete = false, firstReadyId = "station-2")
+        sessions.update(batch)
+        val results = keep(ResultsViewModel(batch.id, Stations(), sessions, MockJourneyRepository()))
+        runCurrent()
+        assertEquals(results.state.value.evaluated.first().station.id, results.state.value.selectedId)
+
+        val pleosComplete = batch.copy(searchComplete = true, stations = batch.stations.map {
+            it.copy(
+                priceWonPerL = if (it.id == "station-0") 1000 else it.priceWonPerL,
+                detour = eotaek.juyulow.core.model.DetourEstimate(),
+            )
+        })
+        sessions.update(pleosComplete)
+        runCurrent()
+        assertEquals("station-0", results.state.value.selectedId)
+        // Pleos가 끝난 뒤에도 카카오 최종 응답까지 자동 선택 정책을 적용한다.
+        val kakaoComplete = pleosComplete.copy(stations = pleosComplete.stations.map {
+            it.copy(
+                priceWonPerL = if (it.id == "station-1") 900 else it.priceWonPerL,
+                detour = eotaek.juyulow.core.model.DetourEstimate(
+                    pending = false, meters = 100, seconds = 60, tollWon = 0,
+                ),
+            )
+        })
+        sessions.update(kakaoComplete)
+        runCurrent()
+        assertEquals("station-1", results.state.value.selectedId)
+    }
+
+    @Test
+    fun userInputWithoutSelectingLocksSelectionAcrossEtaUpdates() = runTest(dispatcher) {
+        val sessions = InMemoryComparisonSessionRepository()
+        val base = previewSession()
+        val batch = sessions.create(base.context.journey, base.context.conditions, base.stations)
+            .copy(searchComplete = false)
+        sessions.update(batch)
+        val results = keep(ResultsViewModel(batch.id, Stations(), sessions, MockJourneyRepository()))
+        runCurrent()
+        val selected = results.state.value.selectedId
+        results.onUserInteraction() // 방향키·스크롤도 select 호출 없이 선택을 잠근다.
+        sessions.update(batch.copy(searchComplete = true, stations = batch.stations.map {
+            it.copy(priceWonPerL = if (it.id == "station-2") 500 else it.priceWonPerL)
+        }))
+        runCurrent()
+        assertEquals("station-2", results.state.value.evaluated.first().station.id)
+        assertEquals(selected, results.state.value.selectedId)
+    }
+
+    @Test
+    fun explicitSelectionLocksSelectionDuringPendingEta() = runTest(dispatcher) {
+        val sessions = InMemoryComparisonSessionRepository()
+        val base = previewSession()
+        val batch = sessions.create(base.context.journey, base.context.conditions, base.stations)
+            .copy(searchComplete = false)
+        sessions.update(batch)
+        val results = keep(ResultsViewModel(batch.id, Stations(), sessions, MockJourneyRepository()))
+        runCurrent()
+        results.select("station-2")
+        sessions.update(batch.copy(stations = batch.stations.map {
+            it.copy(priceWonPerL = if (it.id == "station-0") 500 else it.priceWonPerL)
+        }))
+        runCurrent()
+        assertEquals("station-0", results.state.value.evaluated.first().station.id)
+        assertEquals("station-2", results.state.value.selectedId)
+    }
+
+    @Test
     fun sortingAndModeChangesRetainSelectionAndData() = runTest(dispatcher) {
         val sessions = InMemoryComparisonSessionRepository()
         val batch = sessions.create(

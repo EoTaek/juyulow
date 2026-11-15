@@ -17,6 +17,7 @@ data class ResultsUiState(
     val confirmReplacement: Boolean = false,
     val routeUncertain: Boolean = false,
     val comparisonExpired: Boolean = false,
+    val userInteracted: Boolean = false,
 ) {
     val busy: Boolean get() = searching || settingRoute
     val evaluated: List<EvaluatedStation>

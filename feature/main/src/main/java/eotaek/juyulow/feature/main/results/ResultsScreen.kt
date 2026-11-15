@@ -26,10 +26,21 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -63,11 +74,39 @@ fun ResultsScreen(
     onSort: (StationSort) -> Unit, onConfirm: (JourneyMode) -> Unit,
     modifier: Modifier = Modifier,
     onReconcile: () -> Unit = {},
+    onUserInteraction: () -> Unit = {},
 ) {
     val colors = JUYULOWTheme.colors
     val type = JUYULOWTheme.typography
     val batch = state.session
-    Surface(modifier.fillMaxSize(), color = colors.backgroundPrimary) {
+    val notifyInteraction by rememberUpdatedState(onUserInteraction)
+    val scrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && available != Offset.Zero) notifyInteraction()
+                return Offset.Zero
+            }
+        }
+    }
+    Surface(
+        modifier.fillMaxSize()
+            .onPreviewKeyEvent {
+                if (it.type == KeyEventType.KeyDown) notifyInteraction()
+                false
+            }
+            .nestedScroll(scrollConnection)
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        if (event.type == PointerEventType.Press || event.type == PointerEventType.Scroll) {
+                            notifyInteraction()
+                        }
+                    }
+                }
+            },
+        color = colors.backgroundPrimary,
+    ) {
         BoxWithConstraints {
             val narrow = maxWidth < 1100.dp
             Column(
