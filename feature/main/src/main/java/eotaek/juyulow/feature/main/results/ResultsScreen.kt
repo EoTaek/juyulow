@@ -155,11 +155,6 @@ fun ResultsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) { refresh(); sort() }
-                            Text(
-                                "${batch.stations.size}곳 · Pleos ${batch.stations.count { !it.routePending }}/${batch.stations.size} · 실패 ${batch.stations.count { it.routeError != null }}",
-                                style = type.labelMedium,
-                                color = colors.textDarkSecondary
-                            )
                             if (batch.context.journey.stationSource == "오피넷") {
                                 val fetchedAt = batch.stations.firstOrNull()?.observedAtMillis
                                     ?: batch.createdAtMillis

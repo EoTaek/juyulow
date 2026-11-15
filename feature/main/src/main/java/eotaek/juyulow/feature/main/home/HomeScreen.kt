@@ -80,8 +80,8 @@ fun HomeScreen(
                                     Modifier.weight(1f),
                                     verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Text(
-                                        if (state.journey.hasDestination) "현재 목적지" else "현재 위치",
+                                    if (state.journey.hasDestination) Text(
+                                        "현재 목적지",
                                         style = type.labelSmall,
                                         color = colors.textDarkTertiary
                                     )
@@ -97,10 +97,21 @@ fun HomeScreen(
                                         )
                                     }
                                 }
-                                if (state.journey.hasDestination && state.journey.baselineSeconds != null) Text(
-                                    "${minutes(state.journey.baselineSeconds!!)}분",
-                                    style = type.titleLargeBold
-                                )
+                                if (state.journey.hasDestination && state.journey.baselineSeconds != null) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Text(
+                                            "도착까지",
+                                            style = type.labelSmall,
+                                            color = colors.textDarkTertiary,
+                                            modifier = Modifier.alignByBaseline(),
+                                        )
+                                        Text(
+                                            "${minutes(state.journey.baselineSeconds!!)}분",
+                                            style = type.titleLargeBold,
+                                            modifier = Modifier.alignByBaseline(),
+                                        )
+                                    }
+                                }
                             }
                         }
                         PleosButton(
