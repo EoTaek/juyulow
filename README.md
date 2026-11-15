@@ -12,6 +12,12 @@
 
 현대자동차그룹 차량용 앱 개발 공모전 출품 프로젝트입니다. 현재 오피넷 실제 검색과 Pleos 내비게이션을 연결한 **정차 시연용 Android 앱**으로 구현했으며, 경유 추가 비용 추정은 카카오 API 키가 설정된 debug·release·qaRelease 빌드에서 제공합니다. 구현 범위는 [현재 구현과 검증](#현재-구현과-검증)에 정리했습니다.
 
+## 시연 영상
+
+[![주유로 시연 영상 보기](https://img.youtube.com/vi/JHTOHap73KA/hqdefault.jpg)](https://youtu.be/JHTOHap73KA)
+
+[▶ YouTube에서 시연 영상 재생](https://youtu.be/JHTOHap73KA)
+
 ## 상황별 사용 시나리오
 
 ### 1. 출발 전, 주유소를 새 목적지로 정합니다
