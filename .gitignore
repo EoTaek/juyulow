@@ -21,3 +21,4 @@ local.properties
 /juyulow_frontend
 /.kotlin/
 /tmp
+/app/release
