@@ -125,6 +125,7 @@ fun HomeScreen(
                             trailingIcon = PleosIcon.Next,
                             loading = state.searching,
                             enabled = state.settings != null && state.navigationReady,
+                            emphasizeContentOnFocus = true,
                         )
                         state.conditions?.let { conditions ->
                             Text(

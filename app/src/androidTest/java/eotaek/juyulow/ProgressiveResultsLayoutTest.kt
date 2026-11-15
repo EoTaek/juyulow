@@ -16,6 +16,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -93,7 +96,9 @@ class ProgressiveResultsLayoutTest(private val width: Int, private val dark: Boo
             CompositionLocalProvider(LocalDensity provides Density(.5f, 1f)) {
                 JUYULOWTheme(darkTheme = dark) {
                     Box(Modifier.requiredSize(width.dp, 1184.dp)) {
-                        ResultsScreen(state.value, {}, {}, {}, {}, {}, onUserInteraction = {
+                        ResultsScreen(state.value, {}, {}, { id ->
+                            state.value = state.value.copy(selectedId = id, userInteracted = true)
+                        }, {}, {}, onUserInteraction = {
                             state.value = state.value.copy(userInteracted = true)
                         })
                     }
@@ -104,7 +109,14 @@ class ProgressiveResultsLayoutTest(private val width: Int, private val dark: Boo
         compose.onNodeWithTag("s0").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
         compose.onNodeWithTag("s0").assertIsFocused().assertIsSelected()
         compose.onNodeWithTag("s0").performKeyInput { pressKey(Key.DirectionUp) }
-        compose.onNodeWithTag("s1").assertIsFocused()
+        compose.onNodeWithTag("s1").assertIsFocused().assertIsSelected()
+        compose.onAllNodes(hasText("긴 상호명 주유소 1") and hasAnyAncestor(hasTestTag("station-detail-pane")))[0]
+            .assertIsDisplayed()
+        compose.onNodeWithTag("s1").performKeyInput { pressKey(Key.DirectionDown) }
+        compose.onNodeWithTag("s0").assertIsFocused().assertIsSelected()
+        // ETA 미준비 항목을 건너뛰고 경로 버튼으로 이동해도 선택은 유지된다.
+        compose.onNodeWithTag("s0").performKeyInput { pressKey(Key.DirectionDown) }
+        compose.onNodeWithTag("confirm-route").assertIsFocused()
         compose.onNodeWithTag("s0").assertIsSelected()
         compose.onNodeWithTag("s0").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
         compose.runOnIdle {
@@ -123,6 +135,71 @@ class ProgressiveResultsLayoutTest(private val width: Int, private val dark: Boo
         compose.onNodeWithText("기준 유가 갱신 중").assertDoesNotExist()
         compose.onNodeWithText("주유소 조회 완료").assertDoesNotExist()
         compose.onNodeWithText("카카오 경유", substring = true).assertDoesNotExist()
+        // 목록 밖에서 ETA 재정렬이 발생해도 포커스를 빼앗지 않는다.
+        compose.onNodeWithTag("tab-TIME").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+        compose.runOnIdle {
+            state.value = state.value.copy(session = session.copy(stations = stations.map {
+                it.copy(outboundMeters = 1000, outboundSeconds = 90, routePending = false)
+            }))
+        }
+        compose.onNodeWithTag("tab-TIME").assertIsFocused()
+    }
+
+    @Test
+    fun dpadSelectsAndScrollsThroughListWithoutConfirmingRoute() {
+        val stations = (0..15).map { i ->
+            Station("s$i", "주유소 $i", "S-OIL", 1600 + i * 10, 37.4, 127.1,
+                1000, 100, null, null, null, null, null, observedAtMillis = 1, sourceIndex = i)
+        }
+        val session = ComparisonSession(
+            "dpad", ComparisonContext(JourneyContext(destinationOnly = true),
+                resolveRefuelConditions(RefuelSettings()), 1800), stations,
+        )
+        val state = mutableStateOf(ResultsUiState(session = session, selectedId = "s0"))
+        var confirmations = 0
+        lateinit var inputModeManager: InputModeManager
+        compose.setContent {
+            inputModeManager = LocalInputModeManager.current
+            CompositionLocalProvider(LocalDensity provides Density(.5f, 1f)) {
+                JUYULOWTheme(darkTheme = dark) {
+                    Box(Modifier.requiredSize(width.dp, 1184.dp)) {
+                        ResultsScreen(state.value, {}, {}, { id ->
+                            state.value = state.value.copy(selectedId = id, userInteracted = true)
+                        }, {}, { confirmations++ })
+                    }
+                }
+            }
+        }
+        compose.runOnIdle { inputModeManager.requestInputMode(InputMode.Keyboard) }
+        compose.onNodeWithTag("s0").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+        compose.onNodeWithTag("s0").performKeyInput { pressKey(Key.Enter) }
+        compose.onNodeWithTag("confirm-route").assertIsFocused()
+        compose.runOnIdle { assertEquals(0, confirmations) }
+        // 목적지가 있으면 현재 mode가 DESTINATION이어도 왼쪽 경유 추가를 우선한다.
+        compose.runOnIdle {
+            state.value = state.value.copy(session = session.copy(
+                context = session.context.copy(journey = JourneyContext()),
+            ))
+        }
+        compose.onNodeWithTag("s0").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+        compose.onNodeWithTag("s0").performKeyInput { pressKey(Key.Enter) }
+        compose.onNodeWithTag("add-waypoint").assertIsFocused()
+        compose.runOnIdle {
+            assertEquals(0, confirmations)
+            state.value = state.value.copy(session = session)
+        }
+        compose.onNodeWithTag("s0").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+        (0..14).forEach { i ->
+            compose.onNodeWithTag("s$i").performKeyInput { pressKey(Key.DirectionDown) }
+            compose.onNodeWithTag("s${i + 1}").assertIsFocused().assertIsSelected().assertIsDisplayed()
+            compose.onAllNodes(hasText("주유소 ${i + 1}") and hasAnyAncestor(hasTestTag("station-detail-pane")))[0]
+                .assertIsDisplayed()
+        }
+        compose.onNodeWithTag("s15").performKeyInput { pressKey(Key.DirectionDown) }
+        compose.onNodeWithTag("confirm-route").assertIsFocused()
+        compose.onNodeWithTag("confirm-route").performKeyInput { pressKey(Key.DirectionUp) }
+        compose.onNodeWithTag("s15").assertIsFocused().assertIsSelected()
+        compose.runOnIdle { assertEquals(0, confirmations) }
     }
 
     @Test

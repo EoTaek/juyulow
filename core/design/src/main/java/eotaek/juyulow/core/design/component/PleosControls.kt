@@ -1,6 +1,8 @@
 package eotaek.juyulow.core.design.component
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -29,9 +31,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -52,8 +58,9 @@ fun PleosButton(
     outlined: Boolean = false,
     enabled: Boolean = true,
     loading: Boolean = false,
+    emphasizeContentOnFocus: Boolean = false,
 ) {
-    PleosButton(onClick, modifier, icon, trailingIcon, outlined, enabled, loading) {
+    PleosButton(onClick, modifier, icon, trailingIcon, outlined, enabled, loading, emphasizeContentOnFocus) {
         Text(label, style = JUYULOWTheme.typography.bodySmallStrong)
     }
 }
@@ -67,14 +74,20 @@ fun PleosButton(
     outlined: Boolean = false,
     enabled: Boolean = true,
     loading: Boolean = false,
+    emphasizeContentOnFocus: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colors = JUYULOWTheme.colors
     val interactions = remember { MutableInteractionSource() }
     val pressed by interactions.collectIsPressedAsState()
+    var focused by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        if (emphasizeContentOnFocus && focused && enabled && !loading) 1.06f else 1f,
+        animationSpec = tween(150), label = "buttonContentFocusScale",
+    )
     Button(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 80.dp),
+        modifier = modifier.onFocusChanged { focused = it.isFocused }.heightIn(min = 80.dp),
         enabled = enabled && !loading,
         shape = RoundedCornerShape(18.dp),
         colors = ButtonDefaults.buttonColors(
@@ -87,17 +100,22 @@ fun PleosButton(
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
         interactionSource = interactions,
     ) {
-        if (loading) CircularProgressIndicator(
-            Modifier.size(28.dp),
-            color = colors.textDarkSecondary,
-            strokeWidth = 3.dp
-        )
-        else if (icon != null) PleosIcon(icon)
-        if (loading || icon != null) Spacer(Modifier.width(12.dp))
-        Box(Modifier.weight(1f, fill = false)) { content() }
-        if (trailingIcon != null && !loading) {
-            Spacer(Modifier.width(12.dp))
-            PleosIcon(trailingIcon)
+        Row(
+            Modifier.weight(1f, fill = false).graphicsLayer { scaleX = scale; scaleY = scale },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (loading) CircularProgressIndicator(
+                Modifier.size(28.dp),
+                color = colors.textDarkSecondary,
+                strokeWidth = 3.dp
+            )
+            else if (icon != null) PleosIcon(icon)
+            if (loading || icon != null) Spacer(Modifier.width(12.dp))
+            Box(Modifier.weight(1f, fill = false)) { content() }
+            if (trailingIcon != null && !loading) {
+                Spacer(Modifier.width(12.dp))
+                PleosIcon(trailingIcon)
+            }
         }
     }
 }

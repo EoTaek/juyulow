@@ -9,9 +9,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,14 +43,15 @@ internal fun StationRow(
 ) {
     val colors = JUYULOWTheme.colors
     val type = JUYULOWTheme.typography
+    var focused by remember { mutableStateOf(false) }
     PleosOutlinedCard(
         modifier = Modifier
             .fillMaxWidth()
             .alpha(if (enabled) 1f else .4f),
         cornerRadius = 18.dp,
         containerColor = if (selected) colors.surfaceHigh else colors.surfaceBasic,
-        borderWidth = 2.dp,
-        borderColor = if (selected) colors.basic900 else colors.basic200,
+        borderWidth = if (focused) 4.dp else 2.dp,
+        borderColor = if (selected || focused) colors.basic900 else colors.basic200,
     ) {
         val price: @Composable () -> Unit =
             { PleosLabelValue("리터당 가격", "${won(station.priceWonPerL.toDouble())} 원/L") }
@@ -83,6 +89,7 @@ internal fun StationRow(
         Column(
             modifier
                 .testTag(station.id)
+                .onFocusChanged { focused = it.isFocused }
                 .selectable(selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
                 .padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

@@ -2,6 +2,7 @@ package eotaek.juyulow.feature.main.results
 
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -34,6 +35,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -76,6 +79,8 @@ fun ResultsScreen(
     val colors = JUYULOWTheme.colors
     val type = JUYULOWTheme.typography
     val batch = state.session
+    var focusedId by remember(batch?.id) { mutableStateOf<String?>(null) }
+    val clearListFocus = Modifier.onFocusChanged { if (it.hasFocus) focusedId = null }
     val notifyInteraction by rememberUpdatedState(onUserInteraction)
     val scrollConnection = remember {
         object : NestedScrollConnection {
@@ -117,7 +122,7 @@ fun ResultsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    PleosIconButton(PleosIcon.Back, "이전 화면", onBack, enabled = !state.settingRoute)
+                    PleosIconButton(PleosIcon.Back, "이전 화면", onBack, clearListFocus, enabled = !state.settingRoute)
                     Text(
                         "주변에 ${batch?.stations?.size ?: 0}개의 주유소가 있어요",
                         modifier = Modifier.weight(1f),
@@ -130,6 +135,7 @@ fun ResultsScreen(
                 if (state.routeUncertain) PleosButton(
                     "상태 다시 확인",
                     onReconcile,
+                    clearListFocus,
                     enabled = !state.busy
                 )
                 if (state.comparisonExpired) Text(
@@ -156,6 +162,7 @@ fun ResultsScreen(
                                 PleosButton(
                                     if (state.searching) "찾는 중" else "다시 찾기",
                                     onRefresh,
+                                    clearListFocus,
                                     icon = PleosIcon.Refresh,
                                     outlined = true,
                                     enabled = !state.busy,
@@ -167,7 +174,7 @@ fun ResultsScreen(
                                     listOf(
                                         PleosTab(StationSort.SAVING, "절약액순"),
                                         PleosTab(StationSort.TIME, "시간순")
-                                    ), state.sort, onSort, compact = true, enabled = !state.busy
+                                    ), state.sort, onSort, clearListFocus.focusGroup(), compact = true, enabled = !state.busy
                                 )
                             }
                             if (narrow) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { refresh(); sort() }
@@ -175,7 +182,6 @@ fun ResultsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) { refresh(); sort() }
-                            var focusedId by remember { mutableStateOf<String?>(null) }
                             val requesters =
                                 remember(batch.id) { mutableMapOf<String, FocusRequester>() }
                             val listState = rememberLazyListState()
@@ -185,6 +191,11 @@ fun ResultsScreen(
                                     batch.stations.filterNot { it.id in evaluatedById }
                                         .sortedBy { it.sourceIndex }
                             val orderedIds = displayStations.map { it.id }
+                            val actions = listOf(JourneyMode.WAYPOINT, JourneyMode.DESTINATION)
+                                .filter { it in batch.context.journey.availableModes }
+                            val actionRequesters = remember(batch.id) {
+                                JourneyMode.entries.associateWith { FocusRequester() }
+                            }
                             LaunchedEffect(orderedIds, focusedId, state.userInteracted) {
                                 if (!state.userInteracted) return@LaunchedEffect
                                 val id = focusedId ?: return@LaunchedEffect
@@ -225,8 +236,23 @@ fun ResultsScreen(
                                         narrow,
                                         Modifier
                                             .focusRequester(requester)
+                                            .onPreviewKeyEvent { event ->
+                                                val activate = event.key == Key.Enter || event.key == Key.NumPadEnter ||
+                                                        event.key == Key.DirectionCenter
+                                                if (activate && row != null && !state.busy && !state.routeUncertain) {
+                                                    // Move on release so this Enter cannot also activate the route button.
+                                                    if (event.type == KeyEventType.KeyUp) {
+                                                        val target = actions.firstOrNull()
+                                                        target?.let { actionRequesters.getValue(it).requestFocus() }
+                                                    }
+                                                    true
+                                                } else false
+                                            }
                                             .onFocusChanged {
-                                                if (it.isFocused) focusedId = station.id
+                                                if (it.isFocused) {
+                                                    focusedId = station.id
+                                                    if (row != null && !state.busy) onSelect(station.id)
+                                                }
                                             }
                                     ) { onSelect(station.id) }
                                 }
@@ -237,8 +263,6 @@ fun ResultsScreen(
                                     )
                                 }
                             }
-                            val actions = listOf(JourneyMode.WAYPOINT, JourneyMode.DESTINATION)
-                                .filter { it in batch.context.journey.availableModes }
                             Row(
                                 Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -250,6 +274,7 @@ fun ResultsScreen(
                                         { onConfirm(mode) },
                                         Modifier
                                             .weight(1f)
+                                            .focusRequester(actionRequesters.getValue(mode))
                                             .onFocusChanged { if (it.isFocused) focusedId = null }
                                             .testTag(
                                                 if (mode == JourneyMode.DESTINATION) "confirm-route" else "add-waypoint"
@@ -259,6 +284,7 @@ fun ResultsScreen(
                                         ),
                                         enabled = state.selected != null && !state.busy && !state.routeUncertain,
                                         loading = state.settingRoute && state.mode == mode,
+                                        emphasizeContentOnFocus = true,
                                     )
                                 }
                             }
@@ -268,6 +294,7 @@ fun ResultsScreen(
                             Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
+                                .then(clearListFocus)
                                 .testTag("station-detail-pane")
                         ) {
                             state.selected?.let {
