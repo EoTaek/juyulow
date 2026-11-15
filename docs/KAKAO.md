@@ -2,8 +2,9 @@
 
 공식 계약: https://developers.kakaomobility.com/guide/navi-api/directions
 
-- local.properties의 KAKAO_REST_API_KEY를 debug BuildConfig로 공급한다. 키·인증 헤더·응답 원문은 로그에 남기지 않는다.
-  release는 빈 키로 생성하고 저장소를 주입하지 않는다. APK의 키는 비밀 저장소가 아니다.
+- local.properties의 KAKAO_REST_API_KEY를 debug·release·qaRelease 공통 BuildConfig로 공급한다. 키가 있으면 같은 경유 추정 저장소를 주입하며,
+  키가 비어 있으면 빌드 변형과 관계없이 경유 추정을 제공하지 않는다. 키·인증 헤더·응답 원문은 로그에 남기지 않는다.
+  release·qaRelease의 API 로그는 계속 비활성화한다. APK의 키는 비밀 저장소가 아니다.
 - GET /v1/directions, Authorization: KakaoAK, WGS84 경도,위도 순서. summary=true, alternatives=false. 성공
   result_code와 필수 m·초·통행료 원 값을 검증한다.
 - 검색 시작 위치 A와 목적지 B를 고정해 기준 A→B 1회 후 최대 15개 A→S→B를 동시 2건으로 조회한다. 시도당 연결 10초·전체 30초 제한이며 요청 실패 시

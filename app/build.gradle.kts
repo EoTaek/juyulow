@@ -32,20 +32,17 @@ android {
             "OPINET_API_KEY",
             "\"" + opinetKey.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         )
+        buildConfigField(
+            "String",
+            "KAKAO_REST_API_KEY",
+            "\"" + kakaoKey.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+        )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
-        debug {
-            buildConfigField(
-                "String",
-                "KAKAO_REST_API_KEY",
-                "\"" + kakaoKey.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-            )
-        }
         release {
-            buildConfigField("String", "KAKAO_REST_API_KEY", "\"\"")
             optimization {
                 enable = true
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")

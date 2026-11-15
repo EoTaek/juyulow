@@ -1,5 +1,13 @@
 # 검증
 
+## 2026-11-15 release 경유 비용 추정 활성화
+
+카카오 API 키를 공통 BuildConfig 설정으로 옮겨 debug·release·qaRelease 모두 키가 있으면 동일한 경유 추정 저장소를 사용한다.
+키가 비어 있을 때 저장소를 주입하지 않는 처리와 release·qaRelease의 로그 비활성화는 유지한다.
+`:app:assembleDebug :app:assembleRelease :app:assembleQaRelease :app:testDebugUnitTest :core:data:test :app:lintQaRelease`가 통과했다.
+app·core:data 단위 테스트 115개는 실패·오류 0이며, 생성된 세 BuildConfig에 동일한 비어 있지 않은 키가 설정됨을 값 노출 없이 확인했다.
+release·qaRelease의 `DEBUG=false`와 `git diff --check`도 확인했다. 설치·실행 및 release의 실 API 호출은 수행하지 않았다.
+
 ## 2026-11-15 QA release 시작 시 IllegalAccessError 수정
 
 기존 QA APK의 DEX에서 `am2`가 다른 패키지의 package-private `kotlin.text.g`를 상속하는 접근 오류 1건을 확인했다.
