@@ -5,6 +5,9 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.intl.LocaleList
+import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.unit.sp
 
 /** Pleos Foundations/Typography. See docs/DESIGN.md for font and weight assumptions. */
@@ -47,6 +50,9 @@ class PleosTypography(
         fontSize = size.sp,
         lineHeight = lineHeight.sp,
         letterSpacing = 0.sp,
+        localeList = LocaleList("ko-KR"),
+        lineBreak = LineBreak.Paragraph.copy(wordBreak = LineBreak.WordBreak.Phrase),
+        hyphens = Hyphens.None,
     )
 }
 

@@ -1,5 +1,11 @@
 # 검증
 
+## 2026-11-15 한국어 어절 단위 줄바꿈
+
+공통 Pleos/Material 타이포그래피에 `ko-KR`, `WordBreak.Phrase`, 자동 하이픈 비활성화를 적용했다.
+debug 앱 빌드, feature:main 단위 테스트, lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다.
+실제 프리뷰·디바이스의 줄바꿈 렌더링은 확인하지 않았다. OS 지원 범위와 긴 어절 예외는 [DESIGN.md](DESIGN.md)에 기록했다.
+
 ## 2026-11-15 텍스트 구분점의 세로 구분선 전환
 
 결과·완료 요약, 차량 에너지원 및 동적 오류 문구의 독립 정보를 `PleosDividedText`로 가로 배치하고 `VerticalDivider`로 구분한다.

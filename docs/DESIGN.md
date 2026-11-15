@@ -9,6 +9,11 @@
 이는 앱의 적용 규격이며 Pleos 공식 토큰을 추가한 것은 아니다. Material 기본 색상 대신 기존 Pleos 토큰을 사용하고 조작·선택·비활성·로딩 상태와 접근성 레이블을
 제공한다. Asta Sans는 번들링하지 않으며 기존 시스템 SansSerif와 시스템 라이트·다크를 유지한다.
 
+모든 Pleos 타이포그래피와 이를 사용하는 Material 타이포그래피는 한국어(`ko-KR`)의 어절 단위 줄바꿈을 우선한다.
+`LineBreak.Paragraph`에 `WordBreak.Phrase`를 적용하고 자동 하이픈은 사용하지 않는다. 단일 어절이 가용 너비보다 긴 경우에는 플랫폼이 글자 단위로 나눌 수 있다.
+Phrase는 Android 13(API 33) 이상에서 지원되며, 하위 OS의 줄바꿈은 플랫폼 기본 동작을 따른다.
+출처: [Compose 단락 스타일](https://developer.android.com/develop/ui/compose/text/style-paragraph), [Android LineBreakConfig](https://developer.android.com/reference/android/graphics/text/LineBreakConfig).
+
 결과 화면은 1700 × 1184dp와 840 × 1184dp 모두 동일 너비의 좌우 2열이다. 좁은 창에서는 카드 항목과 상세 텍스트를 여러 줄로 배치하며 글자와 화면 전체를
 일괄 축소하지 않는다. 두 열은 독립 스크롤하고 경로 설정 버튼은 목록과 분리된 하단 영역에 둔다. 독립된 주유소 상세 페이지나 지도는 제공하지 않는다.
 이동 방식 탭은 제공하지 않는다. 목록 하단의 같은 너비 버튼 행에서 사용 가능한 동작을 바로 실행한다. 두 동작이 가능하면 왼쪽은 `경유지로 추가`, 오른쪽은 `목적지로 설정`
