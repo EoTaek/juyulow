@@ -7,9 +7,6 @@ data class RefuelSettings(
     val liters: Int = 40,
     val efficiencyKmPerL: Int = 12,
     val refuelMinutes: Int = 5,
-    val includeTimeCost: Boolean = false,
-    // User override for this process; a new startup begins with vehicle data again.
-    val litersOverride: Double? = null,
     val searchRadiusKm: Int = 3,
     val comparisonFuel: ComparisonFuel = ComparisonFuel.GASOLINE,
 ) {
@@ -18,11 +15,9 @@ data class RefuelSettings(
         require(liters in 10..100 && liters % 10 == 0)
         require(efficiencyKmPerL in 1..30)
         require(refuelMinutes in 1..20)
-        require(litersOverride == null || (litersOverride.isFinite() && litersOverride >= 0))
     }
 
     val refuelSeconds: Int get() = refuelMinutes * 60
-    val timeWonPerHour: Int get() = if (includeTimeCost) 12_000 else 0
 }
 
 data class JourneyContext(
@@ -96,9 +91,8 @@ data class StationComparison(
     val fuelSavingWon: Double,
     val drivingCostWon: Double,
     val tollWon: Double?,
-    val timeCostWon: Double,
 ) {
-    val netSavingWon: Double get() = fuelSavingWon - drivingCostWon - (tollWon ?: 0.0) - timeCostWon
+    val netSavingWon: Double get() = fuelSavingWon - drivingCostWon - (tollWon ?: 0.0)
 }
 
 data class NavigationSelection(
@@ -151,7 +145,6 @@ fun compareStation(
         fuelSavingWon = (context.referencePriceWonPerL - station.priceWonPerL).toDouble() * context.conditions.liters,
         drivingCostWon = extraDistance / 1000.0 / context.conditions.efficiencyKmPerL * context.referencePriceWonPerL,
         tollWon = station.tollWon?.toDouble(),
-        timeCostWon = extraTime / 3600.0 * context.conditions.timeWonPerHour,
     )
 }
 

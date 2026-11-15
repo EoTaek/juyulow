@@ -216,7 +216,7 @@ class LiveJourneyRepository(
                 if (entries.isEmpty()) {
                     progress.value = SearchProgress(
                         complete = true,
-                        error = "주변 주유소가 없어요. 검색 반경을 바꿔 다시 찾아 주세요.",
+                        error = "주변 주유소가 없어요. 잠시 후 다시 찾아 주세요.",
                         empty = true
                     )
                     return@launch

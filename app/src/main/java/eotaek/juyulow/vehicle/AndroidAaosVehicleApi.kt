@@ -21,6 +21,7 @@ import kotlin.coroutines.resumeWithException
 
 internal class AndroidAaosVehicleApi(private val context: Context) : AaosVehicleApi {
     private var car: Car? = null
+
     @Volatile
     private var manager: CarPropertyManager? = null
     private var closed = false
@@ -71,39 +72,39 @@ internal class AndroidAaosVehicleApi(private val context: Context) : AaosVehicle
     @Suppress("DEPRECATION") // STATUS_* also covers older AAOS releases supported by minSdk 30.
     override fun read(property: VehicleProperty): VehicleValue? =
         ApiLog.call("AAOS", "read", { mapOf("property" to property.name) }) {
-        val id = when (property) {
-            VehicleProperty.FUEL_CAPACITY -> VehiclePropertyIds.INFO_FUEL_CAPACITY
-            VehicleProperty.FUEL_LEVEL -> VehiclePropertyIds.FUEL_LEVEL
-            VehicleProperty.FUEL_TYPES -> VehiclePropertyIds.INFO_FUEL_TYPE
-            else -> error("Not an AAOS fuel property: $property")
-        }
-        val permission =
-            if (property == VehicleProperty.FUEL_LEVEL) Car.PERMISSION_ENERGY else Car.PERMISSION_CAR_INFO
-        if (context.checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED)
-            throw VehicleReadException(VehicleFailureReason.PERMISSION, "permission")
-        val properties =
-            manager ?: throw VehicleReadException(VehicleFailureReason.CONNECTION, "get")
-        val config = properties.getCarPropertyConfig(id)
-            ?: throw VehicleReadException(VehicleFailureReason.UNSUPPORTED, "config")
-        if (config.access != CarPropertyConfig.VEHICLE_PROPERTY_ACCESS_READ &&
-            config.access != CarPropertyConfig.VEHICLE_PROPERTY_ACCESS_READ_WRITE
-        )
-            throw VehicleReadException(VehicleFailureReason.UNSUPPORTED, "config")
-        val result = try {
-            properties.getProperty<Any>(id, 0)
-        } catch (error: PropertyNotAvailableException) {
-            throw VehicleReadException(VehicleFailureReason.UNAVAILABLE, "get", error)
-        }
-        if (result == null) throw VehicleReadException(VehicleFailureReason.UNAVAILABLE, "get")
-        when (result.status) {
-            CarPropertyValue.STATUS_UNAVAILABLE -> throw VehicleReadException(
-                VehicleFailureReason.UNAVAILABLE,
-                "status"
+            val id = when (property) {
+                VehicleProperty.FUEL_CAPACITY -> VehiclePropertyIds.INFO_FUEL_CAPACITY
+                VehicleProperty.FUEL_LEVEL -> VehiclePropertyIds.FUEL_LEVEL
+                VehicleProperty.FUEL_TYPES -> VehiclePropertyIds.INFO_FUEL_TYPE
+                else -> error("Not an AAOS fuel property: $property")
+            }
+            val permission =
+                if (property == VehicleProperty.FUEL_LEVEL) Car.PERMISSION_ENERGY else Car.PERMISSION_CAR_INFO
+            if (context.checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED)
+                throw VehicleReadException(VehicleFailureReason.PERMISSION, "permission")
+            val properties =
+                manager ?: throw VehicleReadException(VehicleFailureReason.CONNECTION, "get")
+            val config = properties.getCarPropertyConfig(id)
+                ?: throw VehicleReadException(VehicleFailureReason.UNSUPPORTED, "config")
+            if (config.access != CarPropertyConfig.VEHICLE_PROPERTY_ACCESS_READ &&
+                config.access != CarPropertyConfig.VEHICLE_PROPERTY_ACCESS_READ_WRITE
             )
+                throw VehicleReadException(VehicleFailureReason.UNSUPPORTED, "config")
+            val result = try {
+                properties.getProperty<Any>(id, 0)
+            } catch (error: PropertyNotAvailableException) {
+                throw VehicleReadException(VehicleFailureReason.UNAVAILABLE, "get", error)
+            }
+            if (result == null) throw VehicleReadException(VehicleFailureReason.UNAVAILABLE, "get")
+            when (result.status) {
+                CarPropertyValue.STATUS_UNAVAILABLE -> throw VehicleReadException(
+                    VehicleFailureReason.UNAVAILABLE,
+                    "status"
+                )
 
-            CarPropertyValue.STATUS_AVAILABLE -> Unit
-            else -> throw VehicleReadException(VehicleFailureReason.ERROR, "status")
-        }
+                CarPropertyValue.STATUS_AVAILABLE -> Unit
+                else -> throw VehicleReadException(VehicleFailureReason.ERROR, "status")
+            }
             ApiLog.event("AAOS", "read", "response") {
                 mapOf(
                     "property" to property.name,
@@ -114,19 +115,19 @@ internal class AndroidAaosVehicleApi(private val context: Context) : AaosVehicle
                 )
             }
             when (val raw = result.value) {
-            is Number -> VehicleValue.Number(raw.toDouble())
-            is Array<*> -> raw.map {
-                (it as? Int) ?: throw VehicleReadException(
-                    VehicleFailureReason.INVALID_VALUE,
-                    "value"
-                )
-            }
-                .let(VehicleValue::FuelTypes)
+                is Number -> VehicleValue.Number(raw.toDouble())
+                is Array<*> -> raw.map {
+                    (it as? Int) ?: throw VehicleReadException(
+                        VehicleFailureReason.INVALID_VALUE,
+                        "value"
+                    )
+                }
+                    .let(VehicleValue::FuelTypes)
 
-            is IntArray -> VehicleValue.FuelTypes(raw.toList())
-            else -> null
+                is IntArray -> VehicleValue.FuelTypes(raw.toList())
+                else -> null
+            }
         }
-    }
 
     override fun canRequestPermission(): Boolean {
         val restrictions =

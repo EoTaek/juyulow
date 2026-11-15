@@ -1,5 +1,7 @@
 package eotaek.juyulow.core.data
 
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import eotaek.juyulow.core.model.RefuelSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -27,13 +29,27 @@ class PreferencesSettingsRepositoryTest {
         )
         assertEquals(RefuelSettings(), first.settings.first())
         val next = RefuelSettings(
-            70, 18, 9, true, litersOverride = 20.5, searchRadiusKm = 5,
+            70, 18, 9,
             comparisonFuel = eotaek.juyulow.core.model.ComparisonFuel.DIESEL
         )
         first.save(next)
         assertEquals(next, first.settings.first())
         firstJob.cancelAndJoin()
         val second = PreferencesSettingsRepository(SettingsStorage(file, backgroundScope))
-        assertEquals(next.copy(litersOverride = null), second.settings.first())
+        assertEquals(next, second.settings.first())
+    }
+
+    @Test
+    fun legacyRadiusIsIgnoredAndRemovedOnSave() = runTest {
+        val storage = SettingsStorage(folder.root.resolve("legacy.preferences_pb"), backgroundScope)
+        val radius = intPreferencesKey("search_radius_km")
+        storage.store.edit { it[radius] = 5 }
+        val repository = PreferencesSettingsRepository(storage)
+
+        assertEquals(3, repository.settings.first().searchRadiusKm)
+        repository.save(RefuelSettings(liters = 70, searchRadiusKm = 1))
+        assertEquals(3, repository.settings.first().searchRadiusKm)
+        assertEquals(70, repository.settings.first().liters)
+        assertEquals(null, storage.store.data.first()[radius])
     }
 }

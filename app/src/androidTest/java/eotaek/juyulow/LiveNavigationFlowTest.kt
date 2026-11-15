@@ -62,6 +62,7 @@ class LiveNavigationFlowTest {
             })
         }
     }
+
     @get:Rule
     val rules: RuleChain = RuleChain.outerRule(repositories).around(compose)
 
@@ -96,10 +97,9 @@ class LiveNavigationFlowTest {
         assertEquals(1, navi.routes)
         compose.onNodeWithText("내비게이션 열기").performClick()
         compose.waitForIdle(); assertEquals(1, navi.opens)
-        compose.onNodeWithText("다른 주유소 비교").performClick()
-        compose.onNodeWithTag("confirm-route").assertIsEnabled()
-        compose.onNodeWithTag("confirm-route").performClick()
-        compose.onNodeWithText("취소").performClick()
+        compose.onNodeWithText("다른 주유소 비교").assertDoesNotExist()
+        compose.onNodeWithText("홈으로").performClick()
+        compose.onNodeWithTag("search-stations").assertIsDisplayed()
         assertEquals(1, navi.trips)
     }
 

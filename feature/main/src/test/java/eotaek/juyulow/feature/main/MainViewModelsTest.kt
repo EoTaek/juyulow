@@ -207,7 +207,7 @@ class MainViewModelsTest {
     }
 
     @Test
-    fun lateVehicleReadsOnlyAffectNewHomeSearchesAndCompletionKeepsSnapshot() =
+    fun lateVehicleReadsPreserveSettingsAndCompletionKeepsSnapshot() =
         runTest(dispatcher) {
             val settings = Settings()
             val vehicle = InMemoryVehicleInfoRepository()
@@ -228,8 +228,9 @@ class MainViewModelsTest {
             val first =
                 requireNotNull(sessions.get(requireNotNull(home.state.value.readySessionId)))
             assertEquals(40.0, first.context.conditions.liters, 0.0)
+            assertEquals(12.0, first.context.conditions.efficiencyKmPerL, 0.0)
             assertTrue(first.context.conditions.energy.codes.isEmpty())
-            assertEquals(37.655, requireNotNull(home.state.value.conditions).liters, 0.0)
+            assertEquals(40.0, requireNotNull(home.state.value.conditions).liters, 0.0)
             val results = keep(ResultsViewModel(first.id, stations, sessions, journeys))
             settings.save(RefuelSettings(liters = 80))
             results.refresh()
@@ -248,13 +249,13 @@ class MainViewModelsTest {
             advanceUntilIdle()
             val second =
                 requireNotNull(sessions.get(requireNotNull(home.state.value.readySessionId)))
-            assertEquals(37.655, second.context.conditions.liters, 0.0)
+            assertEquals(80.0, second.context.conditions.liters, 0.0)
             assertEquals(100.0 / 8.5, second.context.conditions.efficiencyKmPerL, 0.0)
             assertEquals(listOf(10), second.context.conditions.energy.codes)
         }
 
     @Test
-    fun zeroAutomaticLitersStillAllowsSearching() = runTest(dispatcher) {
+    fun fullTankStillUsesStoredLiters() = runTest(dispatcher) {
         val vehicle = InMemoryVehicleInfoRepository()
         vehicle.complete(VehicleProperty.FUEL_CAPACITY, VehicleValue.Number(15_000.0), 1, null)
         vehicle.complete(VehicleProperty.FUEL_LEVEL, VehicleValue.Number(15_000.0), 1, null)
@@ -265,7 +266,7 @@ class MainViewModelsTest {
         home.search()
         advanceUntilIdle()
         val session = requireNotNull(sessions.get(requireNotNull(home.state.value.readySessionId)))
-        assertEquals(0.0, session.context.conditions.liters, 0.0)
+        assertEquals(40.0, session.context.conditions.liters, 0.0)
     }
 
     @Test
@@ -312,6 +313,108 @@ class MainViewModelsTest {
         home.search(); advanceUntilIdle()
         assertNull(home.state.value.error)
         assertNotNull(home.state.value.readySessionId)
+    }
+
+    @Test
+    fun progressiveEtaFollowsSortedTopThroughFinalPleosAndKakaoUpdates() = runTest(dispatcher) {
+        val sessions = InMemoryComparisonSessionRepository()
+        val base = previewSession()
+        val batch = sessions.create(base.context.journey, base.context.conditions, base.stations)
+            .copy(searchComplete = false, firstReadyId = "station-2")
+        sessions.update(batch)
+        val results = keep(ResultsViewModel(batch.id, Stations(), sessions, MockJourneyRepository()))
+        runCurrent()
+        assertEquals(results.state.value.evaluated.first().station.id, results.state.value.selectedId)
+
+        val pleosComplete = batch.copy(searchComplete = true, stations = batch.stations.map {
+            it.copy(
+                priceWonPerL = if (it.id == "station-0") 1000 else it.priceWonPerL,
+                detour = eotaek.juyulow.core.model.DetourEstimate(pending = it.id != "station-0"),
+            )
+        })
+        sessions.update(pleosComplete)
+        runCurrent()
+        assertEquals("station-0", results.state.value.selectedId)
+        // Pleos가 끝난 뒤에도 카카오 최종 응답까지 자동 선택 정책을 적용한다.
+        val kakaoComplete = pleosComplete.copy(stations = pleosComplete.stations.map {
+            it.copy(
+                priceWonPerL = if (it.id == "station-1") 900 else it.priceWonPerL,
+                detour = eotaek.juyulow.core.model.DetourEstimate(
+                    pending = false, meters = 100, seconds = 60, tollWon = 0,
+                ),
+            )
+        })
+        sessions.update(kakaoComplete)
+        runCurrent()
+        assertEquals("station-1", results.state.value.selectedId)
+    }
+
+    @Test
+    fun pendingDataCannotBeSelectedAndKakaoFailureFallsBackToPleos() = runTest(dispatcher) {
+        val sessions = InMemoryComparisonSessionRepository()
+        val base = previewSession()
+        val batch = sessions.create(base.context.journey, base.context.conditions, base.stations)
+            .copy(searchComplete = false, stations = base.stations.map {
+                when (it.id) {
+                    "station-0" -> it.copy(routePending = true, outboundSeconds = null)
+                    "station-1" -> it.copy(detour = eotaek.juyulow.core.model.DetourEstimate())
+                    else -> it
+                }
+            })
+        sessions.update(batch)
+        val results =
+            keep(ResultsViewModel(batch.id, Stations(), sessions, MockJourneyRepository()))
+        runCurrent()
+        assertEquals(listOf("station-2"), results.state.value.evaluated.map { it.station.id })
+        results.select("station-1")
+        assertEquals("station-2", results.state.value.selectedId)
+        sessions.update(batch.copy(stations = batch.stations.map {
+            if (it.id == "station-1") it.copy(
+                detour = eotaek.juyulow.core.model.DetourEstimate(
+                    pending = false, error = "조회 실패",
+                )
+            ) else it
+        }))
+        runCurrent()
+        results.select("station-1")
+        assertEquals("station-1", results.state.value.selectedId)
+    }
+
+    @Test
+    fun userInputWithoutSelectingLocksSelectionAcrossEtaUpdates() = runTest(dispatcher) {
+        val sessions = InMemoryComparisonSessionRepository()
+        val base = previewSession()
+        val batch = sessions.create(base.context.journey, base.context.conditions, base.stations)
+            .copy(searchComplete = false)
+        sessions.update(batch)
+        val results = keep(ResultsViewModel(batch.id, Stations(), sessions, MockJourneyRepository()))
+        runCurrent()
+        val selected = results.state.value.selectedId
+        results.onUserInteraction() // 방향키·스크롤도 select 호출 없이 선택을 잠근다.
+        sessions.update(batch.copy(searchComplete = true, stations = batch.stations.map {
+            it.copy(priceWonPerL = if (it.id == "station-2") 500 else it.priceWonPerL)
+        }))
+        runCurrent()
+        assertEquals("station-2", results.state.value.evaluated.first().station.id)
+        assertEquals(selected, results.state.value.selectedId)
+    }
+
+    @Test
+    fun explicitSelectionLocksSelectionDuringPendingEta() = runTest(dispatcher) {
+        val sessions = InMemoryComparisonSessionRepository()
+        val base = previewSession()
+        val batch = sessions.create(base.context.journey, base.context.conditions, base.stations)
+            .copy(searchComplete = false)
+        sessions.update(batch)
+        val results = keep(ResultsViewModel(batch.id, Stations(), sessions, MockJourneyRepository()))
+        runCurrent()
+        results.select("station-2")
+        sessions.update(batch.copy(stations = batch.stations.map {
+            it.copy(priceWonPerL = if (it.id == "station-0") 500 else it.priceWonPerL)
+        }))
+        runCurrent()
+        assertEquals("station-0", results.state.value.evaluated.first().station.id)
+        assertEquals("station-2", results.state.value.selectedId)
     }
 
     @Test

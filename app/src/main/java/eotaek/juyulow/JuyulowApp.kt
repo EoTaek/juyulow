@@ -22,7 +22,7 @@ import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.feature.main.completion.CompletionRoute
 import eotaek.juyulow.feature.main.home.HomeRoute
 import eotaek.juyulow.feature.main.results.ResultsRoute
-import eotaek.juyulow.feature.settings.SettingsRoute
+import eotaek.juyulow.feature.main.settings.SettingsRoute
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +71,7 @@ class AppNavigationViewModel(private val journeys: JourneyRepository? = null) : 
             }
         }
     }
+
     val backStack = NavBackStack<NavKey>(Home)
     private var settingsDismissGuard: (() -> Boolean)? = null
     private var routeDismissGuard: (() -> Boolean)? = null
@@ -135,7 +136,6 @@ fun JuyulowApp(navigation: AppNavigationViewModel = koinViewModel()) {
                 entry<Completion> { key ->
                     CompletionRoute(
                         koinViewModel(parameters = { parametersOf(key.selectionId) }),
-                        navigation::back,
                         navigation::home
                     )
                 }

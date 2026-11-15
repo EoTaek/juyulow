@@ -9,22 +9,31 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import eotaek.juyulow.core.design.component.PleosLabelValue
 import eotaek.juyulow.core.design.component.PleosOutlinedCard
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.JourneyMode
+import eotaek.juyulow.core.model.Station
+import eotaek.juyulow.core.model.StationComparison
 import eotaek.juyulow.feature.main.common.minutes
 import eotaek.juyulow.feature.main.common.won
-import eotaek.juyulow.feature.main.results.EvaluatedStation
 
 @Composable
 internal fun StationRow(
-    row: EvaluatedStation,
+    station: Station,
+    comparison: StationComparison?,
     mode: JourneyMode,
     selected: Boolean,
     enabled: Boolean,
@@ -34,49 +43,76 @@ internal fun StationRow(
 ) {
     val colors = JUYULOWTheme.colors
     val type = JUYULOWTheme.typography
+    var focused by remember { mutableStateOf(false) }
     PleosOutlinedCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (enabled) 1f else .4f),
         cornerRadius = 18.dp,
         containerColor = if (selected) colors.surfaceHigh else colors.surfaceBasic,
-        borderWidth = 2.dp,
-        borderColor = if (selected) colors.basic900 else colors.basic200,
+        borderWidth = if (focused) 4.dp else 2.dp,
+        borderColor = if (selected || focused) colors.basic900 else colors.basic200,
     ) {
         val price: @Composable () -> Unit =
-            { PleosLabelValue("리터당 가격", "${won(row.station.priceWonPerL.toDouble())} 원/L") }
+            { PleosLabelValue("리터당 가격", "${won(station.priceWonPerL.toDouble())} 원/L") }
         val displayMode =
-            if (row.station.observedAtMillis != null) JourneyMode.DESTINATION else mode
+            if (station.observedAtMillis != null) JourneyMode.DESTINATION else mode
         val time: @Composable () -> Unit = {
             val seconds = when (displayMode) {
-                JourneyMode.WAYPOINT -> row.comparison.costDurationSeconds
-                JourneyMode.DESTINATION -> requireNotNull(row.station.outboundSeconds)
-                JourneyMode.ROUND_TRIP -> row.comparison.totalSeconds
+                JourneyMode.WAYPOINT -> comparison?.costDurationSeconds
+                JourneyMode.DESTINATION -> station.outboundSeconds
+                JourneyMode.ROUND_TRIP -> comparison?.totalSeconds
             }
-            PleosLabelValue(
-                if (displayMode == JourneyMode.WAYPOINT) "ETA 변화" else if (displayMode == JourneyMode.ROUND_TRIP) "왕복 소요시간" else "주유소까지",
-                "${if (displayMode == JourneyMode.WAYPOINT && seconds >= 0) "+" else ""}${
-                    minutes(
-                        seconds
-                    )
-                } 분"
-            )
+            val value = if (comparison == null || seconds == null) {
+                if (station.routePending || station.detour?.pending == true) "ETA 확인 중" else "경로 확인 불가"
+            } else "${if (displayMode == JourneyMode.WAYPOINT && seconds >= 0) "+" else ""}${
+                minutes(
+                    seconds
+                )
+            } 분"
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    if (displayMode == JourneyMode.WAYPOINT) "ETA 변화" else if (displayMode == JourneyMode.ROUND_TRIP) "왕복 소요시간" else "주유소까지",
+                    style = type.labelSmall,
+                    color = colors.textDarkTertiary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    value,
+                    style = type.bodyMediumStrong,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         Column(
             modifier
-                .testTag(row.station.id)
+                .testTag(station.id)
+                .onFocusChanged { focused = it.isFocused }
                 .selectable(selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
                 .padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (narrow) {
-                Text(row.station.name, style = type.bodyMediumStrong)
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) { price(); time() }
+                Text(
+                    station.name,
+                    style = type.bodyMediumStrong,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) { price(); time() }
             } else Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 Text(
-                    row.station.name,
+                    station.name,
                     style = type.bodyMediumStrong,
-                    modifier = Modifier.weight(1.35f)
+                    modifier = Modifier.weight(1.35f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Box(Modifier.weight(1f)) { price() }
                 Box(Modifier.weight(1f)) { time() }

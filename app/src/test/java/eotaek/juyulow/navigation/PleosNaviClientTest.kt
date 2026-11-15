@@ -25,8 +25,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PleosNaviClientTest {
-    @Test fun `waypoint route and cancellation obey connection gate and submit unchanged`() {
-        val request = ai.pleos.playground.navi.data.RouteWithWaypointsRequest(route, listOf(waypoint))
+    @Test
+    fun `waypoint route and cancellation obey connection gate and submit unchanged`() {
+        val request =
+            ai.pleos.playground.navi.data.RouteWithWaypointsRequest(route, listOf(waypoint))
         assertThrows(IllegalStateException::class.java) { client.requestRouteWithWaypoints(request) }
         assertThrows(IllegalStateException::class.java) { client.cancelRoute() }
         connect()
@@ -35,6 +37,7 @@ class PleosNaviClientTest {
         assertSame(request, api.waypointRoute)
         assertEquals(listOf("routeWithWaypoints", "cancelRoute"), api.calls.takeLast(2))
     }
+
     private val api = FakeNaviHelperApi()
     private val client = PleosNaviClient(api)
     private val listener = RecordingListener()
@@ -354,8 +357,14 @@ class PleosNaviClientTest {
             tripRequest = request
         }
 
-        override fun requestRouteWithWaypoints(request: ai.pleos.playground.navi.data.RouteWithWaypointsRequest) { calls += "routeWithWaypoints"; waypointRoute = request }
-        override fun cancelRoute() { calls += "cancelRoute" }
+        override fun requestRouteWithWaypoints(request: ai.pleos.playground.navi.data.RouteWithWaypointsRequest) {
+            calls += "routeWithWaypoints"; waypointRoute = request
+        }
+
+        override fun cancelRoute() {
+            calls += "cancelRoute"
+        }
+
         override fun requestRoute(route: RouteInfo) {
             calls += "route"; this.route = route
         }

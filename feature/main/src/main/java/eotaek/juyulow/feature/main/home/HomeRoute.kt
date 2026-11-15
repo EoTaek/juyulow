@@ -13,5 +13,5 @@ fun HomeRoute(viewModel: HomeViewModel, onResults: (String) -> Unit, onSettings:
         state.readySessionId?.let { id -> onResults(id); viewModel.consumeSearch() }
     }
     BackHandler(state.searching) { viewModel.cancelSearch() }
-    HomeScreen(state, viewModel::search, onSettings, viewModel::setHasDestination)
+    HomeScreen(state, viewModel::search, onSettings)
 }

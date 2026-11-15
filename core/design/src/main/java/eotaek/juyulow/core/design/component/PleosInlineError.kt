@@ -1,6 +1,5 @@
 package eotaek.juyulow.core.design.component
 
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -16,7 +15,7 @@ fun PleosInlineError(
     modifier: Modifier = Modifier,
     style: TextStyle = JUYULOWTheme.typography.labelSmall,
 ) {
-    Text(
+    PleosDividedText(
         message,
         modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
         style = style,

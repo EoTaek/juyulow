@@ -86,6 +86,7 @@ class PleosNaviClient internal constructor(private val api: NaviHelperApi) : Nav
             }
             onTripInfo(tripInfo)
         }
+
         override fun onRouteStarted(routeStartInfo: RouteStartInfo) =
             deliver {
                 ApiLog.event("Navi", "onRouteStarted", "callback") {
@@ -120,6 +121,7 @@ class PleosNaviClient internal constructor(private val api: NaviHelperApi) : Nav
                 "callback"
             ) { mapOf("clientId" to clientId) }; onDestinationChanged()
         }
+
         override fun onWaypointChanged(waypointChangedInfo: WaypointChangedInfo) =
             deliver {
                 ApiLog.event(
@@ -258,6 +260,7 @@ class PleosNaviClient internal constructor(private val api: NaviHelperApi) : Nav
         }
         addWaypoint(waypoint)
     }
+
     override fun requestNavigationScreen(screen: NavigationScreenRequest) =
         request("requestNavigationScreen") {
             ApiLog.event(

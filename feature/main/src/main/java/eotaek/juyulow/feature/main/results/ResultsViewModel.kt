@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import eotaek.juyulow.core.data.ComparisonSessionRepository
 import eotaek.juyulow.core.data.JourneyRepository
 import eotaek.juyulow.core.data.StationRepository
+import eotaek.juyulow.core.model.ComparisonSession
 import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.StationSort
 import eotaek.juyulow.core.model.sameRouteTargetsAs
@@ -41,7 +42,7 @@ class ResultsViewModel(
         viewModelScope.launch {
             sessions.observe(sessionId).collect { next ->
                 if (next != null && !state.value.settingRoute && state.value.completedSelectionId == null) mutableState.update {
-                    it.copy(session = next, selectedId = it.selectedId ?: next.firstReadyId)
+                    applySession(it, next)
                 }
             }
         }
@@ -75,23 +76,28 @@ class ResultsViewModel(
     }
 
     fun select(id: String) {
-        if (!state.value.busy && state.value.session?.stations?.any { it.id == id && it.outboundMeters != null && it.outboundSeconds != null } == true) mutableState.update {
+        if (!state.value.busy && state.value.evaluated.any { it.station.id == id }) mutableState.update {
             it.copy(
                 selectedId = id,
+                userInteracted = true,
                 error = null
             )
         }
+    }
+
+    fun onUserInteraction() {
+        mutableState.update { if (it.userInteracted) it else it.copy(userInteracted = true) }
     }
 
     fun changeMode(mode: JourneyMode) {
         val snapshot = state.value
         if (!snapshot.busy && mode in (snapshot.session?.context?.journey?.availableModes
                 ?: emptyList())
-        ) mutableState.update { it.copy(mode = mode, error = null) }
+        ) mutableState.update { it.copy(mode = mode, error = null, userInteracted = true) }
     }
 
     fun changeSort(sort: StationSort) {
-        if (!state.value.busy) mutableState.update { it.copy(sort = sort) }
+        if (!state.value.busy) mutableState.update { it.copy(sort = sort, userInteracted = true) }
     }
 
     fun refresh() {
@@ -122,15 +128,15 @@ class ResultsViewModel(
                     }
                     else {
                         mutableState.update {
-                            it.copy(
+                            withFirstSelection(it.copy(
                                 searching = false,
                                 session = next,
-                                selectedId = next.firstReadyId
-                            )
+                                userInteracted = false,
+                            ))
                         }
                         sessions.observe(next.id).collect { update ->
                             if (update != null && !state.value.settingRoute && state.value.completedSelectionId == null)
-                                mutableState.update { it.copy(session = update) }
+                                mutableState.update { applySession(it, update) }
                         }
                     }
                     return@launch
@@ -150,7 +156,8 @@ class ResultsViewModel(
                             session = next,
                             mode = next.context.journey.defaultMode,
                             searching = false,
-                            selectedId = null
+                            selectedId = null,
+                            userInteracted = false,
                         )
                     )
                 }
@@ -272,6 +279,19 @@ class ResultsViewModel(
 
     private fun withFirstSelection(state: ResultsUiState): ResultsUiState =
         state.copy(
-            selectedId = state.session?.firstReadyId ?: state.evaluated.firstOrNull()?.station?.id
+            selectedId = state.evaluated.firstOrNull()?.station?.id
         )
+
+    private fun ComparisonSession.etaPending(): Boolean =
+        !searchComplete || stations.any { it.routePending || it.detour?.pending == true }
+
+    private fun applySession(state: ResultsUiState, next: ComparisonSession): ResultsUiState {
+        if (state.session?.id != next.id) return state
+        val updated = state.copy(session = next)
+        return if (!state.userInteracted && (state.session.etaPending() || next.etaPending())) {
+            withFirstSelection(updated)
+        } else if (updated.selectedId == null) {
+            withFirstSelection(updated)
+        } else updated
+    }
 }

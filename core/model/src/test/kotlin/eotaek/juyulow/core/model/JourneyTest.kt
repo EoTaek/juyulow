@@ -35,12 +35,11 @@ class JourneyTest {
     }
 
     @Test
-    fun optionalTimeCostIncludesStopAndCanProduceLoss() {
+    fun stopDurationDoesNotChargeTimeCost() {
         val timed =
-            context.copy(conditions = resolveRefuelConditions(RefuelSettings(includeTimeCost = true)))
+            context.copy(conditions = resolveRefuelConditions(RefuelSettings()))
         val result = compareStation(timed, station, JourneyMode.WAYPOINT)
-        assertEquals(1800.0, result.timeCostWon, .0001)
-        assertEquals(3437.5, result.netSavingWon, .0001)
+        assertEquals(5237.5, result.netSavingWon, .0001)
         assertTrue(
             compareStation(
                 timed,

@@ -1,4 +1,4 @@
-package eotaek.juyulow.feature.settings
+package eotaek.juyulow.feature.main.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val draft: RefuelSettings? = null,
     val saving: Boolean = false,
-    val saved: Boolean = false,
+    val dismissRequested: Boolean = false,
     val error: String? = null,
     val vehicleFields: Map<VehicleProperty, VehicleField> = emptyMap(),
 ) {
@@ -31,6 +31,7 @@ class SettingsViewModel(
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(SettingsUiState())
     val state = mutableState.asStateFlow()
+    private val pendingSaves = ArrayDeque<RefuelSettings>()
 
     init {
         viewModelScope.launch {
@@ -43,7 +44,7 @@ class SettingsViewModel(
         viewModelScope.launch {
             try {
                 val settings = repository.settings.first()
-                mutableState.update { it.copy(draft = settings, error = null, saved = false) }
+                mutableState.update { it.copy(draft = settings, error = null) }
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Exception) {
@@ -54,40 +55,46 @@ class SettingsViewModel(
 
     fun edit(update: (RefuelSettings) -> RefuelSettings) {
         val current = state.value
-        if (!current.saving && !current.saved && current.draft != null) mutableState.update {
-            it.copy(
-                draft = update(current.draft).let { next ->
-                    // The SDK may finish while the popup is open. Keep the manual draft intact.
-                    val conditions = requireNotNull(current.conditions)
-                    next.copy(
-                        liters = if (conditions.automaticLiters) current.draft.liters else next.liters,
-                        efficiencyKmPerL = if (conditions.automaticEfficiency) current.draft.efficiencyKmPerL else next.efficiencyKmPerL,
-                    )
-                },
-                error = null
-            )
-        }
+        val settings = current.draft ?: return
+        val next = update(settings)
+        if (next == settings && current.error == null) return
+        mutableState.update { it.copy(draft = next) }
+        enqueueSave(next)
     }
 
-    fun apply() {
+    fun retrySave() {
         val snapshot = state.value
         val draft = snapshot.draft ?: return
-        if (snapshot.saving || snapshot.saved) return
+        if (snapshot.saving) return
+        enqueueSave(draft)
+    }
+
+    fun canDismiss(): Boolean {
+        if (!state.value.saving) return true
+        mutableState.update { it.copy(dismissRequested = true) }
+        return false
+    }
+
+    private fun enqueueSave(settings: RefuelSettings) {
+        pendingSaves.addLast(settings)
+        if (state.value.saving) return
         mutableState.update { it.copy(saving = true, error = null) }
         viewModelScope.launch {
-            try {
-                repository.save(draft)
-                mutableState.update { it.copy(saving = false, saved = true) }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (_: Exception) {
-                mutableState.update {
-                    it.copy(
-                        saving = false,
-                        error = "조건을 저장하지 못했어요. 다시 적용해 주세요."
-                    )
+            // One consumer preserves edit order without cancelling an in-flight DataStore write.
+            while (pendingSaves.isNotEmpty()) {
+                val next = pendingSaves.removeFirst()
+                try {
+                    repository.save(next)
+                    mutableState.update { it.copy(error = null) }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    mutableState.update {
+                        it.copy(error = "조건을 저장하지 못했어요. 다시 저장해 주세요.")
+                    }
                 }
             }
+            mutableState.update { it.copy(saving = false) }
         }
     }
 }

@@ -16,7 +16,7 @@ import eotaek.juyulow.core.data.VehicleInfoRepository
 import eotaek.juyulow.feature.main.completion.CompletionViewModel
 import eotaek.juyulow.feature.main.home.HomeViewModel
 import eotaek.juyulow.feature.main.results.ResultsViewModel
-import eotaek.juyulow.feature.settings.SettingsViewModel
+import eotaek.juyulow.feature.main.settings.SettingsViewModel
 import eotaek.juyulow.location.FusedLocationClient
 import eotaek.juyulow.location.PleosFusedLocationClient
 import eotaek.juyulow.navigation.NaviClient
@@ -33,7 +33,12 @@ val appModule = module {
     single { eotaek.juyulow.core.data.OpinetClient.create(BuildConfig.OPINET_API_KEY) }
     single { eotaek.juyulow.core.data.OpinetCandidates(get()) }
     single { eotaek.juyulow.navigation.NaviTripLedger() }
-    factory<NavigationRepository> { eotaek.juyulow.navigation.PleosNavigationRepository(get(), get()) }
+    factory<NavigationRepository> {
+        eotaek.juyulow.navigation.PleosNavigationRepository(
+            get(),
+            get()
+        )
+    }
     factory<NaviClient> { PleosNaviClient(androidContext()) }
     factory<FusedLocationClient> { PleosFusedLocationClient(androidContext()) }
     factory<VehicleFuelClient> { PleosVehicleFuelClient(androidContext()) }

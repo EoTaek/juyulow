@@ -180,7 +180,7 @@ class LiveJourneyRepositoryTest {
                 compareStation(batch(repo, first).context, first[0], JourneyMode.DESTINATION)
             assertNull(result.tollWon)
             assertEquals(
-                result.fuelSavingWon - result.drivingCostWon - result.timeCostWon,
+                result.fuelSavingWon - result.drivingCostWon,
                 result.netSavingWon,
                 .00001
             )

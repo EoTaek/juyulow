@@ -5,11 +5,10 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
-fun CompletionRoute(viewModel: CompletionViewModel, onCompare: () -> Unit, onHome: () -> Unit) {
+fun CompletionRoute(viewModel: CompletionViewModel, onHome: () -> Unit) {
     val error by viewModel.error.collectAsStateWithLifecycle()
     CompletionScreen(
         viewModel.selection,
-        onCompare,
         onHome,
         onOpenNavigation = if (viewModel.canOpenNavigation) viewModel::openNavigation else null,
         error = error

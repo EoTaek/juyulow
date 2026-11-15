@@ -11,7 +11,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.captureToImage
@@ -38,8 +40,8 @@ import eotaek.juyulow.core.model.resolveRefuelConditions
 import eotaek.juyulow.feature.main.completion.CompletionScreen
 import eotaek.juyulow.feature.main.home.HomeScreen
 import eotaek.juyulow.feature.main.home.HomeUiState
-import eotaek.juyulow.feature.settings.SettingsScreen
-import eotaek.juyulow.feature.settings.SettingsUiState
+import eotaek.juyulow.feature.main.settings.SettingsScreen
+import eotaek.juyulow.feature.main.settings.SettingsUiState
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -121,36 +123,66 @@ class VehicleConditionsLayoutTest(private val widthDp: Int, private val dark: Bo
     }
 
     @Test
-    fun homeShowsEnergyAndAutomaticConditions() {
+    fun homeShowsStoredConditionsWithoutEnergyNotices() {
         render {
             HomeScreen(
                 HomeUiState(settings = RefuelSettings(), vehicleFields = fields),
                 {},
-                {},
                 {})
         }
-        compose.onNodeWithText("차량 에너지원: 전기 · 휘발유 기준 비교").assertIsDisplayed()
+        compose.onNodeWithText("차량 에너지원:", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("전기차", substring = true).assertDoesNotExist()
         compose.onNodeWithTag("search-stations").assertIsEnabled()
         compose.onNodeWithTag("open-settings").assertIsDisplayed()
         verifyAndCapture("vehicle-home")
     }
 
     @Test
-    fun settingsShowsReadOnlyValuesAndScrollableVehicleDetails() {
+    fun settingsShowsEditableStoredValuesAndScrollableVehicleDetails() {
         render {
             SettingsScreen(
                 SettingsUiState(draft = RefuelSettings(), vehicleFields = fields),
                 {},
                 {},
-                {},
                 {})
         }
-        compose.onNodeWithText("37.7 L").assertIsDisplayed()
+        compose.onNodeWithText("40 L").assertIsDisplayed()
+        compose.onNodeWithText("차량 에너지원:", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("전기차", substring = true).assertDoesNotExist()
         compose.onNodeWithContentDescription("예상 주유량 늘리기").assertIsEnabled()
-        compose.onNodeWithContentDescription("차량 연비 늘리기").assertDoesNotExist()
+        compose.onNodeWithContentDescription("평균연비 늘리기").assertIsEnabled()
         compose.onNodeWithText("차량 조회 정보").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("12.3 L / 50 L").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("누적 연비").assertIsDisplayed()
+        compose.onNodeWithText("11.8 km/L").assertIsDisplayed()
+        compose.onNodeWithText("절약액 계산에 적용").assertIsDisplayed()
+        compose.onNodeWithText("현재 연비", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("잔량 비율", substring = true).assertDoesNotExist()
+        val tank = compose.onNodeWithText("탱크 잔량 / 용량").fetchSemanticsNode().boundsInRoot
+        val economy = compose.onNodeWithText("누적 연비").fetchSemanticsNode().boundsInRoot
+        assertTrue("Vehicle cards must share one row", kotlin.math.abs(tank.top - economy.top) < 1f)
+        assertTrue("Tank card must precede economy card", tank.right < economy.left)
         verifyAndCapture("vehicle-settings")
-        compose.onNodeWithText("적용하기").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("적용하기").assertDoesNotExist()
+    }
+
+    @Test
+    fun settingsRemainsInteractiveWithoutProgressWhileSaving() {
+        render {
+            SettingsScreen(
+                SettingsUiState(draft = RefuelSettings(), saving = true, vehicleFields = fields),
+                {}, {}, {})
+        }
+        compose.onNodeWithContentDescription("설정 닫기").assertIsEnabled()
+        compose.onNodeWithText("검색 반경").assertDoesNotExist()
+        compose.onNodeWithText("3 km").assertDoesNotExist()
+        compose.onNodeWithContentDescription("검색 반경 늘리기").assertDoesNotExist()
+        compose.onNodeWithText("고급휘발유").assertIsEnabled()
+        compose.onNodeWithContentDescription("예상 주유량 늘리기").assertIsEnabled()
+        compose.onNodeWithContentDescription("평균연비 늘리기").assertIsEnabled()
+        compose.onNodeWithContentDescription("주유 시간 늘리기").assertIsEnabled()
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+            .assertDoesNotExist()
     }
 
     @Test
@@ -167,8 +199,8 @@ class VehicleConditionsLayoutTest(private val widthDp: Int, private val dark: Bo
             300,
             conditions
         )
-        render { CompletionScreen(selection, {}, {}) }
-        compose.onNodeWithText("차량 에너지원: 전기 · 휘발유 기준 비교").performScrollTo().assertIsDisplayed()
+        render { CompletionScreen(selection, {}) }
+        compose.onNodeWithText("차량 에너지원: 전기").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("홈으로").performScrollTo().assertIsDisplayed()
         verifyAndCapture("vehicle-completion")
     }

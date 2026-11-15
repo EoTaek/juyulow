@@ -28,13 +28,9 @@ import eotaek.juyulow.core.design.component.PleosButton
 import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.component.PleosInlineError
 import eotaek.juyulow.core.design.component.PleosOutlinedCard
-import eotaek.juyulow.core.design.component.PleosSwitch
-import eotaek.juyulow.core.design.component.VehicleEnergySummary
-import eotaek.juyulow.core.design.component.displayLabel
 import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.RefuelSettings
-import eotaek.juyulow.core.model.VehicleFetchStatus
 import eotaek.juyulow.feature.main.common.minutes
 
 @Composable
@@ -42,7 +38,6 @@ fun HomeScreen(
     state: HomeUiState,
     onSearch: () -> Unit,
     onSettings: () -> Unit,
-    onDestinationChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = JUYULOWTheme.colors
@@ -85,8 +80,8 @@ fun HomeScreen(
                                     Modifier.weight(1f),
                                     verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Text(
-                                        if (state.journey.hasDestination) "현재 목적지" else "현재 위치",
+                                    if (state.journey.hasDestination) Text(
+                                        "현재 목적지",
                                         style = type.labelSmall,
                                         color = colors.textDarkTertiary
                                     )
@@ -102,10 +97,21 @@ fun HomeScreen(
                                         )
                                     }
                                 }
-                                if (state.journey.hasDestination && state.journey.baselineSeconds != null) Text(
-                                    "${minutes(state.journey.baselineSeconds!!)}분",
-                                    style = type.titleLargeBold
-                                )
+                                if (state.journey.hasDestination && state.journey.baselineSeconds != null) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Text(
+                                            "도착까지",
+                                            style = type.labelSmall,
+                                            color = colors.textDarkTertiary,
+                                            modifier = Modifier.alignByBaseline(),
+                                        )
+                                        Text(
+                                            "${minutes(state.journey.baselineSeconds!!)}분",
+                                            style = type.titleLargeBold,
+                                            modifier = Modifier.alignByBaseline(),
+                                        )
+                                    }
+                                }
                             }
                         }
                         PleosButton(
@@ -119,22 +125,12 @@ fun HomeScreen(
                             trailingIcon = PleosIcon.Next,
                             loading = state.searching,
                             enabled = state.settings != null && state.navigationReady,
+                            emphasizeContentOnFocus = true,
                         )
                         state.conditions?.let { conditions ->
-                            VehicleEnergySummary(conditions.energy)
                             Text(
-                                "반경 ${conditions.searchRadiusKm} km · 검색 유종: ${conditions.comparisonFuel.label}",
+                                "반경 ${conditions.searchRadiusKm} km 내 검색",
                                 style = type.labelSmall
-                            )
-                            if (conditions.automaticLiters && conditions.liters == 0.0) Text(
-                                "연료가 가득 찬 상태예요. 예상 가득 주유량은 0 L예요.",
-                                style = type.labelSmall, color = colors.textDarkTertiary,
-                            )
-                            if ((!conditions.automaticLiters || !conditions.automaticEfficiency) &&
-                                state.vehicleFields.values.any { it.status == VehicleFetchStatus.PENDING }
-                            ) Text(
-                                "차량 정보 조회 중에는 저장된 수동 조건을 사용해요.",
-                                style = type.labelSmall, color = colors.textDarkTertiary,
                             )
                         }
                         state.navigationMessage?.let { Text(it, style = type.labelMedium) }
@@ -145,33 +141,23 @@ fun HomeScreen(
                 }
                 HorizontalDivider(color = colors.basic200)
                 Spacer(Modifier.height(24.dp))
-                val destination: @Composable () -> Unit = {
-                    if (!state.journey.destinationOnly) PleosSwitch(
-                        state.journey.hasDestination,
-                        "유효 목적지 ${if (state.journey.hasDestination) "있음" else "없음"}",
-                        onDestinationChange,
-                        enabled = !state.searching
-                    )
+                val value = state.conditions
+                PleosButton(
+                    onClick = onSettings, modifier = Modifier.testTag("open-settings"),
+                    trailingIcon = PleosIcon.Settings, outlined = true,
+                    enabled = value != null && !state.searching,
+                ) {
+                    if (value == null) Text("주유 조건을 불러오는 중") else Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(value.comparisonFuel.label, style = type.bodySmallStrong)
+                        androidx.compose.material3.VerticalDivider(Modifier.height(24.dp), thickness = 1.dp)
+                        Text("주유량 "+vehicleNumber(value.liters)+"L", style = type.bodySmallStrong)
+                        androidx.compose.material3.VerticalDivider(Modifier.height(24.dp), thickness = 1.dp)
+                        Text("평균연비 "+vehicleNumber(value.efficiencyKmPerL)+"km/L", style = type.bodySmallStrong)
+                    }
                 }
-                val settings: @Composable () -> Unit = {
-                    val value = state.conditions
-                    PleosButton(
-                        if (value == null) "주유 조건을 불러오는 중" else
-                            "${vehicleNumber(value.liters)} L (${value.litersSource.displayLabel()}) · " +
-                                    "연비 ${vehicleNumber(value.efficiencyKmPerL)} km/L (${value.efficiencySource.displayLabel()}) · 주유 ${value.refuelMinutes}분",
-                        onSettings,
-                        Modifier.testTag("open-settings"),
-                        trailingIcon = PleosIcon.Settings,
-                        outlined = true,
-                        enabled = value != null && !state.searching,
-                    )
-                }
-                if (narrow) Column(verticalArrangement = Arrangement.spacedBy(16.dp)) { destination(); settings() }
-                else Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) { destination(); settings() }
             }
         }
     }
@@ -181,7 +167,7 @@ fun HomeScreen(
 @Preview(name = "Home · Portrait", widthDp = 840, heightDp = 1184)
 @Composable
 private fun HomePreview() {
-    JUYULOWTheme { HomeScreen(HomeUiState(settings = RefuelSettings()), {}, {}, {}) }
+    JUYULOWTheme { HomeScreen(HomeUiState(settings = RefuelSettings()), {}, {}) }
 }
 
 @Preview(name = "Home · Dark Landscape", widthDp = 1700, heightDp = 1184)
@@ -191,7 +177,6 @@ private fun HomeDarkPreview() {
     JUYULOWTheme(darkTheme = true) {
         HomeScreen(
             HomeUiState(settings = RefuelSettings()),
-            {},
             {},
             {})
     }

@@ -1,5 +1,144 @@
 # 검증
 
+## 2026-11-15 버튼 콘텐츠 전체 확대 및 경유 추가 우선 포커스
+
+홈 검색·결과 경로 버튼은 좌우 아이콘·텍스트를 포함한 콘텐츠 행 전체에 포커스 확대(150ms·6%)를 적용한다. 버튼 배경·레이아웃 크기는 유지한다.
+Enter는 왼쪽 경유 추가 버튼을 우선 포커스하며, 경유 추가가 불가능하면 목적지 설정 버튼으로 이동한다.
+`ProgressiveResultsLayoutTest`는 현재 모드가 목적지 설정이어도 경유 추가가 우선되고 경로는 실행되지 않는지 검사한다.
+Pleos Connect v2.1.0에서 방향키·레이아웃 연결 테스트 20건(두 창 크기·두 테마), debug 빌드·전체 단위 테스트·lintDebug·git diff --check가 통과했다.
+애니메이션의 시각적 타이밍은 별도로 검증하지 않았다.
+
+## 2026-11-15 Enter 경로 버튼 이동 및 포커스 강조
+
+주유소에서 Enter 키를 뗄 때 하단 경로 버튼으로 포커스를 이동한다. 홈 검색·결과 경로 버튼의 텍스트는 포커스 시 150ms 동안 6% 확대한다.
+`ProgressiveResultsLayoutTest`에 Enter 이후 경로 버튼 포커스와 경로 미실행 검사를 추가했다.
+Pleos Connect v2.1.0 에뮬레이터에서 두 창 크기·두 테마 연결 테스트 12건, debug 빌드·전체 단위 테스트·lintDebug·git diff --check가 통과했다.
+텍스트 애니메이션의 시각적 타이밍은 별도로 검증하지 않았다.
+
+## 2026-11-15 결과 목록 방향키 선택
+
+주유소 포커스 획득을 선택·상세 갱신에 연결하고, 포커스된 카드의 테두리를 강조했다. 목록 밖으로 이동한 뒤 ETA 재정렬로 포커스를 빼앗지 않도록 추적을 해제한다.
+`ProgressiveResultsLayoutTest`는 1700/840 × 1184dp·라이트/다크에서 방향키만으로 16개 항목을 순회하며 선택·상세·스크롤 동기화,
+미준비 항목 건너뛰기, 하단 경로 버튼 왕복, 경로 미실행, ETA 재정렬 시 포커스 유지를 확인한다.
+Pleos Connect v2.1.0 에뮬레이터의 해당 연결 테스트 12건과 debug 빌드, 전체 단위 테스트, lintDebug, AndroidTest APK 빌드, git diff --check가 통과했다.
+레이아웃 테스트는 기존처럼 Density 0.5를 사용하며 실제 차량 물리 입력과 주행 상태는 검증하지 않는다.
+
+## 2026-11-15 결과 목록 갱신 상태 문구 제거
+
+목록 위의 잠정 절약액·기준 유가 갱신, 카카오 조회 건수, 조회 완료 문구와 관련 표시용 코드를 제거했다.
+ProgressiveResultsLayoutTest는 갱신 상태 문구가 표시되지 않는지 검사하도록 갱신했다.
+debug 앱 빌드, lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다. UI 테스트의 디바이스 실행은 수행하지 않았다.
+
+## 2026-11-15 ETA 준비 상태별 카드 통일
+
+준비 중·실패·완료 항목을 동일 구조 카드로 표시하고 미준비 항목의 선택을 제한한다. 과도한 고정 높이를 제거하고, ETA 영역을 한 줄로 유지하여 갱신 전후 카드 높이 변화를
+막는다. 완료 시 진행 상태 표시 영역도 유지한다.
+MainViewModelsTest에서 Pleos 미준비·카카오 조회 중 선택 차단, 카카오 실패 시 Pleos 기준 선택 가능을 검증했다.
+ProgressiveResultsLayoutTest에는 미준비 항목이 준비된 뒤에도 스크롤 범위와 상단 위치가 유지되는 검사를 추가했다.
+debug 앱 빌드, feature:main 단위 테스트, lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다.
+UI 테스트의 디바이스 실행과 실제 스크롤·두 창 크기의 렌더링은 미확인이다.
+
+## 2026-11-15 완료 화면 동작 버튼 정리
+
+"다른 주유소 비교" 버튼과 완료 화면의 비교 콜백 연결을 제거하고, 왼쪽 outlined 홈 버튼과 오른쪽 화살표 주 버튼으로 내비게이션 열기를 배치했다.
+내비게이션 버튼이 구성된 뒤 초기 포커스를 요청한다. 기존 완료 흐름 테스트는 내비게이션 열기 후 홈 복귀를 검사하도록 갱신했다.
+debug 앱 빌드, feature:main 단위 테스트, lintDebug와 AndroidTest APK 빌드를 확인했다. 실제 화면 배치·포커스와 연결 테스트의 디바이스 실행은 미확인이다.
+
+## 2026-11-15 ETA 자동 선택 중 스크롤 상단 유지
+
+사용자 조작 전에는 ETA 응답 갱신마다 목록의 첫 항목·오프셋 0을 요청하고, 포커스 보존용 스크롤은 사용자 조작 후에만 수행한다.
+ProgressiveResultsLayoutTest에 연속 재정렬 후 스크롤 0과 사용자 스크롤 이후 위치 유지를 검사하는 회귀 테스트를 추가했다.
+debug 앱 빌드, feature:main 단위 테스트, lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다.
+추가한 UI 테스트의 디바이스 실행은 수행하지 않았다.
+
+## 2026-11-15 ETA 조회 중 최상단 자동 선택
+
+MainViewModelsTest에서 첫 성공 ID 대신 현재 정렬 최상단 선택, Pleos 종료 후 카카오 최종 응답까지 자동 선택,
+선택 변경 없는 사용자 입력의 자동 선택 중단, 조회 중 직접 선택 유지를 검증한다.
+debug 앱 빌드, feature:main 단위 테스트, lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다.
+실제 방향키·터치·스크롤 입력 연결의 디바이스 검증은 수행하지 않았다.
+
+## 2026-11-15 한국어 어절 단위 줄바꿈
+
+공통 Pleos/Material 타이포그래피에 `ko-KR`, `WordBreak.Phrase`, 자동 하이픈 비활성화를 적용했다.
+debug 앱 빌드, feature:main 단위 테스트, lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다.
+실제 프리뷰·디바이스의 줄바꿈 렌더링은 확인하지 않았다. OS 지원 범위와 긴 어절 예외는 [DESIGN.md](DESIGN.md)에 기록했다.
+
+## 2026-11-15 텍스트 구분점의 세로 구분선 전환
+
+결과·완료 요약, 차량 에너지원 및 동적 오류 문구의 독립 정보를 `PleosDividedText`로 가로 배치하고 `VerticalDivider`로 구분한다.
+좁은 창에서는 구분선과 다음 항목이 함께 줄바꿈된다. 분리된 텍스트에 맞춰 기존 레이아웃 테스트의 문구 검사를 갱신했다.
+debug 앱 빌드, feature:main 단위 테스트, lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다.
+실제 화면 렌더링 및 연결 테스트 실행은 수행하지 않았다.
+
+## 2026-11-15 결과 제목과 선택 상세 표시 정리
+
+결과 제목에 전체 검색 후보 수를 표시하고 제목 아래 설명을 제거했다. 선택 상세의 통행료 항목·목적지 유지 문구를 제거하고 절약 금액을 한 줄로 배치하며 경로 요약 글자 크기를 통일했다.
+debug 빌드, 전체 단위 테스트, `lintDebug`와 `git diff --check`가 통과했다. 실제 화면 렌더링 검증은 수행하지 않았다.
+
+## 2026-11-15 홈 목적지 카드 라벨 조정
+
+목적지가 없으면 상단의 "현재 위치" 라벨을 표시하지 않는다. 목적지 소요시간 앞에는 작은 "도착까지" 문구를 같은 기준선에 표시한다.
+`:app:assembleDebug`, `:feature:main:testDebugUnitTest`, `lintDebug`와 `git diff --check`가 통과했다. 실제
+화면 렌더링 검증은 수행하지 않았다.
+
+## 2026-11-15 차량 조회 카드와 누적 연비 계산
+
+설정의 차량 조회 정보를 동일 너비의 가로 2개 카드로 바꿨다. 탱크 잔량을 강조하고 용량은 한 단계 작게 표시하며, 누적 연비 카드는 계산에 적용한 연비와 기본값 사용 여부를
+표시한다.
+RefuelConditionsTest는 누적 연비의 무반올림 변환·실제 절약액 계산, 누적 연비 미조회·실패·기본값·비정상 값의 수동 연비 대체와 현재 연비 제외를 검증한다.
+MainViewModelsTest는 검색 후 도착한 누적 연비가 기존 결과·완료 스냅샷을 바꾸지 않고 다음 검색부터 반영되는지 확인한다. SettingsViewModelTest는
+누적 연비가 적용돼도 수동 설정은 보존되는지 확인한다.
+debug 빌드, 전체 단위 테스트 159개 (실패·오류 0), lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다.
+VehicleConditionsLayoutTest에 카드의 가로 배치·표시값 검증을 추가했다. 연결 테스트 실행과 두 창 크기·두 테마의 실제 렌더링 검증은 수행하지 않았다.
+
+## 2026-11-15 설정 검색 반경 고정 및 조작 영역 배치
+
+검색 반경은 3km로 고정하고 설정 화면에서 제거했다. 검색 유종은 가로 1행 3개 버튼으로 표시하고 Stepper 값을 중앙 정렬한다.
+PreferencesSettingsRepositoryTest는 과거 반경 5km를 읽어도 3km로 제공하고 저장 시 과거 키를 제거하며 다른 설정은 유지하는지 검증한다.
+debug 빌드, 전체 단위 테스트 158개 (실패·오류 0), lintDebug, AndroidTest APK 빌드가 통과했다.
+VehicleConditionsLayoutTest의 반경 조작 단언은 새 UI에 맞게 수정했으며 연결 실행과 두 창 크기·두 테마의 실제 렌더링 검증은 수행하지 않았다.
+
+## 2026-11-14 홈·설정 차량 에너지원 안내 제거
+
+홈·설정에서 차량 에너지원과 전기차 안내 문구를 제거했다. 앱 debug 빌드, 전체 단위 테스트, lintDebug와 AndroidTest APK 빌드가 통과했다.
+Pleos 2.1.0 활성 사용자 10에 데이터를 유지해 재설치하고 VehicleConditionsLayoutTest 16개가 통과했다. 두 창 크기·두 테마에서 홈·설정의 안내 문구 부재와 기존 화면 배치를 확인했다. git diff --check도 통과했다.
+
+## 2026-11-14 단일 feature 모듈 통합
+
+설정 화면·ViewModel·단위 테스트를 `feature:main`의 `feature.main.settings` 패키지로 이동했다. 설정 테스트는
+`:feature:main:testDebugUnitTest`에서 실행한다. 이전 검증 기록의 `feature:settings`는 통합 전 모듈명이다.
+앱 debug 빌드, 전체 단위 테스트 157개 (실패·오류·건너뜀 0), lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다.
+Pleos 2.1.0 활성 사용자 10에 데이터를 유지해 재설치하고 PrototypeFlowTest 3개가 통과했다. 설정 열기·즉시 저장·닫기·재열기와 기존 화면 흐름을
+확인했으며 검색·내비는 Fake 저장소를 사용한다.
+
+## 2026-11-14 설정 저장 큐 및 로딩 표시 제거
+
+저장 중에도 설정 입력과 닫기 버튼을 활성 상태로 유지하고 저장 인디케이터를 표시하지 않는다. 단위 테스트는 쓰기 중 추가 변경의 즉시 화면 반영·FIFO 저장 순서·중간 실패 이후 큐 처리·전체 큐 처리 후 닫기를 검증한다.
+앱 debug 빌드, 전체 단위 테스트 157개 (실패·오류 0), lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다.
+Pleos 2.1.0 활성 사용자 10에 데이터를 유지해 재설치하고 VehicleConditionsLayoutTest 16개와 PrototypeFlowTest 3개가 통과했다.
+두 창 크기·두 테마에서 saving 상태에도 컨트롤 활성·로딩 표시 부재를 확인했다. 기존 저장·재열기 흐름도 통과했으며 검색·내비는 Fake 저장소를 사용한다.
+
+## 2026-11-13 설정 변경 즉시 저장
+
+설정의 적용 버튼을 제거하고 항목 변경 즉시 DataStore에 저장한다. 단위 테스트는 즉시 저장·재열기·저장 중 중복 요청 방지·연속 편집·실패 후 재시도·동일 값 선택 시 쓰기 생략을 검증한다.
+앱 debug 빌드, 전체 단위 테스트 155개 (실패·오류·건너뜀 0), lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다.
+Pleos 2.1.0 활성 사용자 10에 데이터를 유지해 재설치하고 VehicleConditionsLayoutTest 12개와 PrototypeFlowTest 3개가 통과했다.
+두 창 크기·두 테마의 배치, 적용 버튼 부재, 주유량·주유 시간의 즉시 저장과 닫기·뒤로가기 후 복원을 확인했다. 검색·내비는 Fake 저장소를 사용한다.
+
+## 2026-11-13 DataStore 주유 조건 및 시간 비용 제거
+
+주유량·평균연비는 저장 설정을 사용하며 차량 기반 도출 함수는 별도로 보존한다. 저장소 재생성, 늦은 차량 응답, 초안 편집·취소·저장 실패와 시간 비용 없는 계산을 검증했다.
+앱 debug 빌드, 전체 단위 테스트 154개 (실패·오류·건너뜀 0), lintDebug, AndroidTest APK 빌드 및 git diff --check가 통과했다.
+Pleos 2.1.0 활성 사용자 10에 데이터 유지 재설치 후 VehicleConditionsLayoutTest 12개 (두 크기·두 테마), PrototypeFlowTest 3개가 통과했다.
+검색·내비는 Fake 저장소로 검증하며 실제 외부 API 호출 검증은 포함하지 않는다.
+
+## 2026-11-13 홈 목적지 전환 토글 제거
+
+홈의 미사용 목적지 전환 토글과 화면·ViewModel 콜백을 제거했다. `PrototypeFlowTest`의 목적지 없는 상태는 UI 토글 대신 Mock 저장소에서 설정한다.
+앱 debug 빌드, 전체 단위 테스트 153개 (실패·오류·건너뜀 0개), `lintDebug`, AndroidTest APK 빌드와 `git diff --check`가 통과했다.
+수정한 연결 테스트는 컴파일만 확인했으며 에뮬레이터에서 실행하지 않았다.
+
 ## 2026-11-12 PR #14 확인 팝업 자동 종료 후 검색 재개
 
 `MainViewModelsTest.targetChangeDismissesReplacementAndResumesSearchOnlyWhenDialogWasOpen`은 목적지 대체 확인 중 위치 변화에는
@@ -84,11 +223,11 @@ POI 기능은 유지한다. mobile-mcp로 실제 홈 검색에서 빈 결과 화
 
 ```powershell
 $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
-.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :core:model:test :core:data:test :feature:main:testDebugUnitTest :feature:settings:testDebugUnitTest lintDebug --console=plain
+.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :core:model:test :core:data:test :feature:main:testDebugUnitTest lintDebug --console=plain
 ```
 
 - `assembleDebug`: 앱과 연결된 모든 Android/Kotlin 모듈의 빌드·패키징을 확인한다.
-- `testDebugUnitTest`: app의 백스택 동작, feature:main의 검색·선택·정렬·스냅샷·경로 설정, feature:settings의 초안·적용·저장 실패
+- `testDebugUnitTest`: app의 백스택 동작, feature:main의 검색·선택·정렬·스냅샷·경로 설정과 설정의 즉시 저장·FIFO 큐·저장 실패
   후 재시도를 검증한다.
 - `:core:model:test`, `:core:data:test`: 세 이동 방식의 거리·시간·비용·경계값, mock 데이터 생성·목적지 반영, 실제 Preferences
   DataStore 파일의 저장·재로딩을 검증한다.
@@ -141,18 +280,18 @@ waypoint 모드에서 초기 목적지가 없으면 실측된 소설한남 fixtu
 `:app:assembleRelease`로 확인한다.
 
 `RefuelConditionsTest`는 소수값과 수동 범위 밖 자동값, L/100km 변환, 0L의 이동 비용,
-잔량 초과·조회 실패 시 % 대체와 수동 fallback, 누적/현재 연비 우선순위를 검증한다.
+잔량 초과·조회 실패 시 % 대체와 수동 fallback, 누적 연비 우선 적용과 현재 연비 제외를 검증한다.
 `MainViewModelsTest`는 검색 도중 도착한 차량값과 수동 설정 변경이 결과 재검색·완료의 스냅샷을 바꾸지 않고 새 홈 검색에 반영되는지,
 0L 검색 허용과 복수·미지 에너지원 표시를 검증한다. `SettingsViewModelTest`는 팝업 편집 중 자동 성공 시 수동 초안 보존과 SDK 값 저장 방지를 확인한다.
 `VehicleStartupTest`는 잔량 mL 실패 후 % 대체가 성공해도 원래 실패 진단이 유지되는지 검증한다.
 
 버전은 `gradle/libs.versions.toml`에서 관리하고 각 모듈의 `testImplementation`으로 선언한다.
 
-| 모듈                                            | 테스트 의존성                                              |
-|-------------------------------------------------|------------------------------------------------------------|
-| `core:model`                                    | JUnit4 `4.13.2`                                            |
-| `app`                                           | JUnit4 `4.13.2`, Coroutines Test `1.11.0`                  |
-| `core:data`, `feature:main`, `feature:settings` | JUnit4 `4.13.2`, Coroutines Test `1.11.0`, Turbine `1.2.1` |
+| 모듈                        | 테스트 의존성                                              |
+|-----------------------------|------------------------------------------------------------|
+| `core:model`                | JUnit4 `4.13.2`                                            |
+| `app`                       | JUnit4 `4.13.2`, Coroutines Test `1.11.0`                  |
+| `core:data`, `feature:main` | JUnit4 `4.13.2`, Coroutines Test `1.11.0`, Turbine `1.2.1` |
 
 - **JUnit4**: `org.junit.Test`와 assertion으로 계산 결과·경계값·상태를 검증한다. 기존 테스트와 AndroidJUnit4 구성을 유지한다.
 - **Coroutines Test**: `kotlinx-coroutines-test` 버전은 `kotlinx-coroutines-core`와 같은 `coroutines` 버전 키를 사용한다. suspend 함수와 비동기 로직은 `runTest`로 실행하고, 실행 순서와 가상 시간은 `runCurrent`, `advanceTimeBy`, `advanceUntilIdle` 등으로 제어한다. 테스트 Dispatcher는 같은 `testScheduler`를 공유하도록 구성한다.
@@ -162,8 +301,18 @@ waypoint 모드에서 초기 목적지가 없으면 실측된 소설한남 fixtu
 
 ## 화면 검증
 
+`CompletionScreen`은 인자 없는 상태별 프리뷰로 경유 완료, 목적지 설정 완료, 편도 조회 기준, 경유지 목록,
+경로 없음, 내비게이션 열기 버튼 없음, 내비게이션 열기 실패, 긴 주유소·목적지 이름을 제공한다.
+각 상태는 1700/840 × 1184dp와 라이트·다크 테마를 사용하며 SDK/API를 호출하지 않는다.
+추가 시 `:app:assembleDebug`, `lintDebug`, `git diff --check`를 통과했다. 실제 프리뷰 렌더링은 확인하지 않았다.
+
 각 화면에 가로 1700 × 1184dp와 분할 창 840 × 1184dp, 라이트·다크 프리뷰를 제공한다. 결과 화면은 두 크기 모두 좌우 2열이며, 목록과 선택 상세는 독립
 스크롤한다. 목록의 마지막 항목과 하단 경로 설정 버튼이 겹치지 않는지 확인한다.
+
+`ResultsScreen`과 `SelectionPanel`은 인자 없는 상태별 프리뷰 함수에서 `ResultsPreviewData.kt`의 고정 데이터를 사용한다.
+목적지 없음·목적지 대체·경유, 카카오 경유 추정 미제공·조회 중·성공·실패·만료와 추가 지출을 두 너비·두 테마에서 확인할 수 있다.
+결과 화면에는 ETA 성공/조회 중/실패 혼합·전체 실패, 빈 결과, 재검색 중·실패, 경로 설정 중·결과 불명, 세션 없음도 제공한다.
+선택 패널 단독 프리뷰는 실제 열 너비에 맞춘 798/390 × 960dp를 사용한다. 프리뷰에서는 SDK/API를 호출하지 않는다.
 
 로컬 Pleos 에뮬레이터를 실행한 뒤 연결 테스트를 수행한다. `gradle.properties`에서
 `android.injected.androidTest.leaveApksInstalledAfterRun=true`를 지정하여 테스트 후 AGP의 APK 자동 제거를 막고 로컬 설정을
@@ -181,7 +330,7 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
   비겹침·텍스트 overflow를 검증한다. Pleos 호스트 창에 들어가도록 테스트에서만 Density를 0.5로 설정한다. 이는 실제 Pleos 폼 팩터 테스트를 대체하지
   않는다.
 - `VehicleConditionsLayoutTest`: 같은 두 크기·두 테마에서 홈·설정·완료의 차량 정보와 소수 조건을 확인한다.
-  자동 연비의 스텝퍼 제거와 주유량 편집 버튼 활성화, 상세 조회 정보·적용 버튼의 스크롤 접근, 텍스트 overflow를 검증한다.
+  주유 조건 편집 버튼 활성화, 차량 정보 카드의 가로 배치·잔량/용량·누적 연비 표시와 스크롤 접근, 텍스트 overflow를 검증한다.
   `PrototypeLayoutTest`도 전기 에너지원·소수 주유량과 연비를 사용해 결과 화면을 검증한다.
 - `VehicleStartupIntegrationTest`: 실제 startup repository의 항목별 완료와 출처를 확인한다. 에너지 권한이 미허용이면 잔여량은 대기할 수
   있다.
@@ -302,8 +451,8 @@ PrototypeLayoutTest 8개가 모두 통과했다. 최초 실행에서 발견한 8
 - 전체 단위 테스트 138개가 실패 없이 통과했다. debug/release 빌드, lintDebug, AndroidTest APK 빌드와 git diff --check를
   확인했다. release BuildConfig의 카카오 키는 빈 값이다. 기존 Lifecycle custom lint 제외 항목은 위 제약을 따른다.
 - 빌드는 호스트 GRADLE_USER_HOME을 C:\Users\ddddd\.gradle로 지정하고 :app:assembleDebug :app:testDebugUnitTest :
-  core:model:test :core:data:test :feature:main:testDebugUnitTest :feature:settings:
-  testDebugUnitTest lintDebug :app:assembleDebugAndroidTest :app:assembleRelease 태스크를 사용한다.
+  core:model:test :core:data:test :feature:main:testDebugUnitTest lintDebug :app:
+  assembleDebugAndroidTest :app:assembleRelease 태스크를 사용한다.
 
 ### Pleos 2.1.0 후속 실측
 

@@ -59,7 +59,7 @@ fun VehicleEnergySummary(
     showElectricNotice: Boolean = true,
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
+        PleosDividedText(
             "차량 에너지원: ${energy.displayLabel()}",
             style = JUYULOWTheme.typography.labelSmall,
             color = JUYULOWTheme.colors.textDarkSecondary,
@@ -72,22 +72,6 @@ fun VehicleEnergySummary(
     }
 }
 
-@Composable
-fun RefuelConditionsSummary(conditions: RefuelConditions, modifier: Modifier = Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        VehicleEnergySummary(conditions.energy)
-        Text(
-            "검색 반경: ${conditions.searchRadiusKm} km · 검색 유종: ${conditions.comparisonFuel.label}",
-            style = JUYULOWTheme.typography.labelSmall
-        )
-        Text(
-            "${vehicleNumber(conditions.liters)} L (${conditions.litersSource.displayLabel()}) · " +
-                    "연비 ${vehicleNumber(conditions.efficiencyKmPerL)} km/L (${conditions.efficiencySource.displayLabel()})",
-            style = JUYULOWTheme.typography.labelSmall,
-            color = JUYULOWTheme.colors.textDarkSecondary,
-        )
-    }
-}
 
 /** Diagnostic/default values are visible here but never mislabeled as fetched calculation inputs. */
 fun vehicleFieldDisplay(property: VehicleProperty, field: VehicleField?): String {

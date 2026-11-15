@@ -1,10 +1,11 @@
 package eotaek.juyulow.feature.main.completion
 
+import android.content.res.Configuration
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,27 +18,26 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import eotaek.juyulow.core.design.component.PleosButton
+import eotaek.juyulow.core.design.component.PleosDividedText
 import eotaek.juyulow.core.design.component.PleosIcon
-import eotaek.juyulow.core.design.component.PleosLabelValue
-import eotaek.juyulow.core.design.component.PleosOutlinedCard
-import eotaek.juyulow.core.design.component.RefuelConditionsSummary
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.NavigationSelection
 import eotaek.juyulow.core.model.RefuelSettings
 import eotaek.juyulow.core.model.resolveRefuelConditions
-import eotaek.juyulow.feature.main.common.kilometers
-import eotaek.juyulow.feature.main.common.minutes
 
 @Composable
 fun CompletionScreen(
     selection: NavigationSelection?,
-    onCompare: () -> Unit,
     onHome: () -> Unit,
     modifier: Modifier = Modifier,
     onOpenNavigation: (() -> Unit)? = null,
@@ -45,6 +45,7 @@ fun CompletionScreen(
 ) {
     val colors = JUYULOWTheme.colors
     val type = JUYULOWTheme.typography
+    val navigationFocus = remember { FocusRequester() }
     Surface(modifier.fillMaxSize(), color = colors.backgroundPrimary) {
         BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             val narrow = maxWidth < 1100.dp
@@ -71,7 +72,7 @@ fun CompletionScreen(
                 }
                 if (selection == null) {
                     Text("설정한 경로가 없어요.", style = type.titleLargeBold)
-                    PleosButton("홈으로", onHome)
+                    PleosButton("홈으로", onHome, outlined = true)
                 } else {
                     Text(
                         when (selection.mode) {
@@ -87,58 +88,30 @@ fun CompletionScreen(
                             JourneyMode.ROUND_TRIP -> "${selection.stationName}에 들른 뒤 현재 위치로 돌아와요."
                         }, style = type.bodyMedium, color = colors.textDarkTertiary
                     )
-                    PleosOutlinedCard(cornerRadius = 24.dp) {
-                        FlowRow(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(28.dp),
-                            horizontalArrangement = Arrangement.spacedBy(28.dp),
-                            verticalArrangement = Arrangement.spacedBy(24.dp)
-                        ) {
-                            PleosLabelValue(
-                                if (selection.waypoint != null) "경유지" else "목적지",
-                                if (selection.routeWaypoints.isNotEmpty()) selection.routeWaypoints.joinToString(
-                                    " → "
-                                ) else selection.stationName,
-                                valueStyle = type.titleSmallBold
-                            )
-                            if (selection.waypoint != null) {
-                                PleosIcon(PleosIcon.Next, Modifier.padding(top = 24.dp))
-                                PleosLabelValue("최종 목적지", selection.destination, valueStyle = type.titleSmallBold)
-                            }
-                            PleosLabelValue(
-                                "${if (selection.outboundOnly) "검색 시점 기준 · 주유소까지 " else ""}${
-                                    kilometers(
-                                        selection.distanceMeters
-                                    )
-                                } km · 주유 포함",
-                                "${minutes(selection.durationSeconds)}분",
-                                valueStyle = type.titleSmallBold
-                            )
-                        }
-                    }
-                    RefuelConditionsSummary(selection.conditions)
-                    error?.let { Text(it, style = type.labelSmall) }
-                    onOpenNavigation?.let { PleosButton("내비게이션 열기", it) }
-                    if (narrow) Column(
-                        Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    error?.let { PleosDividedText(it, style = type.labelSmall) }
+                    Row(
+                        modifier = if (narrow) Modifier.fillMaxWidth() else Modifier,
+                        horizontalArrangement = Arrangement.spacedBy(20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        PleosButton(
-                            "다른 주유소 비교",
-                            onCompare,
-                            Modifier.fillMaxWidth(),
-                            outlined = true
-                        )
                         PleosButton(
                             "홈으로",
                             onHome,
-                            Modifier.fillMaxWidth(),
-                            trailingIcon = PleosIcon.Next
+                            if (narrow) Modifier.weight(1f) else Modifier,
+                            outlined = true,
                         )
-                    } else Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                        PleosButton("다른 주유소 비교", onCompare, outlined = true)
-                        PleosButton("홈으로", onHome, trailingIcon = PleosIcon.Next)
+                        onOpenNavigation?.let { openNavigation ->
+                            PleosButton(
+                                "내비게이션 열기",
+                                openNavigation,
+                                (if (narrow) Modifier.weight(1f) else Modifier)
+                                    .focusRequester(navigationFocus),
+                                trailingIcon = PleosIcon.Next,
+                            )
+                            LaunchedEffect(navigationFocus) {
+                                navigationFocus.requestFocus()
+                            }
+                        }
                     }
                 }
             }
@@ -159,16 +132,97 @@ private val previewSelection = NavigationSelection(
     resolveRefuelConditions(RefuelSettings()),
 )
 
-@Preview(name = "Completion · Landscape", widthDp = 1700, heightDp = 1184)
-@Preview(name = "Completion · Portrait", widthDp = 840, heightDp = 1184)
+@Preview(name = "Wide", widthDp = 1700, heightDp = 1184)
+@Preview(name = "Narrow", widthDp = 840, heightDp = 1184)
+@Preview(name = "Dark Wide", widthDp = 1700, heightDp = 1184, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Dark Narrow", widthDp = 840, heightDp = 1184, uiMode = Configuration.UI_MODE_NIGHT_YES)
+private annotation class CompletionPreviewVariants
+
+@CompletionPreviewVariants
 @Composable
 private fun CompletionPreview() {
-    JUYULOWTheme { CompletionScreen(previewSelection, {}, {}) }
+    CompletionPreviewContent()
 }
 
+// 기존 프리뷰 선택이 참조하는 함수 이름을 유지한다.
 @Preview(name = "Completion · Dark Landscape", widthDp = 1700, heightDp = 1184)
 @Preview(name = "Completion · Dark Portrait", widthDp = 840, heightDp = 1184)
 @Composable
 private fun CompletionDarkPreview() {
-    JUYULOWTheme(darkTheme = true) { CompletionScreen(previewSelection, {}, {}) }
+    CompletionPreviewContent(darkTheme = true)
+}
+
+@CompletionPreviewVariants
+@Composable
+private fun CompletionDestinationPreview() {
+    CompletionPreviewContent(previewSelection.copy(
+        mode = JourneyMode.DESTINATION,
+        destination = previewSelection.stationName,
+        waypoint = null,
+        distanceMeters = 1800,
+        durationSeconds = 600,
+    ))
+}
+
+@CompletionPreviewVariants
+@Composable
+private fun CompletionOutboundOnlyPreview() {
+    CompletionPreviewContent(previewSelection.copy(
+        outboundOnly = true, distanceMeters = 1800, durationSeconds = 600,
+    ))
+}
+
+@CompletionPreviewVariants
+@Composable
+private fun CompletionMultipleWaypointsPreview() {
+    CompletionPreviewContent(previewSelection.copy(
+        routeWaypoints = listOf(previewSelection.stationName, "서울역"),
+    ))
+}
+
+@CompletionPreviewVariants
+@Composable
+private fun CompletionMissingSelectionPreview() {
+    CompletionPreviewContent(selection = null)
+}
+
+@CompletionPreviewVariants
+@Composable
+private fun CompletionWithoutNavigationActionPreview() {
+    CompletionPreviewContent(showNavigationAction = false)
+}
+
+@CompletionPreviewVariants
+@Composable
+private fun CompletionNavigationErrorPreview() {
+    CompletionPreviewContent(error = "내비게이션을 열지 못했어요. 잠시 후 다시 시도해 주세요.")
+}
+
+@CompletionPreviewVariants
+@Composable
+private fun CompletionLongNamesPreview() {
+    val stationName = "서울 만남의광장 고속도로 휴게소 셀프주유소"
+    CompletionPreviewContent(previewSelection.copy(
+        stationName = stationName,
+        waypoint = stationName,
+        destination = "현대자동차 양재 본사 서관 방문객 주차장",
+        routeWaypoints = listOf(stationName),
+    ))
+}
+
+@Composable
+private fun CompletionPreviewContent(
+    selection: NavigationSelection? = previewSelection,
+    showNavigationAction: Boolean = true,
+    error: String? = null,
+    darkTheme: Boolean = isSystemInDarkTheme(),
+) {
+    JUYULOWTheme(darkTheme = darkTheme) {
+        CompletionScreen(
+            selection = selection,
+            onHome = {},
+            onOpenNavigation = if (showNavigationAction) ({}) else null,
+            error = error,
+        )
+    }
 }

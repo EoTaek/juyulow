@@ -1,4 +1,4 @@
-package eotaek.juyulow.feature.settings
+package eotaek.juyulow.feature.main.settings
 
 import androidx.lifecycle.ViewModelStore
 import eotaek.juyulow.core.data.InMemoryVehicleInfoRepository
@@ -34,12 +34,19 @@ class SettingsViewModelTest {
     private class Repository : SettingsRepository {
         override val settings = MutableStateFlow(RefuelSettings())
         var fail = false
+        var failNext = false
         var writes = 0
+        val saved = mutableListOf<RefuelSettings>()
         override suspend fun save(settings: RefuelSettings) {
             writes++
             delay(100.milliseconds)
+            if (failNext) {
+                failNext = false
+                throw IOException("disk full")
+            }
             if (fail) throw IOException("disk full")
             this.settings.value = settings
+            saved += settings
         }
     }
 
@@ -62,36 +69,85 @@ class SettingsViewModelTest {
         }
 
     @Test
-    fun editingIsLocalAndClosingDiscardsDraft() = runTest(dispatcher) {
+    fun editImmediatelyPersistsAndReopeningLoadsSavedConditions() = runTest(dispatcher) {
         val repository = Repository()
         val first = create(repository)
         runCurrent()
-        first.edit { it.copy(liters = 70, includeTimeCost = true) }
-        assertEquals(RefuelSettings(), repository.settings.value)
-        val second = create(repository)
-        runCurrent()
-        assertEquals(RefuelSettings(), second.state.value.draft)
-        assertEquals(0, repository.writes)
-    }
-
-    @Test
-    fun applyPersistsOnceAndNextOpeningLoadsSavedConditions() = runTest(dispatcher) {
-        val repository = Repository()
-        val first = create(repository)
-        runCurrent()
-        val changed = RefuelSettings(90, 21, 12, true)
+        val changed = RefuelSettings(90, 21, 12)
         first.edit { changed }
-        first.apply(); first.apply()
-        runCurrent()
         assertTrue(first.state.value.saving)
-        first.edit { it.copy(liters = 10) }
-        advanceUntilIdle()
+        runCurrent()
         assertEquals(1, repository.writes)
-        assertTrue(first.state.value.saved)
+        advanceUntilIdle()
+        assertFalse(first.state.value.saving)
         assertEquals(changed, repository.settings.value)
         val second = create(repository)
         runCurrent()
         assertEquals(changed, second.state.value.draft)
+    }
+
+    @Test
+    fun pendingChangesAreDisplayedImmediatelyAndSavedInOrder() = runTest(dispatcher) {
+        val repository = Repository()
+        val viewModel = create(repository)
+        runCurrent()
+        viewModel.edit { it.copy(liters = 70) }
+        runCurrent() // The first write is suspended while more edits arrive.
+        viewModel.edit { it.copy(refuelMinutes = 9) }
+        viewModel.edit { it.copy(efficiencyKmPerL = 18) }
+        viewModel.retrySave()
+        val latest = RefuelSettings(liters = 70, refuelMinutes = 9, efficiencyKmPerL = 18)
+        assertEquals(latest, viewModel.state.value.draft)
+        assertTrue(viewModel.state.value.saving)
+        advanceUntilIdle()
+        assertEquals(
+            listOf(
+                RefuelSettings(liters = 70),
+                RefuelSettings(liters = 70, refuelMinutes = 9),
+                latest,
+            ), repository.saved
+        )
+        assertEquals(latest, repository.settings.value)
+        assertFalse(viewModel.state.value.saving)
+    }
+
+    @Test
+    fun dismissalWaitsForTheEntireQueue() = runTest(dispatcher) {
+        val repository = Repository()
+        val viewModel = create(repository)
+        runCurrent()
+        viewModel.edit { it.copy(liters = 70) }
+        viewModel.edit { it.copy(liters = 80) }
+        assertFalse(viewModel.canDismiss())
+        assertTrue(viewModel.state.value.dismissRequested)
+        advanceUntilIdle()
+        assertEquals(80, repository.settings.value.liters)
+        assertTrue(viewModel.canDismiss())
+    }
+
+    @Test
+    fun failedWriteDoesNotStopLaterQueuedChanges() = runTest(dispatcher) {
+        val repository = Repository().apply { failNext = true }
+        val viewModel = create(repository)
+        runCurrent()
+        viewModel.edit { it.copy(liters = 70) }
+        viewModel.edit { it.copy(liters = 80) }
+        viewModel.edit { it.copy(refuelMinutes = 9) }
+        advanceUntilIdle()
+        assertEquals(RefuelSettings(liters = 80, refuelMinutes = 9), repository.settings.value)
+        assertNull(viewModel.state.value.error)
+        assertFalse(viewModel.state.value.saving)
+        assertEquals(3, repository.writes)
+    }
+
+    @Test
+    fun unchangedSelectionDoesNotWrite() = runTest(dispatcher) {
+        val repository = Repository()
+        val viewModel = create(repository)
+        runCurrent()
+        viewModel.edit { it }
+        advanceUntilIdle()
+        assertEquals(0, repository.writes)
     }
 
     @Test
@@ -100,33 +156,30 @@ class SettingsViewModelTest {
         val viewModel = create(repository)
         runCurrent()
         viewModel.edit { it.copy(liters = 60) }
-        viewModel.apply(); advanceUntilIdle()
-        assertFalse(viewModel.state.value.saved)
+        advanceUntilIdle()
         assertEquals(60, viewModel.state.value.draft?.liters)
         assertEquals(40, repository.settings.value.liters)
         assertNotNull(viewModel.state.value.error)
         repository.fail = false
-        viewModel.apply(); advanceUntilIdle()
-        assertTrue(viewModel.state.value.saved)
+        viewModel.retrySave(); advanceUntilIdle()
         assertNull(viewModel.state.value.error)
     }
 
     @Test
-    fun volumeOverrideBeatsLateFetchAndApplyRetainsIt() = runTest(dispatcher) {
+    fun storedVolumeBeatsLateFetchAndPersistsImmediately() = runTest(dispatcher) {
         val repository = Repository()
         val vehicle = InMemoryVehicleInfoRepository()
         val viewModel = SettingsViewModel(repository, vehicle).also { store.put("settings", it) }
         runCurrent()
-        viewModel.edit { it.copy(litersOverride = 20.5) }
+        viewModel.edit { it.copy(liters = 20) }
         vehicle.complete(VehicleProperty.FUEL_CAPACITY, VehicleValue.Number(15_000.0), 1, null)
         vehicle.complete(VehicleProperty.FUEL_LEVEL, VehicleValue.Number(15_000.0), 1, null)
         runCurrent()
-        assertEquals(20.5, requireNotNull(viewModel.state.value.conditions).liters, 0.0)
+        assertEquals(20.0, requireNotNull(viewModel.state.value.conditions).liters, 0.0)
         assertFalse(requireNotNull(viewModel.state.value.conditions).automaticLiters)
-        assertNull(repository.settings.value.litersOverride)
-        viewModel.apply()
+        assertEquals(40, repository.settings.value.liters)
         advanceUntilIdle()
-        assertEquals(20.5, requireNotNull(repository.settings.value.litersOverride), 0.0)
+        assertEquals(20.0, repository.settings.value.liters.toDouble(), 0.0)
     }
 
     @Test
@@ -138,22 +191,27 @@ class SettingsViewModelTest {
         viewModel.edit { it.copy(liters = 70, efficiencyKmPerL = 18) }
         vehicle.complete(VehicleProperty.FUEL_CAPACITY, VehicleValue.Number(50_000.0), 1, null)
         vehicle.complete(VehicleProperty.FUEL_LEVEL, VehicleValue.Number(12_345.0), 1, null)
-        vehicle.complete(VehicleProperty.CURRENT_ECONOMY, VehicleValue.Number(8.5), 1, null)
+        vehicle.complete(VehicleProperty.CUMULATIVE_ECONOMY, VehicleValue.Number(8.5), 1, null)
         runCurrent()
-        assertEquals(37.655, requireNotNull(viewModel.state.value.conditions).liters, 0.0)
+        assertEquals(70.0, requireNotNull(viewModel.state.value.conditions).liters, 0.0)
         assertTrue(requireNotNull(viewModel.state.value.conditions).automaticEfficiency)
+        assertEquals(
+            100.0 / 8.5,
+            requireNotNull(viewModel.state.value.conditions).efficiencyKmPerL,
+            0.0
+        )
+        assertEquals(18, viewModel.state.value.draft?.efficiencyKmPerL)
+        advanceUntilIdle()
         viewModel.edit {
             it.copy(
                 liters = 20,
                 efficiencyKmPerL = 3,
                 refuelMinutes = 9,
-                includeTimeCost = true
             )
         }
-        assertEquals(70, viewModel.state.value.draft?.liters)
-        assertEquals(18, viewModel.state.value.draft?.efficiencyKmPerL)
-        viewModel.apply()
+        assertEquals(20, viewModel.state.value.draft?.liters)
+        assertEquals(3, viewModel.state.value.draft?.efficiencyKmPerL)
         advanceUntilIdle()
-        assertEquals(RefuelSettings(70, 18, 9, true), repository.settings.value)
+        assertEquals(RefuelSettings(20, 3, 9), repository.settings.value)
     }
 }
