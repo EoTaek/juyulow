@@ -181,12 +181,12 @@
 
 ### 로컬 APK 빌드
 
-Git에서 제외된 `local.properties`에 `OPINET_API_KEY`를 설정합니다. debug 빌드에서 경유 비용 추정도 시연하려면 `KAKAO_REST_API_KEY`가 필요합니다.
+Git에서 제외된 `local.properties`에 `OPINET_API_KEY`를 설정합니다. 경유 비용 추정도 시연하려면 `KAKAO_REST_API_KEY`가 필요하며, 키가 설정된 debug·release·qaRelease 빌드에서 동일하게 제공됩니다.
 
 | 빌드 | Gradle 태스크 | APK 경로 (`app/build/outputs/apk/` 아래) | 용도 |
 | --- | --- | --- | --- |
 | `debug` | `:app:assembleDebug` | `debug/app-debug.apk` | 개발·시연, 카카오 키 설정 시 경유 비용 추정 제공 |
-| `qaRelease` | `:app:assembleQaRelease` | `qaRelease/app-qaRelease.apk` | release 최적화·로그 비활성화, 로컬 debug 키 서명, 카카오 경유 추정 비활성화 |
+| `qaRelease` | `:app:assembleQaRelease` | `qaRelease/app-qaRelease.apk` | release 최적화·로그 비활성화, 로컬 debug 키 서명, 카카오 키 설정 시 경유 비용 추정 제공 |
 | `release` | `:app:assembleRelease` | `release/app-release-unsigned.apk` | 별도 서명이 필요한 산출물 |
 
 저장소의 Gradle Wrapper로 실행하며 Windows 빌드 환경과 서명 제약은 [로컬 QA release 빌드](docs/PROJECT.md#로컬-qa-release-빌드)를 참고합니다. `qaRelease`는 debug와 패키지명이 같아 병렬 설치되지 않으며, 기존 앱과 서명이 같을 때 데이터를 유지하며 교체할 수 있습니다. 로컬 QA 서명은 배포용 서명이 아닙니다.
