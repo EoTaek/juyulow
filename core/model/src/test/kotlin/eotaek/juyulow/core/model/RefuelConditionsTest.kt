@@ -13,18 +13,50 @@ class RefuelConditionsTest {
     )
 
     @Test
-    fun persistedInputsWinOverVehicleReads() {
+    fun savedVolumeAndFetchedCumulativeEconomySupplyActiveCalculation() {
         val settings = RefuelSettings(liters = 70, efficiencyKmPerL = 18)
         val fields = mapOf(
             VehicleProperty.FUEL_CAPACITY to fetched(50_000.0),
             VehicleProperty.FUEL_LEVEL to fetched(12_345.0),
             VehicleProperty.CUMULATIVE_ECONOMY to fetched(8.5),
+            VehicleProperty.CURRENT_ECONOMY to fetched(5.0),
         )
-        for (values in listOf(emptyMap(), fields)) {
-            val result = resolveRefuelConditions(settings, values)
-            assertEquals(70.0, result.liters, 0.0)
+        val result = resolveRefuelConditions(settings, fields)
+        assertEquals(70.0, result.liters, 0.0)
+        assertEquals(100.0 / 8.5, result.efficiencyKmPerL, 0.0)
+        assertFalse(result.automaticLiters)
+        assertEquals(RefuelValueSource.CUMULATIVE_ECONOMY, result.efficiencySource)
+        val station = Station("a", "a", "a", 1600, 0.0, 0.0, 1800, 300, 2300, 420, 30200, 2760, 0)
+        val comparison = compareStation(
+            ComparisonContext(JourneyContext(), result, 1750),
+            station,
+            JourneyMode.DESTINATION
+        )
+        assertEquals(150 * 70.0, comparison.fuelSavingWon, 0.0)
+        assertEquals(1.8 / (100.0 / 8.5) * 1750, comparison.drivingCostWon, 0.0)
+        assertEquals(
+            comparison.fuelSavingWon - comparison.drivingCostWon,
+            comparison.netSavingWon,
+            0.0
+        )
+    }
+
+    @Test
+    fun missingFailedDefaultOrInvalidCumulativeUsesSavedEconomyAndIgnoresCurrent() {
+        val settings = RefuelSettings(efficiencyKmPerL = 18)
+        val invalidFields = listOf(
+            null,
+            fetched(8.5).copy(status = VehicleFetchStatus.PENDING),
+            fetched(8.5).copy(status = VehicleFetchStatus.FAILED),
+            fetched(8.5).copy(origin = VehicleValueOrigin.DEFAULT),
+        ) + listOf(Double.NaN, Double.POSITIVE_INFINITY, 0.0, -1.0).map(::fetched)
+        invalidFields.forEach { cumulative ->
+            val fields = buildMap {
+                put(VehicleProperty.CURRENT_ECONOMY, fetched(5.0))
+                cumulative?.let { put(VehicleProperty.CUMULATIVE_ECONOMY, it) }
+            }
+            val result = resolveRefuelConditions(settings, fields)
             assertEquals(18.0, result.efficiencyKmPerL, 0.0)
-            assertFalse(result.automaticLiters)
             assertFalse(result.automaticEfficiency)
         }
     }
@@ -113,7 +145,7 @@ class RefuelConditionsTest {
     }
 
     @Test
-    fun currentEconomyBeatsCumulativeDefaultAndInvalidValuesUseManual() {
+    fun currentEconomyDoesNotReplaceCumulativeDefaultAndInvalidValuesUseManual() {
         val default = fetched(1.0).copy(
             status = VehicleFetchStatus.FAILED,
             origin = VehicleValueOrigin.DEFAULT
@@ -126,8 +158,8 @@ class RefuelConditionsTest {
                 VehicleProperty.FUEL_LEVEL to fetched(0.0),
             )
         )
-        assertEquals(100.0 / 7.7, conditions.efficiencyKmPerL, 0.0)
-        assertEquals(RefuelValueSource.CURRENT_ECONOMY, conditions.efficiencySource)
+        assertEquals(12.0, conditions.efficiencyKmPerL, 0.0)
+        assertEquals(RefuelValueSource.MANUAL, conditions.efficiencySource)
         assertFalse(conditions.automaticLiters)
         listOf(Double.NaN, Double.POSITIVE_INFINITY, 0.0, -1.0).forEach {
             val invalid = resolveVehicleRefuelConditions(

@@ -1,5 +1,15 @@
 # 검증
 
+## 2026-11-15 차량 조회 카드와 누적 연비 계산
+
+설정의 차량 조회 정보를 동일 너비의 가로 2개 카드로 바꿨다. 탱크 잔량을 강조하고 용량은 한 단계 작게 표시하며, 누적 연비 카드는 계산에 적용한 연비와 기본값 사용 여부를
+표시한다.
+RefuelConditionsTest는 누적 연비의 무반올림 변환·실제 절약액 계산, 누적 연비 미조회·실패·기본값·비정상 값의 수동 연비 대체와 현재 연비 제외를 검증한다.
+MainViewModelsTest는 검색 후 도착한 누적 연비가 기존 결과·완료 스냅샷을 바꾸지 않고 다음 검색부터 반영되는지 확인한다. SettingsViewModelTest는
+누적 연비가 적용돼도 수동 설정은 보존되는지 확인한다.
+debug 빌드, 전체 단위 테스트 159개 (실패·오류 0), lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다.
+VehicleConditionsLayoutTest에 카드의 가로 배치·표시값 검증을 추가했다. 연결 테스트 실행과 두 창 크기·두 테마의 실제 렌더링 검증은 수행하지 않았다.
+
 ## 2026-11-15 설정 검색 반경 고정 및 조작 영역 배치
 
 검색 반경은 3km로 고정하고 설정 화면에서 제거했다. 검색 유종은 가로 1행 3개 버튼으로 표시하고 Stepper 값을 중앙 정렬한다.
@@ -188,7 +198,7 @@ waypoint 모드에서 초기 목적지가 없으면 실측된 소설한남 fixtu
 `:app:assembleRelease`로 확인한다.
 
 `RefuelConditionsTest`는 소수값과 수동 범위 밖 자동값, L/100km 변환, 0L의 이동 비용,
-잔량 초과·조회 실패 시 % 대체와 수동 fallback, 누적/현재 연비 우선순위를 검증한다.
+잔량 초과·조회 실패 시 % 대체와 수동 fallback, 누적 연비 우선 적용과 현재 연비 제외를 검증한다.
 `MainViewModelsTest`는 검색 도중 도착한 차량값과 수동 설정 변경이 결과 재검색·완료의 스냅샷을 바꾸지 않고 새 홈 검색에 반영되는지,
 0L 검색 허용과 복수·미지 에너지원 표시를 검증한다. `SettingsViewModelTest`는 팝업 편집 중 자동 성공 시 수동 초안 보존과 SDK 값 저장 방지를 확인한다.
 `VehicleStartupTest`는 잔량 mL 실패 후 % 대체가 성공해도 원래 실패 진단이 유지되는지 검증한다.
@@ -228,7 +238,7 @@ $env:GRADLE_USER_HOME = 'C:\Users\ddddd\.gradle'
   비겹침·텍스트 overflow를 검증한다. Pleos 호스트 창에 들어가도록 테스트에서만 Density를 0.5로 설정한다. 이는 실제 Pleos 폼 팩터 테스트를 대체하지
   않는다.
 - `VehicleConditionsLayoutTest`: 같은 두 크기·두 테마에서 홈·설정·완료의 차량 정보와 소수 조건을 확인한다.
-  자동 연비의 스텝퍼 제거와 주유량 편집 버튼 활성화, 상세 조회 정보·적용 버튼의 스크롤 접근, 텍스트 overflow를 검증한다.
+  주유 조건 편집 버튼 활성화, 차량 정보 카드의 가로 배치·잔량/용량·누적 연비 표시와 스크롤 접근, 텍스트 overflow를 검증한다.
   `PrototypeLayoutTest`도 전기 에너지원·소수 주유량과 연비를 사용해 결과 화면을 검증한다.
 - `VehicleStartupIntegrationTest`: 실제 startup repository의 항목별 완료와 출처를 확인한다. 에너지 권한이 미허용이면 잔여량은 대기할 수
   있다.

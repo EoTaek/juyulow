@@ -4,9 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -27,7 +30,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,8 +40,10 @@ import eotaek.juyulow.core.design.component.PleosButton
 import eotaek.juyulow.core.design.component.PleosIcon
 import eotaek.juyulow.core.design.component.PleosIconButton
 import eotaek.juyulow.core.design.component.PleosInlineError
+import eotaek.juyulow.core.design.component.PleosOutlinedCard
 import eotaek.juyulow.core.design.component.PleosStepper
 import eotaek.juyulow.core.design.component.vehicleFieldDisplay
+import eotaek.juyulow.core.design.component.vehicleNumber
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
 import eotaek.juyulow.core.design.theme.pleosShadow
 import eotaek.juyulow.core.model.ComparisonFuel
@@ -136,9 +143,15 @@ fun SettingsScreen(
                             { value -> onChange { it.copy(liters = value) } })
                     }
                     SettingRow("평균연비", narrow) {
-                        PleosStepper(
-                            "평균연비", draft.efficiencyKmPerL, "km/L", 1..30, 1,
-                            { value -> onChange { it.copy(efficiencyKmPerL = value) } })
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            PleosStepper(
+                                "평균연비", draft.efficiencyKmPerL, "km/L", 1..30, 1,
+                                { value -> onChange { it.copy(efficiencyKmPerL = value) } })
+                            Text(
+                                "누적 연비를 확인할 수 없을 때 사용해요.",
+                                style = type.labelSmall, color = colors.textDarkSecondary,
+                            )
+                        }
                     }
                     SettingRow("주유 시간", narrow) {
                         PleosStepper(
@@ -152,22 +165,52 @@ fun SettingsScreen(
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("차량 조회 정보", style = type.bodyMediumStrong)
-                        listOf(
-                            VehicleProperty.FUEL_CAPACITY to "탱크 용량",
-                            VehicleProperty.FUEL_LEVEL to "잔량",
-                            VehicleProperty.FUEL_PERCENT to "잔량 비율",
-                            VehicleProperty.CUMULATIVE_ECONOMY to "누적 연비",
-                            VehicleProperty.CURRENT_ECONOMY to "현재 연비",
-                        ).forEach { (property, label) ->
-                            Text(
-                                "$label: ${
-                                    vehicleFieldDisplay(
-                                        property,
-                                        state.vehicleFields[property]
-                                    )
-                                }",
-                                style = type.labelSmall, color = colors.textDarkSecondary,
-                            )
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Min),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            VehicleInfoCard("탱크 잔량 / 용량", Modifier
+                                .weight(1f)
+                                .fillMaxHeight()) {
+                                val level = vehicleFieldDisplay(
+                                    VehicleProperty.FUEL_LEVEL,
+                                    state.vehicleFields[VehicleProperty.FUEL_LEVEL]
+                                )
+                                val capacity = vehicleFieldDisplay(
+                                    VehicleProperty.FUEL_CAPACITY,
+                                    state.vehicleFields[VehicleProperty.FUEL_CAPACITY]
+                                )
+                                Text(
+                                    buildAnnotatedString {
+                                        withStyle(type.bodyLargeStrong.toSpanStyle()) {
+                                            append(level)
+                                        }
+                                        withStyle(
+                                            type.bodyMedium.toSpanStyle()
+                                                .copy(color = colors.textDarkSecondary)
+                                        ) {
+                                            append(" / ")
+                                            append(capacity)
+                                        }
+                                    },
+                                    style = type.bodyLargeStrong,
+                                )
+                            }
+                            val conditions = requireNotNull(state.conditions)
+                            VehicleInfoCard("누적 연비", Modifier
+                                .weight(1f)
+                                .fillMaxHeight()) {
+                                Text(
+                                    "${vehicleNumber(conditions.efficiencyKmPerL)} km/L",
+                                    style = type.bodyLargeStrong,
+                                )
+                                Text(
+                                    if (conditions.automaticEfficiency) "절약액 계산에 적용" else "기본 연비 사용 중",
+                                    style = type.labelSmall, color = colors.textDarkSecondary,
+                                )
+                            }
                         }
                     }
                 }
@@ -178,6 +221,29 @@ fun SettingsScreen(
                     PleosButton("다시 저장", onRetry, Modifier.fillMaxWidth())
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun VehicleInfoCard(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    PleosOutlinedCard(modifier) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                title,
+                style = JUYULOWTheme.typography.labelMedium,
+                color = JUYULOWTheme.colors.textDarkSecondary
+            )
+            content()
         }
     }
 }

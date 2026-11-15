@@ -58,13 +58,12 @@ fun resolveVehicleRefuelConditions(
         else -> null
     }?.takeIf { it.isFinite() && it >= 0 }
     val cumulative = fetchedNumber(VehicleProperty.CUMULATIVE_ECONOMY)
-    val current = fetchedNumber(VehicleProperty.CURRENT_ECONOMY)
     val fuelTypes = fields[VehicleProperty.FUEL_TYPES]
     return RefuelConditions(
         comparisonFuel = manual.comparisonFuel,
         searchRadiusKm = manual.searchRadiusKm,
         liters = liters ?: manual.liters.toDouble(),
-        efficiencyKmPerL = (cumulative ?: current)?.let { 100.0 / it }
+        efficiencyKmPerL = cumulative?.let { 100.0 / it }
             ?: manual.efficiencyKmPerL.toDouble(),
         refuelMinutes = manual.refuelMinutes,
         litersSource = when {
@@ -74,7 +73,6 @@ fun resolveVehicleRefuelConditions(
         },
         efficiencySource = when {
             cumulative != null -> RefuelValueSource.CUMULATIVE_ECONOMY
-            current != null -> RefuelValueSource.CURRENT_ECONOMY
             else -> RefuelValueSource.MANUAL
         },
         energy = VehicleEnergy(
@@ -85,10 +83,9 @@ fun resolveVehicleRefuelConditions(
     )
 }
 
-/** Persisted settings supply active calculation inputs; vehicle values remain diagnostic. */
+/** Keep the saved refuel volume; use fetched cumulative economy with the saved economy as fallback. */
 fun resolveRefuelConditions(manual: RefuelSettings, fields: Map<VehicleProperty, VehicleField> = emptyMap()): RefuelConditions =
-    RefuelConditions(
-        liters = manual.liters.toDouble(), efficiencyKmPerL = manual.efficiencyKmPerL.toDouble(),
-        refuelMinutes = manual.refuelMinutes, comparisonFuel = manual.comparisonFuel,
-        searchRadiusKm = manual.searchRadiusKm, energy = resolveVehicleRefuelConditions(manual, fields).energy,
+    resolveVehicleRefuelConditions(manual, fields).copy(
+        liters = manual.liters.toDouble(),
+        litersSource = RefuelValueSource.MANUAL,
     )

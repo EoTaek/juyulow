@@ -228,6 +228,7 @@ class MainViewModelsTest {
             val first =
                 requireNotNull(sessions.get(requireNotNull(home.state.value.readySessionId)))
             assertEquals(40.0, first.context.conditions.liters, 0.0)
+            assertEquals(12.0, first.context.conditions.efficiencyKmPerL, 0.0)
             assertTrue(first.context.conditions.energy.codes.isEmpty())
             assertEquals(40.0, requireNotNull(home.state.value.conditions).liters, 0.0)
             val results = keep(ResultsViewModel(first.id, stations, sessions, journeys))
@@ -249,7 +250,7 @@ class MainViewModelsTest {
             val second =
                 requireNotNull(sessions.get(requireNotNull(home.state.value.readySessionId)))
             assertEquals(80.0, second.context.conditions.liters, 0.0)
-            assertEquals(12.0, second.context.conditions.efficiencyKmPerL, 0.0)
+            assertEquals(100.0 / 8.5, second.context.conditions.efficiencyKmPerL, 0.0)
             assertEquals(listOf(10), second.context.conditions.energy.codes)
         }
 

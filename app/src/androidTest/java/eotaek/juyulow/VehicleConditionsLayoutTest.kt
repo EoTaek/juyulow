@@ -152,6 +152,16 @@ class VehicleConditionsLayoutTest(private val widthDp: Int, private val dark: Bo
         compose.onNodeWithContentDescription("예상 주유량 늘리기").assertIsEnabled()
         compose.onNodeWithContentDescription("평균연비 늘리기").assertIsEnabled()
         compose.onNodeWithText("차량 조회 정보").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("12.3 L / 50 L").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("누적 연비").assertIsDisplayed()
+        compose.onNodeWithText("11.8 km/L").assertIsDisplayed()
+        compose.onNodeWithText("절약액 계산에 적용").assertIsDisplayed()
+        compose.onNodeWithText("현재 연비", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("잔량 비율", substring = true).assertDoesNotExist()
+        val tank = compose.onNodeWithText("탱크 잔량 / 용량").fetchSemanticsNode().boundsInRoot
+        val economy = compose.onNodeWithText("누적 연비").fetchSemanticsNode().boundsInRoot
+        assertTrue("Vehicle cards must share one row", kotlin.math.abs(tank.top - economy.top) < 1f)
+        assertTrue("Tank card must precede economy card", tank.right < economy.left)
         verifyAndCapture("vehicle-settings")
         compose.onNodeWithText("적용하기").assertDoesNotExist()
     }

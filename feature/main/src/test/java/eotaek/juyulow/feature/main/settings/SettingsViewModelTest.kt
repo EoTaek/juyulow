@@ -191,10 +191,16 @@ class SettingsViewModelTest {
         viewModel.edit { it.copy(liters = 70, efficiencyKmPerL = 18) }
         vehicle.complete(VehicleProperty.FUEL_CAPACITY, VehicleValue.Number(50_000.0), 1, null)
         vehicle.complete(VehicleProperty.FUEL_LEVEL, VehicleValue.Number(12_345.0), 1, null)
-        vehicle.complete(VehicleProperty.CURRENT_ECONOMY, VehicleValue.Number(8.5), 1, null)
+        vehicle.complete(VehicleProperty.CUMULATIVE_ECONOMY, VehicleValue.Number(8.5), 1, null)
         runCurrent()
         assertEquals(70.0, requireNotNull(viewModel.state.value.conditions).liters, 0.0)
-        assertFalse(requireNotNull(viewModel.state.value.conditions).automaticEfficiency)
+        assertTrue(requireNotNull(viewModel.state.value.conditions).automaticEfficiency)
+        assertEquals(
+            100.0 / 8.5,
+            requireNotNull(viewModel.state.value.conditions).efficiencyKmPerL,
+            0.0
+        )
+        assertEquals(18, viewModel.state.value.draft?.efficiencyKmPerL)
         advanceUntilIdle()
         viewModel.edit {
             it.copy(

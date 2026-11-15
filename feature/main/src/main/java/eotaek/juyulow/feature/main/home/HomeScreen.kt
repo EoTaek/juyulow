@@ -117,7 +117,7 @@ fun HomeScreen(
                         )
                         state.conditions?.let { conditions ->
                             Text(
-                                "반경 ${conditions.searchRadiusKm} km · 검색 유종: ${conditions.comparisonFuel.label}",
+                                "반경 ${conditions.searchRadiusKm} km 내 검색",
                                 style = type.labelSmall
                             )
                         }
