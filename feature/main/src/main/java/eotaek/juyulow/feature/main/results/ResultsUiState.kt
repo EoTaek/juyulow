@@ -2,6 +2,7 @@ package eotaek.juyulow.feature.main.results
 
 import eotaek.juyulow.core.model.ComparisonSession
 import eotaek.juyulow.core.model.JourneyMode
+import eotaek.juyulow.core.model.Station
 import eotaek.juyulow.core.model.StationSort
 import eotaek.juyulow.core.model.compareStation
 
@@ -24,7 +25,7 @@ data class ResultsUiState(
         get() {
             val batch = session ?: return emptyList()
             val rows =
-                batch.stations.filter { it.outboundMeters != null && it.outboundSeconds != null }
+                batch.stations.filter { it.isSelectable }
                     .map { EvaluatedStation(it, compareStation(batch.context, it, mode)) }
             return when (sort) {
                 StationSort.SAVING -> rows.sortedWith(compareByDescending<EvaluatedStation> { it.comparison.netSavingWon }.thenBy { it.station.sourceIndex })
@@ -33,3 +34,6 @@ data class ResultsUiState(
         }
     val selected: EvaluatedStation? get() = evaluated.find { it.station.id == selectedId }
 }
+
+internal val Station.isSelectable: Boolean
+    get() = !routePending && outboundMeters != null && outboundSeconds != null && detour?.pending != true

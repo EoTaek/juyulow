@@ -329,7 +329,7 @@ class MainViewModelsTest {
         val pleosComplete = batch.copy(searchComplete = true, stations = batch.stations.map {
             it.copy(
                 priceWonPerL = if (it.id == "station-0") 1000 else it.priceWonPerL,
-                detour = eotaek.juyulow.core.model.DetourEstimate(),
+                detour = eotaek.juyulow.core.model.DetourEstimate(pending = it.id != "station-0"),
             )
         })
         sessions.update(pleosComplete)
@@ -346,6 +346,37 @@ class MainViewModelsTest {
         })
         sessions.update(kakaoComplete)
         runCurrent()
+        assertEquals("station-1", results.state.value.selectedId)
+    }
+
+    @Test
+    fun pendingDataCannotBeSelectedAndKakaoFailureFallsBackToPleos() = runTest(dispatcher) {
+        val sessions = InMemoryComparisonSessionRepository()
+        val base = previewSession()
+        val batch = sessions.create(base.context.journey, base.context.conditions, base.stations)
+            .copy(searchComplete = false, stations = base.stations.map {
+                when (it.id) {
+                    "station-0" -> it.copy(routePending = true, outboundSeconds = null)
+                    "station-1" -> it.copy(detour = eotaek.juyulow.core.model.DetourEstimate())
+                    else -> it
+                }
+            })
+        sessions.update(batch)
+        val results =
+            keep(ResultsViewModel(batch.id, Stations(), sessions, MockJourneyRepository()))
+        runCurrent()
+        assertEquals(listOf("station-2"), results.state.value.evaluated.map { it.station.id })
+        results.select("station-1")
+        assertEquals("station-2", results.state.value.selectedId)
+        sessions.update(batch.copy(stations = batch.stations.map {
+            if (it.id == "station-1") it.copy(
+                detour = eotaek.juyulow.core.model.DetourEstimate(
+                    pending = false, error = "조회 실패",
+                )
+            ) else it
+        }))
+        runCurrent()
+        results.select("station-1")
         assertEquals("station-1", results.state.value.selectedId)
     }
 

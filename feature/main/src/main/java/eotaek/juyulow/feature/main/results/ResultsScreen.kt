@@ -2,8 +2,6 @@ package eotaek.juyulow.feature.main.results
 
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -31,6 +29,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -41,9 +42,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -89,7 +87,8 @@ fun ResultsScreen(
         }
     }
     Surface(
-        modifier.fillMaxSize()
+        modifier
+            .fillMaxSize()
             .onPreviewKeyEvent {
                 if (it.type == KeyEventType.KeyDown) notifyInteraction()
                 false
@@ -184,8 +183,8 @@ fun ResultsScreen(
                             var focusedId by remember { mutableStateOf<String?>(null) }
                             val requesters =
                                 remember(batch.id) { mutableMapOf<String, FocusRequester>() }
-                            if (!batch.searchComplete) PleosDividedText(
-                                "잠정 절약액 · 기준 유가 갱신 중",
+                            PleosDividedText(
+                                if (batch.searchComplete) "주유소 조회 완료" else "잠정 절약액 · 기준 유가 갱신 중",
                                 style = type.labelSmall
                             )
                             val detourCount = batch.stations.count { it.detour != null }
@@ -194,7 +193,12 @@ fun ResultsScreen(
                                 style = type.labelSmall
                             )
                             val listState = rememberLazyListState()
-                            val orderedIds = state.evaluated.map { it.station.id }
+                            val evaluated = state.evaluated
+                            val evaluatedById = evaluated.associateBy { it.station.id }
+                            val displayStations = evaluated.map { it.station } +
+                                    batch.stations.filterNot { it.id in evaluatedById }
+                                        .sortedBy { it.sourceIndex }
+                            val orderedIds = displayStations.map { it.id }
                             LaunchedEffect(orderedIds, focusedId, state.userInteracted) {
                                 if (!state.userInteracted) return@LaunchedEffect
                                 val id = focusedId ?: return@LaunchedEffect
@@ -222,60 +226,23 @@ fun ResultsScreen(
                                 verticalArrangement = Arrangement.spacedBy(14.dp),
                                 contentPadding = PaddingValues(bottom = 8.dp)
                             ) {
-                                items(state.evaluated, key = { it.station.id }) { row ->
+                                items(displayStations, key = { it.id }) { station ->
+                                    val row = evaluatedById[station.id]
                                     val requester =
-                                        remember(row.station.id) { requesters.getOrPut(row.station.id) { FocusRequester() } }
-                                    Box(
-                                        Modifier.animateItem(
-                                            fadeInSpec = null, fadeOutSpec = null,
-                                            placementSpec = tween(
-                                                250,
-                                                easing = LinearOutSlowInEasing
-                                            )
-                                        )
-                                    ) {
-                                        StationRow(
-                                            row,
-                                            state.mode,
-                                            row.station.id == state.selectedId,
-                                            !state.busy,
-                                            narrow,
-                                            Modifier
-                                                .focusRequester(requester)
-                                                .onFocusChanged {
-                                                    if (it.isFocused) focusedId = row.station.id
-                                                }
-                                        ) { onSelect(row.station.id) }
-                                    }
-                                }
-                                items(
-                                    batch.stations.filter { it.outboundMeters == null || it.outboundSeconds == null }
-                                        .sortedWith(compareByDescending<Station> { it.routePending }.thenBy { it.sourceIndex }),
-                                    key = { it.id }) { station ->
-                                    Column(
+                                        remember(station.id) { requesters.getOrPut(station.id) { FocusRequester() } }
+                                    StationRow(
+                                        station,
+                                        row?.comparison,
+                                        state.mode,
+                                        row != null && station.id == state.selectedId,
+                                        row != null && !state.busy,
+                                        narrow,
                                         Modifier
-                                            .fillMaxWidth()
-                                            .animateItem(
-                                                fadeInSpec = null,
-                                                fadeOutSpec = null,
-                                                placementSpec = tween(
-                                                    250,
-                                                    easing = LinearOutSlowInEasing
-                                                )
-                                            )
-                                            .padding(16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Text(station.name, style = type.bodySmall)
-                                        Text(station.brand, style = type.labelSmall)
-                                        Text("${station.priceWonPerL} 원/L", style = type.bodySmall)
-                                        PleosDividedText(
-                                            if (station.routePending) "ETA 확인 중" else station.routeError
-                                                ?: "경로 확인 불가",
-                                            style = type.labelSmall
-                                        )
-                                        PleosDividedText("거리·시간·절약액 미확보 · 내비 설정 불가", style = type.labelSmall)
-                                    }
+                                            .focusRequester(requester)
+                                            .onFocusChanged {
+                                                if (it.isFocused) focusedId = station.id
+                                            }
+                                    ) { onSelect(station.id) }
                                 }
                                 if (batch.stations.isEmpty()) item {
                                     Text(

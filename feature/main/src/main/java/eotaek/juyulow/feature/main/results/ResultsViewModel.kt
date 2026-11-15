@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import eotaek.juyulow.core.data.ComparisonSessionRepository
 import eotaek.juyulow.core.data.JourneyRepository
 import eotaek.juyulow.core.data.StationRepository
-import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.ComparisonSession
+import eotaek.juyulow.core.model.JourneyMode
 import eotaek.juyulow.core.model.StationSort
 import eotaek.juyulow.core.model.sameRouteTargetsAs
 import eotaek.juyulow.core.model.sameTripOriginAs
@@ -76,7 +76,7 @@ class ResultsViewModel(
     }
 
     fun select(id: String) {
-        if (!state.value.busy && state.value.session?.stations?.any { it.id == id && it.outboundMeters != null && it.outboundSeconds != null } == true) mutableState.update {
+        if (!state.value.busy && state.value.evaluated.any { it.station.id == id }) mutableState.update {
             it.copy(
                 selectedId = id,
                 userInteracted = true,

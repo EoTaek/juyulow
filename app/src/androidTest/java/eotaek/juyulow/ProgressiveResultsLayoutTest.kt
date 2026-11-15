@@ -35,9 +35,9 @@ import eotaek.juyulow.core.model.Station
 import eotaek.juyulow.core.model.resolveRefuelConditions
 import eotaek.juyulow.feature.main.results.ResultsScreen
 import eotaek.juyulow.feature.main.results.ResultsUiState
-import org.junit.Rule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
@@ -128,8 +128,8 @@ class ProgressiveResultsLayoutTest(private val width: Int, private val dark: Boo
         val stations = (0..31).map { i ->
             Station(
                 "s$i", "주유소 $i", "S-OIL", 1800 - i * 10, 37.4, 127.1,
-                1000, 100, null, null, null, null, null,
-                observedAtMillis = 1, sourceIndex = i,
+                if (i < 2) null else 1000, if (i < 2) null else 100, null, null, null, null, null,
+                observedAtMillis = 1, sourceIndex = i, routePending = i < 2,
             )
         }
         val session = ComparisonSession(
@@ -151,19 +151,29 @@ class ProgressiveResultsLayoutTest(private val width: Int, private val dark: Boo
             }
         }
         val list = compose.onNodeWithTag("station-list-scroll")
+        compose.waitForIdle()
+        val initialScrollMax =
+            list.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].maxValue()
         // 기존 첫 항목이 아래로 밀리는 두 번의 ETA 갱신을 재현한다.
         listOf("s0", "s1").forEachIndexed { index, bestId ->
             compose.runOnIdle {
                 val batch = state.value.session!!
                 state.value = state.value.copy(
                     session = batch.copy(stations = batch.stations.map {
-                        if (it.id == bestId) it.copy(priceWonPerL = 900 - index * 100) else it
+                        if (it.id == bestId) it.copy(
+                            priceWonPerL = 900 - index * 100,
+                            outboundMeters = 1000, outboundSeconds = 100, routePending = false,
+                        ) else it
                     }),
                     selectedId = bestId,
                 )
             }
             compose.waitForIdle()
             assertEquals(0f, list.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value())
+            assertEquals(
+                initialScrollMax,
+                list.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].maxValue()
+            )
             compose.onNodeWithTag(bestId).assertIsDisplayed().assertIsSelected()
         }
         list.performTouchInput { swipeUp() }
