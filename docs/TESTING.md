@@ -1,5 +1,12 @@
 # 검증
 
+## 2026-11-15 ETA 자동 선택 중 스크롤 상단 유지
+
+사용자 조작 전에는 ETA 응답 갱신마다 목록의 첫 항목·오프셋 0을 요청하고, 포커스 보존용 스크롤은 사용자 조작 후에만 수행한다.
+ProgressiveResultsLayoutTest에 연속 재정렬 후 스크롤 0과 사용자 스크롤 이후 위치 유지를 검사하는 회귀 테스트를 추가했다.
+debug 앱 빌드, feature:main 단위 테스트, lintDebug, AndroidTest APK 빌드와 git diff --check가 통과했다.
+추가한 UI 테스트의 디바이스 실행은 수행하지 않았다.
+
 ## 2026-11-15 ETA 조회 중 최상단 자동 선택
 
 MainViewModelsTest에서 첫 성공 ID 대신 현재 정렬 최상단 선택, Pleos 종료 후 카카오 최종 응답까지 자동 선택,

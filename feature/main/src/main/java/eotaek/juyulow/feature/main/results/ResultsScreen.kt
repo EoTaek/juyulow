@@ -195,7 +195,8 @@ fun ResultsScreen(
                             )
                             val listState = rememberLazyListState()
                             val orderedIds = state.evaluated.map { it.station.id }
-                            LaunchedEffect(orderedIds, focusedId) {
+                            LaunchedEffect(orderedIds, focusedId, state.userInteracted) {
+                                if (!state.userInteracted) return@LaunchedEffect
                                 val id = focusedId ?: return@LaunchedEffect
                                 snapshotFlow { listState.isScrollInProgress }.first { !it }
                                 val index = orderedIds.indexOf(id)
@@ -205,7 +206,12 @@ fun ResultsScreen(
                                     requesters[id]?.requestFocus()
                                 }
                             }
-                            LaunchedEffect(batch.id) { listState.scrollToItem(0) }
+                            LaunchedEffect(batch, state.userInteracted) {
+                                if (!state.userInteracted) {
+                                    // 재정렬 시 기존 첫 항목의 key 대신 새 첫 항목과 오프셋 0을 유지한다.
+                                    listState.requestScrollToItem(0, 0)
+                                }
+                            }
                             LazyColumn(
                                 Modifier
                                     .weight(1f)

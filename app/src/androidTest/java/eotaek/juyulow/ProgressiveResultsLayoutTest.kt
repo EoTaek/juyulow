@@ -11,6 +11,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
@@ -20,7 +21,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import eotaek.juyulow.core.design.theme.JUYULOWTheme
@@ -33,6 +36,8 @@ import eotaek.juyulow.core.model.resolveRefuelConditions
 import eotaek.juyulow.feature.main.results.ResultsScreen
 import eotaek.juyulow.feature.main.results.ResultsUiState
 import org.junit.Rule
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
@@ -88,7 +93,9 @@ class ProgressiveResultsLayoutTest(private val width: Int, private val dark: Boo
             CompositionLocalProvider(LocalDensity provides Density(.5f, 1f)) {
                 JUYULOWTheme(darkTheme = dark) {
                     Box(Modifier.requiredSize(width.dp, 1184.dp)) {
-                        ResultsScreen(state.value, {}, {}, {}, {}, {})
+                        ResultsScreen(state.value, {}, {}, {}, {}, {}, onUserInteraction = {
+                            state.value = state.value.copy(userInteracted = true)
+                        })
                     }
                 }
             }
@@ -114,5 +121,59 @@ class ProgressiveResultsLayoutTest(private val width: Int, private val dark: Boo
         compose.onNodeWithTag("confirm-route").assertIsEnabled()
         compose.onNodeWithText("잠정 절약액").assertIsDisplayed()
         compose.onNodeWithText("기준 유가 갱신 중").assertIsDisplayed()
+    }
+
+    @Test
+    fun progressiveReorderingPinsScrollToZeroUntilUserScrolls() {
+        val stations = (0..31).map { i ->
+            Station(
+                "s$i", "주유소 $i", "S-OIL", 1800 - i * 10, 37.4, 127.1,
+                1000, 100, null, null, null, null, null,
+                observedAtMillis = 1, sourceIndex = i,
+            )
+        }
+        val session = ComparisonSession(
+            "scroll", ComparisonContext(
+                JourneyContext(null, null, null, destinationOnly = true),
+                resolveRefuelConditions(RefuelSettings()), 1800,
+            ), stations, searchComplete = false,
+        )
+        val state = mutableStateOf(ResultsUiState(session = session, selectedId = "s31"))
+        compose.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(.5f, 1f)) {
+                JUYULOWTheme(darkTheme = dark) {
+                    Box(Modifier.requiredSize(width.dp, 1184.dp)) {
+                        ResultsScreen(state.value, {}, {}, {}, {}, {}, onUserInteraction = {
+                            state.value = state.value.copy(userInteracted = true)
+                        })
+                    }
+                }
+            }
+        }
+        val list = compose.onNodeWithTag("station-list-scroll")
+        // 기존 첫 항목이 아래로 밀리는 두 번의 ETA 갱신을 재현한다.
+        listOf("s0", "s1").forEachIndexed { index, bestId ->
+            compose.runOnIdle {
+                val batch = state.value.session!!
+                state.value = state.value.copy(
+                    session = batch.copy(stations = batch.stations.map {
+                        if (it.id == bestId) it.copy(priceWonPerL = 900 - index * 100) else it
+                    }),
+                    selectedId = bestId,
+                )
+            }
+            compose.waitForIdle()
+            assertEquals(0f, list.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value())
+            compose.onNodeWithTag(bestId).assertIsDisplayed().assertIsSelected()
+        }
+        list.performTouchInput { swipeUp() }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertTrue(state.value.userInteracted)
+            state.value = state.value.copy(session = state.value.session!!.copy(searchComplete = true))
+        }
+        compose.waitForIdle()
+        assertTrue(list.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value() > 0f)
+        compose.runOnIdle { assertEquals("s1", state.value.selectedId) }
     }
 }
